@@ -444,8 +444,9 @@ postProvision() {
 # @description Installs VIM plugins (outside of Chezmoi because of terminal GUI issues)
 vimPlugins() {
   if command -v vim > /dev/null; then
-    logg info 'Running vim +CocUpdateSync +qall' && vim +CocUpdateSync +qall
-    logg info "Installing VIM plugins with vim -E -s +'PlugInstall --sync' +qall" && vim -E -s +'PlugInstall --sync' +qall
+    logg info 'Running vim +CocUpdateSync +qall' && vim +CocUpdateSync +qall >/dev/null 2>&1 &
+    disown
+    logg info "Installing VIM plugins with vim +'PlugInstall --sync' +qall" && vim +'PlugInstall --sync' +qall
   else
     logg info 'VIM not in PATH'
   fi

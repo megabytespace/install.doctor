@@ -28,7 +28,7 @@ if [ -d /Applications ] && [ -d /System ]; then
     gum log -sl info 'Dependencies: age jq node glow go go-task/tap/go-task gnupg gum m-cli progress volta yq m-cli yq zx'
     gum log -sl info 'GNU compatibility dependencies: coreutils findutils'
 
-    brew bundle --verbose --no-lock --file=/dev/stdin <<EOF
+    brew bundle --verbose --file=/dev/stdin <<EOF
 {{ includeTemplate "darwin/Brewfile" . -}}
 EOF
 
