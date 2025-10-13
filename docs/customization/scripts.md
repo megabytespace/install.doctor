@@ -5,7 +5,7 @@ sidebar_label: Scripts
 slug: /customization/scripts
 ---
 
-Install Doctor leverages shell scripting for many of the complex tasks that cannot easily be accomodated by the Install Doctor [ZX-based installer](https://github.com/megabyte-labs/install.doctor/blob/master/home/dot_local/bin/executable_install-program). On macOS / Linux / *nix variants Bash is used and, on Windows, PowerShell is also leveraged. Since Install Doctor is a [Chezmoi](https://www.chezmoi.io/)-based installer, all of the Chezmoi features and syntaxes are used by the scripts housed in the Install Doctor repository. After parsing script templates and filtering files with the `.chezmoiignore` file, all the scripts with file names that begin with `run_` are executed at different phases during the provisioning process.
+Install Doctor leverages shell scripting for many of the complex tasks that cannot easily be accommodated by the Install Doctor [ZX-based installer](https://github.com/megabyte-labs/install.doctor/blob/master/home/dot_local/bin/executable_install-program). On macOS / Linux / *nix variants Bash is used and, on Windows, PowerShell is also leveraged. Since Install Doctor is a [Chezmoi](https://www.chezmoi.io/)-based installer, all of the Chezmoi features and syntaxes are used by the scripts housed in the Install Doctor repository. After parsing script templates and filtering files with the `.chezmoiignore` file, all the scripts with file names that begin with `run_` are executed at different phases during the provisioning process.
 
 ## Script Phases
 

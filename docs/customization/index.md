@@ -11,11 +11,11 @@ There are many ways you can customize Install Doctor so that your device is prov
 
 The Install Doctor project leverages dozens of technologies but, at its core, it is ultimately a Chezmoi project. This allows us to leverage Chezmoi's script execution abilities, encryption handlers, and diff feature (which allows you to display the changes that will be made before applying them).
 
-If you decide that our built-in prompt system does not accomodate your needs, we highly recommend you sift through [Chezmoi's documentation](https://www.chezmoi.io/). By reading the documentation, you will learn why some files and folders start with `dot_`, how files ending with `.tmpl` are rendered, and additional features you can leverage.
+If you decide that our built-in prompt system does not accommodate your needs, we highly recommend you sift through [Chezmoi's documentation](https://www.chezmoi.io/). By reading the documentation, you will learn why some files and folders start with `dot_`, how files ending with `.tmpl` are rendered, and additional features you can leverage.
 
 That said, if you do not feel like taking a deep dive and learning a new technology, then you can leverage our built-in prompt system. Better yet, if you want to customize Install Doctor, you can customize the repository to your liking without having to learn the inner workings and features of Chezmoi.
 
-Our project is the most ellaborate and full-featured implementation of Chezmoi we have come across. If you come across another project that parallels the full-featuredness of ours then please let our team and community know about it by posting in one of our social media sites / chat rooms which are all linked to on the [Community page](https://install.doctor/community).
+Our project is the most elaborate and full-featured implementation of Chezmoi we have come across. If you come across another project that parallels the full-featuredness of ours then please let our team and community know about it by posting in one of our social media sites / chat rooms which are all linked to on the [Community page](https://install.doctor/community).
 
 ## Prompts
 

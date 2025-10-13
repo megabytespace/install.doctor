@@ -30,7 +30,7 @@
 #     This script will likely only work on AMD x64 devices.
 #
 #     Some of the commands are conditionally run based on whether or not the `CRONTAB_JOB` environment variable is set.
-#     This is to accomodate EasyEngine installations where the list of SSH endpoints is variable. Both the initial
+#     This is to accommodate EasyEngine installations where the list of SSH endpoints is variable. Both the initial
 #     setup and updates are applied using this script (via a cronjob that does not need to run initialization tasks during
 #     the cronjobs).
 #

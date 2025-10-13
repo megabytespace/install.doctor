@@ -18,7 +18,7 @@ Install Doctor makes it as easy as possible to:
 
 ## Multi-OS Provisioning
 
-Part of what seperates Install Doctor from other provisioning systems is that it includes features that make it easy to apply your same configurations across multiple operating systems. It includes its own software installation program that can be configured to, for instance, prefer to install software with the system package manager but leverage [Homebrew](https://brew.sh/) if the package is not available via the system package manager.
+Part of what separates Install Doctor from other provisioning systems is that it includes features that make it easy to apply your same configurations across multiple operating systems. It includes its own software installation program that can be configured to, for instance, prefer to install software with the system package manager but leverage [Homebrew](https://brew.sh/) if the package is not available via the system package manager.
 
 Apart from installing a configurable set of software packages, it also leverages Chezmoi's built-in feature that allows you to delegate specific scripts to run on certain operating systems. This is how, at provisioning time, the system runs PowerShell scripts on Windows and Bash scripts on other targets.
 

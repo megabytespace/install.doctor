@@ -5,7 +5,7 @@ sidebar_label: Profile Scripts
 slug: /scripts/profile
 ---
 
-Install Doctor's expertly configured and optimized system configuration collection includes masterfully created Bash / ZSH profile scripts. These scripts are seperated into a handful of files that are only imported when necessary.
+Install Doctor's expertly configured and optimized system configuration collection includes masterfully created Bash / ZSH profile scripts. These scripts are separated into a handful of files that are only imported when necessary.
 
 The default configuration ensures ZSH is the default shell. When combined with the [Oh-My-ZSH](https://ohmyz.sh/) framework, this gives the user access to advanced auto-completion, type ahead, and predictive features.
 

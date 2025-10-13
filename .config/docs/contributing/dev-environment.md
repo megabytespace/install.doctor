@@ -10,7 +10,7 @@ Before contributing to this project, you will have to make sure you have the too
 - **[Node.js](https://github.com/ProfessorManhattan/ansible-nodejs)** >=12 which is used for the development environment which includes a pre-commit hook
 - **[VirtualBox](https://github.com/ProfessorManhattan/ansible-virtualbox)** which is used for running Molecule tests
 
-Docker and VirtualBox must be installed with root priviledges. If they are missing from your system, running `bash .start.sh` will prompt you for your password and automatically install them. Otherwise, you can follow the official [directions for installing Docker](https://docs.docker.com/get-docker/) and [directions for installing VirtualBox](https://www.virtualbox.org/manual/ch02.html).
+Docker and VirtualBox must be installed with root privileges. If they are missing from your system, running `bash .start.sh` will prompt you for your password and automatically install them. Otherwise, you can follow the official [directions for installing Docker](https://docs.docker.com/get-docker/) and [directions for installing VirtualBox](https://www.virtualbox.org/manual/ch02.html).
 
 ### Getting Started
 

@@ -100,7 +100,7 @@ For the most part, when working on one of our NPM packages, all of the code shou
 
 We adhere to strict design-patterns across all of our NPM packages. In order for you to get a feel for what we are looking for, you should browse through our [`Buildr`](repository.project.buildr) project's files. After browsing through the Buildr project's source code, you will notice that we include other files/folders in the `src/` folder:
 
-- `constants/` - This folder houses all the constant variables used in the project. The constants are generally seperated out into different files based on where they are being used in the application.
+- `constants/` - This folder houses all the constant variables used in the project. The constants are generally separated out into different files based on where they are being used in the application.
 - `lib/` - This folder contains all the pieces of the app that would generally be utilized by the `app.ts` file.
 - `models/` - This folder contains all of the data models that are used. Data models are important to use especially in larger projects because they provide type definitions and also open the door to data validation which is touched on in the [Preferred Libraries](#preferred-libraries) section.
 - `tsconfig.json` - This file is included to address a Visual Studio Code bug that occurs if you open the `src/` directory and not the root folder
@@ -158,7 +158,7 @@ validate(post).then(errors => {
 });
 ```
 
-Using the library above can provide real value to our users. By validating the data before running any business logic, we can save the user time by taking out the guess work required for debugging. Please note that in practice, the `Post` model/class would be seperated into a file stored in `src/models/post.model.ts`.
+Using the library above can provide real value to our users. By validating the data before running any business logic, we can save the user time by taking out the guess work required for debugging. Please note that in practice, the `Post` model/class would be separated into a file stored in `src/models/post.model.ts`.
 
 **All data inputs should utilize this form of validation.** If the `class-validator` project does not provide a decorator that can properly validate the input data then you can extend the library by creating a custom validation decorator. There is an [example of how to create a custom validator in the Buildr project](https://gitlab.com/megabyte-labs/npm/buildr/-/blob/master/src/lib/validators/is-true.validator.ts).
 

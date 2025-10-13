@@ -128,4 +128,4 @@ By default, our pre-defined software templates include dozens (or hundreds, depe
 
 ## More Features
 
-There are many, many more features that have not been listed in this high-level overview. We encourage you to browse through the [Install Doctor repository](https://github.com/megabyte-labs/install.doctor) codebase to browse through additional features not listed here. If you cannot find a feature that you are looking for, then please engage with our [Community](https://install.doctor/community) and let us know how to make Install Doctor accomodate your needs.
+There are many, many more features that have not been listed in this high-level overview. We encourage you to browse through the [Install Doctor repository](https://github.com/megabyte-labs/install.doctor) codebase to browse through additional features not listed here. If you cannot find a feature that you are looking for, then please engage with our [Community](https://install.doctor/community) and let us know how to make Install Doctor accommodate your needs.
