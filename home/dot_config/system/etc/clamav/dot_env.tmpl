@@ -1,0 +1,3 @@
+SENDGRID_API_KEY={{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SENDGRID_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SENDGRID_API_KEY") | decrypt | trim }}{{ else }}{{ env "SENDGRID_API_KEY" }}{{ end }}
+EMAIL_FROM={{ .host.smtp.from }}
+EMAIL_TO={{ .user.email }}

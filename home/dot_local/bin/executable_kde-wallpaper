@@ -1,3 +1,4 @@
+{{- if eq .host.distro.family "linux" -}}
 #!/usr/bin/env python3
 import time
 import dbus
@@ -105,3 +106,4 @@ if __name__ == '__main__':
                             plugin=args.plugin, timer=args.timer,lock_screen=args.lock_screen)
     else:
         print("Need help? use -h or --help")
+{{ end -}}

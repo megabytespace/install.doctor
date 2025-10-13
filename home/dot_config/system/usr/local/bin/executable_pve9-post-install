@@ -1,0 +1,378 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  Proxmox VE 9 Post-Install Bootstrap — “World-Class Edition”
+# ==============================================================================
+#  GOALS
+#  - Be SAFE to re-run: every step is an idempotent “stage” recorded under:
+#        ~/.cache/pve-postinstall/<stage>.done
+#    The stage re-runs only if its marker is absent.
+#  - Follow the Proxmox way:
+#      * Bridged networking by default (vmbr*) with VLANs optional.           # Docs: default bridge model
+#      * Apply network changes with ifupdown2/GUI (atomic apply).             # Docs: GUI + ifreload -a
+#      * Firewall “enable” = config flag under /etc/pve/firewall + service.   # Docs: pve-firewall has no 'enable'
+#  - Ask before changing security (root SSH password-login left enabled unless you opt out).
+#
+#  WHAT IT DOES
+#   • Repos  : Switch to pve-no-subscription (optional), upgrade.
+#   • SSH    : Add key (optional); optionally switch root to key-only.
+#   • Firewall: Enable at cluster+host level by writing cluster.fw/host.fw; start service.
+#   • Fail2ban: Install + sshd jail (optional).
+#   • Tools  : Admin tools + SMART monitoring (robust unit handling).
+#   • Unatt. : unattended-upgrades (optional).
+#   • ZFS    : Optional ARC cap + zfs-auto-snapshot (optional).
+#   • PBS    : Optional proxmox-backup-client.
+#   • Net    : vmbr0 (10.0.0.114/24 gw 10.0.0.1), VLAN-aware; vmbr1 internal.
+#
+#  REFERENCES (Proxmox Admin Guide & Sysadmin):
+#    - Flexible bridged networking & VLANs; default vmbr0 pattern.            # see citations below
+#    - Firewall managed via pmxcfs configs and pve-firewall service.          # see citations below
+# ==============================================================================
+
+set -Eeuo pipefail
+
+# ---------- Fancy output ----------
+BOLD="\033[1m"; DIM="\033[2m"; RED="\033[31m"; YEL="\033[33m"; GRN="\033[32m"; RST="\033[0m"
+say()   { echo -e "${BOLD}$*${RST}"; }
+ok()    { echo -e "${GRN}✓${RST} $*"; }
+warn()  { echo -e "${YEL}!${RST} $*"; }
+fail()  { echo -e "${RED}✗${RST} $*"; }
+ask()   { read -rp "$1 " REPLY || true; echo "${REPLY}"; }
+yesno() { local q="$1" d="${2:-n}" a p="[y/N]"; [[ $d =~ ^[Yy]$ ]] && p="[Y/n]"; read -rp "$q $p " a || true; a="${a:-$d}"; [[ $a =~ ^[Yy]$ ]]; }
+
+# ---------- Stage bookkeeping (idempotency) ----------
+CACHE_DIR="$HOME/.cache/pve-postinstall"; mkdir -p "$CACHE_DIR"
+did()   { [[ -f "$CACHE_DIR/$1.done" ]]; }
+mark()  { : > "$CACHE_DIR/$1.done"; }
+
+# ---------- Guards ----------
+command -v pveversion >/dev/null || { fail "This host is not Proxmox (pveversion not found)."; exit 1; }
+
+say "=== Proxmox VE 9 Post-Install (Idempotent) ==="
+echo
+
+# ==============================================================================
+# Stage: repositories  — enable pve-no-subscription (optional), then upgrade
+# ==============================================================================
+if ! did repos; then
+  if yesno "Configure Proxmox repositories (disable enterprise; enable no-subscription)?" y; then
+    CODENAME="$(. /etc/os-release && echo "${VERSION_CODENAME:-trixie}")"
+    # Prefer modern deb822 .sources files; leave Debian base repos intact.                # Docs: repo formats + mgmt UI
+    sed -i 's/^[[:space:]]*Types/# Types/g' /etc/apt/sources.list.d/pve-enterprise.sources 2>/dev/null || true
+    sed -i 's/^[[:space:]]*deb/# deb/g'    /etc/apt/sources.list.d/pve-enterprise.list    2>/dev/null || true
+    cat >/etc/apt/sources.list.d/pve-no-subscription.sources <<EOF
+Types: deb
+URIs: http://download.proxmox.com/debian/pve
+Suites: ${CODENAME}
+Components: pve-no-subscription
+Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+EOF
+    apt update
+    if yesno "Run full upgrade now?" y; then
+      DEBIAN_FRONTEND=noninteractive apt -o Dpkg::Options::="--force-confold" full-upgrade -y
+      apt autoremove --purge -y || true
+      apt clean || true
+    fi
+    ok "Repositories configured & system up to date."
+  else
+    warn "Skipped repository configuration."
+  fi
+  mark repos
+else
+  ok "Repos stage already completed."
+fi
+# (Docs: Repository management & formats) 
+
+# ==============================================================================
+# Stage: ssh  — add root key (optional), optionally disable password login (key-only)
+# ==============================================================================
+if ! did ssh; then
+  if yesno "Add an SSH public key for root?" y; then
+    KEY="$(ask "Paste SSH public key (leave empty to skip):")"
+    if [[ -n "$KEY" ]]; then
+      mkdir -p /root/.ssh && chmod 700 /root/.ssh
+      grep -qxF "$KEY" /root/.ssh/authorized_keys 2>/dev/null || echo "$KEY" >> /root/.ssh/authorized_keys
+      chmod 600 /root/.ssh/authorized_keys
+      ok "SSH key installed to /root/.ssh/authorized_keys"
+    else
+      warn "No key provided; continuing."
+    fi
+  fi
+  if yesno "Disable root password login over SSH (key-only)?" n; then
+    if [[ -s /root/.ssh/authorized_keys ]]; then
+      if grep -q '^PermitRootLogin' /etc/ssh/sshd_config; then
+        sed -i 's/^PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+      else
+        echo "PermitRootLogin prohibit-password" >> /etc/ssh/sshd_config
+      fi
+      systemctl restart ssh || systemctl restart sshd || true
+      ok "Root password SSH login disabled (key-only)."
+    else
+      warn "No key on file; refusing to disable password login."
+    fi
+  else
+    ok "Left root password login ENABLED (default)."
+  fi
+  mark ssh
+else
+  ok "SSH stage already completed."
+fi
+
+# ==============================================================================
+# Stage: firewall  — Datacenter + Node enable via pmxcfs + start service
+# ==============================================================================
+if ! did firewall; then
+  if yesno "Enable Proxmox firewall at Datacenter + Node and start service?" y; then
+    CLUSTER_FW="/etc/pve/firewall/cluster.fw"
+    HOST_FW="/etc/pve/nodes/$(hostname)/host.fw"
+    mkdir -p /etc/pve/firewall
+
+    # Enable at Datacenter scope
+    if [[ ! -f "$CLUSTER_FW" ]]; then
+      cat >"$CLUSTER_FW" <<'EOF'
+[OPTIONS]
+enable: 1
+# policy_in: ACCEPT
+# policy_out: ACCEPT
+# policy_forward: DROP
+
+# Define a management set you can populate with allowed admin IPs/ranges:
+[IPSET management]
+# 10.0.0.0/24
+
+# Optional cluster-wide rules (examples):
+# [RULES]
+# IN  ACCEPT -p tcp -dport 8006 -source +management   # Proxmox GUI
+# IN  ACCEPT -p tcp -dport 22   -source +management   # SSH
+EOF
+    else
+      grep -qxF "[OPTIONS]" "$CLUSTER_FW" || printf "\n[OPTIONS]\n" >> "$CLUSTER_FW"
+      if ! grep -qE '^\s*enable:\s*1\s*$' "$CLUSTER_FW"; then
+        if grep -qE '^\s*enable:\s*[0-9]+' "$CLUSTER_FW"; then
+          sed -i 's/^\s*enable:\s*[0-9]\+/enable: 1/' "$CLUSTER_FW"
+        else
+          awk 'BEGIN{p=0} /^\[OPTIONS\]/{print;print "enable: 1";p=1;next} {print} END{if(!p)print "\n[OPTIONS]\nenable: 1"}' \
+            "$CLUSTER_FW" > "${CLUSTER_FW}.new" && mv "${CLUSTER_FW}.new" "$CLUSTER_FW"
+        fi
+      fi
+      grep -q '^\[IPSET management\]' "$CLUSTER_FW" || printf "\n[IPSET management]\n# 10.0.0.0/24\n" >> "$CLUSTER_FW"
+    fi
+
+    # Enable at Node scope
+    if [[ ! -f "$HOST_FW" ]]; then
+      cat >"$HOST_FW" <<'EOF'
+[OPTIONS]
+enable: 1
+# log_level_in: info
+# log_level_out: info
+EOF
+    else
+      grep -qxF "[OPTIONS]" "$HOST_FW" || printf "\n[OPTIONS]\n" >> "$HOST_FW"
+      if ! grep -qE '^\s*enable:\s*1\s*$' "$HOST_FW"; then
+        if grep -qE '^\s*enable:\s*[0-9]+' "$HOST_FW"; then
+          sed -i 's/^\s*enable:\s*[0-9]\+/enable: 1/' "$HOST_FW"
+        else
+          awk 'BEGIN{p=0} /^\[OPTIONS\]/{print;print "enable: 1";p=1;next} {print} END{if(!p)print "\n[OPTIONS]\nenable: 1"}' \
+            "$HOST_FW" > "${HOST_FW}.new" && mv "${HOST_FW}.new" "$HOST_FW"
+        fi
+      fi
+    fi
+
+    # Start (or restart) firewall service (there is no 'enable' subcommand)
+    pve-firewall start || pve-firewall restart
+    pve-firewall status || true
+    ok "Firewall enabled (Datacenter+Node) and service started."
+  else
+    warn "Skipped firewall enable."
+  fi
+  mark firewall
+else
+  ok "Firewall stage already completed."
+fi
+# (Docs: Firewalld enable is a config flag under /etc/pve/firewall + pve-firewall service) 
+
+# ==============================================================================
+# Stage: fail2ban  — install + sshd jail (optional)
+# ==============================================================================
+if ! did fail2ban; then
+  if yesno "Install & enable fail2ban (sshd jail)?" y; then
+    apt install -y fail2ban
+    mkdir -p /etc/fail2ban
+    cat >/etc/fail2ban/jail.local <<'EOF'
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled = true
+mode = aggressive
+EOF
+    systemctl enable --now fail2ban
+    ok "fail2ban installed and running."
+  else
+    warn "Skipped fail2ban."
+  fi
+  mark fail2ban
+else
+  ok "Fail2ban stage already completed."
+fi
+
+# ==============================================================================
+# Stage: tools  — admin toolset + SMART (robust smartmontools.service handling)
+# ==============================================================================
+if ! did tools; then
+  if yesno "Install admin tools (htop, iftop, iotop, nvme-cli, smartmontools, jq, vim, ncdu, mtr, etc.)?" y; then
+    apt install -y htop iftop iotop nvme-cli smartmontools jq curl vim less bpytop bmon duf ncdu unzip lm-sensors ethtool pciutils usbutils traceroute mtr-tiny net-tools
+    # ---- SMART service (fix linked-unit / alias issue) -----------------------
+    # Debian/Proxmox exposes the canonical service as 'smartmontools.service'.
+    # Older alias 'smartd.service' may be a linked unit; enabling it can error out.
+    if systemctl list-unit-files | grep -q '^smartmontools\.service'; then
+      systemctl enable --now smartmontools.service || true
+    fi
+    # If someone manually created /etc/systemd/system/smartd.service (stray link), clean it:
+    if [[ -L /etc/systemd/system/smartd.service ]]; then
+      rm -f /etc/systemd/system/smartd.service
+      systemctl daemon-reload
+      systemctl enable --now smartmontools.service || true
+    fi
+    # Final fallback: try alias, then canonical again (covers edge cases)
+    systemctl enable --now smartd.service 2>/dev/null || systemctl enable --now smartmontools.service || true
+    ok "Tools installed; SMART monitoring enabled (smartmontools.service)."
+  else
+    warn "Skipped tools."
+  fi
+  mark tools
+else
+  ok "Tools stage already completed."
+fi
+# (Docs: Disk health monitoring is part of host admin topics) 
+
+# ==============================================================================
+# Stage: unattended  — unattended-upgrades (optional)
+# ==============================================================================
+if ! did unattended; then
+  if yesno "Enable unattended security upgrades?" y; then
+    apt install -y unattended-upgrades apt-listchanges
+    cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Download-Upgradeable-Packages "1";
+APT::Periodic::AutocleanInterval "7";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+    dpkg-reconfigure --priority=low unattended-upgrades || true
+    ok "Unattended upgrades enabled."
+  else
+    warn "Skipped unattended upgrades."
+  fi
+  mark unattended
+else
+  ok "Unattended-upgrades stage already completed."
+fi
+
+# ==============================================================================
+# Stage: zfs  — optional ARC cap and zfs-auto-snapshot
+# ==============================================================================
+if ! did zfs; then
+  if command -v zpool >/dev/null 2>&1; then
+    if yesno "Set a ZFS ARC max (e.g., 8 GiB)?" n; then
+      ARC_BYTES="$(ask "Enter ARC max bytes (default 8589934592):")"; ARC_BYTES="${ARC_BYTES:-8589934592}"
+      echo "options zfs zfs_arc_max=${ARC_BYTES}" >/etc/modprobe.d/zfs.conf
+      update-initramfs -u
+      ok "ZFS ARC capped at ${ARC_BYTES} bytes."
+    fi
+    if ! dpkg -s zfs-auto-snapshot >/dev/null 2>&1; then
+      if yesno "Install zfs-auto-snapshot (periodic snapshots)?" y; then
+        apt install -y zfs-auto-snapshot
+        ok "zfs-auto-snapshot installed."
+      fi
+    fi
+  else
+    warn "ZFS not detected; skipping ARC/snapshots."
+  fi
+  mark zfs
+else
+  ok "ZFS stage already completed."
+fi
+# (Docs: ZFS tips & sizing) 
+
+# ==============================================================================
+# Stage: pbs  — optional proxmox-backup-client
+# ==============================================================================
+if ! did pbs; then
+  if yesno "Install Proxmox Backup Client (proxmox-backup-client)?" n; then
+    apt install -y proxmox-backup-client
+    ok "PBS client installed."
+  else
+    warn "Skipped PBS client."
+  fi
+  mark pbs
+else
+  ok "PBS client stage already completed."
+fi
+# (Docs: Integrated backup + PBS) 
+
+# ==============================================================================
+# Stage: net  — vmbr0 (mgmt untagged, VLAN-aware), vmbr1 internal (for OPNsense LAN)
+# ==============================================================================
+if ! did net; then
+  say "Configuring networking (VLAN-aware vmbr0 + internal vmbr1)…"
+  DEFAULT_NIC="enp2s0f0"  # your chosen default
+  echo "Default uplink NIC: ${DEFAULT_NIC}"
+  NIC="$(ask "Enter NIC to bridge for vmbr0 [${DEFAULT_NIC}]:")"; NIC="${NIC:-$DEFAULT_NIC}"
+
+  # Hard guard — refuse obvious block device names
+  if [[ "$NIC" =~ ^(sd|nvme|vd|md|dm-|loop|sr) ]]; then
+    warn "'$NIC' is not a network interface. Falling back to ${DEFAULT_NIC}."
+    NIC="$DEFAULT_NIC"
+  fi
+
+  # Bridged networking (the Proxmox default) with VLAN-aware vmbr0:
+  # - Host mgmt is UNTAGGED on vmbr0 (pvid 1 by default)
+  # - Accept VLAN tags 1–4094 so VMs can use any VLAN via the VM NIC “VLAN Tag” field.
+  cat >/etc/network/interfaces <<EOF
+auto lo
+iface lo inet loopback
+
+allow-hotplug ${NIC}
+iface ${NIC} inet manual
+
+# Management/WAN bridge (VLAN-aware; mgmt untagged here)
+auto vmbr0
+iface vmbr0 inet static
+    address 10.0.0.114/24
+    gateway 10.0.0.1
+    bridge-ports ${NIC}
+    bridge-stp off
+    bridge-fd 0
+    bridge-vlan-aware yes
+    bridge-vids 1-4094
+
+# Internal bridge for OPNsense LAN (no host IP)
+auto vmbr1
+iface vmbr1 inet manual
+    bridge-ports none
+    bridge-stp off
+    bridge-fd 0
+EOF
+
+  # Apply safely (ifupdown2) or use GUI → Network → Apply Configuration
+  if command -v ifreload >/dev/null 2>&1; then
+    if yesno "Apply network changes now with ifreload -a? (brief disruption possible)" y; then
+      ifreload -a || true
+    else
+      warn "Skipping live apply. Use GUI → Network → Apply Configuration or reboot."
+    fi
+  else
+    warn "ifupdown2 not installed; use GUI to stage/apply atomically."
+  fi
+
+  ok "Networking configured."
+  mark net
+else
+  ok "Networking stage already completed."
+fi
+# (Docs: Default bridged networking & VLAN-aware examples)  
+
+echo
+say "=== Post-install complete ==="
+pveversion || true

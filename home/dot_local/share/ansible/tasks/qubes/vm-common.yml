@@ -1,0 +1,33 @@
+---
+- name: Fix for known snap issue
+  command: snap --version &> /dev/null
+  changed_when: false
+  failed_when: false
+
+- name: Provision the custom TemplateVMs
+  include_role:
+    name: '{{ role }}'
+  loop: '{{ qubes_roles[inventory_hostname] | default([]) }}'
+  loop_control:
+    label: '{{ inventory_hostname }}'
+    loop_var: role
+
+- name: Register the a list of software to be installed
+  set_fact:
+    generic_software: '{{ qubes_software[inventory_hostname] | default([]) }}'
+
+- name: Install software packages using the generic installer
+  vars:
+    software: '{{ generic_software }}'
+  include_role:
+    name: roles/helpers/installer
+  when: (generic_software | length) != 0
+
+- name: Run the finishing role(s) on the TemplateVMs
+  include_role:
+    name: '{{ role }}'
+  loop:
+    - roles/system/finish
+  loop_control:
+    label: '{{ inventory_hostname }}'
+    loop_var: role

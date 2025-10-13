@@ -1,0 +1,10 @@
+[/]
+date-format='with-time'
+location-mode='path-bar'
+show-hidden=true
+show-size-column=true
+show-type-column=true
+sidebar-width=200
+sort-column='name'
+sort-directories-first=true
+sort-order='ascending'

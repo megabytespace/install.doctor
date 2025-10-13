@@ -1,0 +1,4 @@
+---
+- name: Ensure specified volumes are configured
+  include_tasks: tasks/qubes/qvm-volume-set.yml
+  loop: '{{ hostvars[vm].volume.keys() | default([]) }}'

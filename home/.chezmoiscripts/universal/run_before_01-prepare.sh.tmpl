@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# @file Prepare
+# @brief Ensures commonly used system packages that are common dependencies of other packages are installed
+# @description
+#     This script installs required system packages. Each system's required packages are defined in `home/.chezmoitemplates/$DISTRO_ID`,
+#     where `$DISTRO_ID` is equal to the Linux distribution ID found in `/etc/os-release`.
+
+# @description
+#     This script pipes environment variables and a logger function to a temporary file that is included by other scripts.
+#     It is included as a temporary external file to aid in debugging since if the included files were inlined in scripts
+#     the scripts would be verbose when debugging.
+
+addTemporaryIncludes() {
+    ### Ensure /tmp/tmp-profile is created
+    # Add pre-scaffolding profile to /tmp/tmp-profile so it's easier to navigate through scripts
+    cat <<'EOF' > /tmp/tmp-profile
+{{ includeTemplate "universal/profile-inline" }}
+EOF
+
+    ### Ensure /tmp/tmp-logg is created and owned by root
+  # Add pre-scaffolding /tmp/tmp-logg
+  cat <<'EOF' > /tmp/tmp-logg
+{{ includeTemplate "universal/logg-inline" }}
+EOF
+}
+
+# @description
+#     This script detects for the presence of the `warp-cli` and the WARP connection status. If `warp-cli` is installed
+#     and WARP is connected, then the service is disconnected. This feature is here to ensure programs such as `volta`
+#     which do not support custom CA certificates can still function properly.
+disconnectWarp() {
+  if command -v warp-cli > /dev/null; then
+    if warp-cli status | grep 'Connected' > /dev/null; then
+      gum log -sl info 'Disconnecting from CloudFlare Teams / WARP due to Volta ignoring CA specified in NPM configuration'
+      warp-cli disconnect
+    fi
+  fi
+}
+
+# @description Prints information describing why full disk access is required for the script to run on macOS.
+printFullDiskAccessNotice() {
+  if [ -d /Applications ] && [ -d /System ]; then
+    logg md "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/docs/terminal/full-disk-access.md"
+  fi
+}
+
+# @description
+#     This script ensures the terminal running the provisioning process has full disk access permissions. It also
+#     prints information regarding the process of how to enable the permission as well as information related to
+#     the specific reasons that the terminal needs full disk access. More specifically, the scripts need full
+#     disk access to modify various system files and permissions.
+#
+#     Ensures the terminal running the provisioning process script has full disk access on macOS. It does this
+#     by attempting to read a file that requires full disk access. If it does not, the program opens the preferences
+#     pane where the user can grant access so that the script can continue.
+#
+#     #### Links
+#
+#     * [Detecting Full Disk Access permission on macOS](https://www.dzombak.com/blog/2021/11/macOS-Scripting-How-to-tell-if-the-Terminal-app-has-Full-Disk-Access.html)
+ensureFullDiskAccess() {
+  if [ -d /Applications ] && [ -d /System ]; then
+    if ! plutil -lint /Library/Preferences/com.apple.TimeMachine.plist > /dev/null ; then
+      printFullDiskAccessNotice
+      logg star 'Opening Full Disk Access preference pane.. Grant full-disk access for the terminal you would like to run the provisioning process with.' && open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+      gum log -sl info 'You may have to force quit the terminal and have it reload.'
+      if [ ! -f "$HOME/.zshrc" ] || ! cat "$HOME/.zshrc" | grep '# TEMPORARY FOR INSTALL DOCTOR MACOS' > /dev/null; then
+        echo 'bash <(curl -sSL https://install.doctor/start) # TEMPORARY FOR INSTALL DOCTOR MACOS' >> "$HOME/.zshrc"
+      fi
+      exit 0
+    else
+      gum log -sl info 'Current terminal has full disk access'
+      if [ -f "$HOME/.zshrc" ]; then
+        if command -v gsed > /dev/null; then
+          gsed -i '/# TEMPORARY FOR INSTALL DOCTOR MACOS/d' "$HOME/.zshrc" || gum log -sl warn "Failed to remove kickstart script from .zshrc"
+        else
+          if [ -d /Applications ] && [ -d /System ]; then
+            ### macOS
+            sed -i '' '/# TEMPORARY FOR INSTALL DOCTOR MACOS/d' "$HOME/.zshrc" || gum log -sl warn "Failed to remove kickstart script from .zshrc"
+          else
+            ### Linux
+            sed -i '/# TEMPORARY FOR INSTALL DOCTOR MACOS/d' "$HOME/.zshrc" || gum log -sl warn "Failed to remove kickstart script from .zshrc"
+          fi
+        fi
+      fi
+    fi
+  fi
+}
+
+# @description Install the mobileconfig files from `~/.config/macos/mobileconfig`
+importSettingsMobileConfig() {
+  if [ -d /Applications ] && [ -d /System ]; then
+    for FILE in "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/dot_config/macos/mobileconfig/"*.mobileconfig; do
+      gum log -sl info "Installing $FILE"
+      sudo profiles install -type configuration -path "$FILE"
+    done
+  fi
+}
+
+# @description Applies changes that require input from the user such as using Touch ID on macOS when
+#     importing certificates into the system keychain.
+#
+#     * Ensures CloudFlare Teams certificate is imported into the system keychain
+importCloudFlareCert() {
+  if [ -d /Applications ] && [ -d /System ] && [ -z "$HEADLESS_INSTALL" ]; then
+    ### Acquire certificate
+    if [ -f "$HOME/.local/etc/ssl/cloudflare/cloudflare.crt" ]; then
+      CRT_TMP="$HOME/.local/etc/ssl/cloudflare/cloudflare.crt"
+      ### Validate / import certificate
+      security verify-cert -c "$CRT_TMP" > /dev/null 2>&1
+      if [ $? != 0 ]; then
+        gum log -sl info '**macOS Manual Security Permission** Requesting security authorization for Cloudflare trusted certificate'
+        sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$CRT_TMP" && gum log -sl info 'Successfully imported cloudflare.crt into System.keychain'
+      fi
+    else
+      gum log -sl warn "$HOME/.local/etc/ssl/cloudflare/cloudflare.crt is missing"
+    fi
+  fi
+}
+
+# @description This symlinks the `~/.local/share/chezmoi/home/.chezmoitemplates/secrets`
+#     to `~/.local/share/chezmoi/home/.chezmoitemplates/secrets-${HOSTNAME}`, if appropriate
+symlinkMissingSecrets() {
+  HOSTID="{{ .chezmoi.hostname }}"
+  SOURCE="{{ .chezmoi.sourceDir }}/.chezmoitemplates/secrets"
+  TARGET="{{ .chezmoi.sourceDir }}/.chezmoitemplates/secrets-{{ .chezmoi.hostname }}"
+  if [ -d "$SOURCE" ] && [ ! -d "$TARGET" ]; then
+    ln -s "$SOURCE" "$TARGET"
+  fi
+}
+
+addTemporaryIncludes
+. /tmp/tmp-logg
+. /tmp/tmp-profile
+importSettingsMobileConfig
+ensureFullDiskAccess
+if [ -n "$DEBUG" ] || [ -n "$DEBUG_MODE" ]; then
+  gum log -sl info 'The DEBUG or DEBUG_MODE environment variable is set so the prepare tasks will be run synchronously'
+  importCloudFlareCert
+  disconnectWarp
+  symlinkMissingSecrets
+else
+  importCloudFlareCert &
+  disconnectWarp &
+  symlinkMissingSecrets &
+  wait
+fi

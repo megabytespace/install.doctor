@@ -182,8 +182,8 @@ includes:
   lint:prose:
     taskfile: ./.config/taskfiles/lint/Taskfile-prose.yml
     optional: true
-  localhost:
-    taskfile: ./../../Taskfile-localhost.yml
+  local:
+    taskfile: ./../../../Taskfile-local.yml
     optional: true
 
   log:
@@ -593,7 +593,9 @@ tasks:
       - |
         task --list > /dev/null || (echo "ERROR: Invalid Taskfiles!" && exit 1)
         git add --all
-      - 'HUSKY=0 git commit -m "🔧 chore(tweak): quick minor update" --no-verify'
+      - |
+        .config/log info 'Bypassing git hooks for git commit'
+        HUSKY=0 git commit -m "🔧 chore(tweak): quick minor update" --no-verify
       - git push origin master
 
   devcontainer:
@@ -891,7 +893,8 @@ tasks:
       success: Successfully published update via `task publish:force`
     cmds:
       - |
-        HUSKY=0 git commit -a --allow-empty -m '🔨 chore(bump): Forced semantic-release {{.UPDATE_LEVEL}}' -n
+        .config/log info 'Bypassing git hooks for git commit'
+        HUSKY=0 git commit -a --allow-empty -m '🔨 chore(bump): Forced semantic-release {{.UPDATE_LEVEL}}' --no-verify
       - task: publish
 
   pull:upstream:

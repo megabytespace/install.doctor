@@ -1,0 +1,53 @@
+---
+- name: Repair broken packages with apt
+  become: true
+  command: apt --fix-broken install
+
+- name: Ensure Debian systems are updated
+  become: true
+  apt:
+    cache_valid_time: 3600
+    force_apt_get: true
+    update_cache: true
+    upgrade: dist
+
+- name: Ensure qubes-gpg-split and qubes-u2f are installed (unofficial templates may fail since the packages are not available)
+  become: true
+  ansible.builtin.apt:
+    name:
+      - qubes-gpg-split
+      - qubes-u2f
+    state: latest
+  ignore_errors: true
+
+- name: Ensure all the common roles are applied to the custom TemplateVMs
+  vars:
+    qubes_whonix: true
+  include_role:
+    name: '{{ role }}'
+  loop:
+    # - roles/system/dns # Goes wherever DNS resolver is pending Qubes Forum answer
+    - roles/services/antivirus
+    - roles/services/elasticagent
+    - roles/services/portmaster
+    - roles/services/wazuh
+  loop_control:
+    label: '{{ inventory_hostname }}'
+    loop_var: role
+
+- include_tasks: tasks/qubes/vm-common.yml
+
+- name: Ensure /etc/skel /usr/local.orig is setup for inheritence
+  become: true
+  copy:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    mode: '{{ item.mode }}'
+    remote_src: true
+  with_items:
+    - src: /home/
+      dest: /etc/skel/
+      mode: preserve
+    - src: /usr/local/
+      dest: /usr/local.orig/
+      mode: preserve

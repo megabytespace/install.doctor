@@ -2,6 +2,7 @@ key.txt.age
 .chezmoiscripts/**/*
 !.chezmoiscripts/{{ .host.distro.id }}/**/*
 !.chezmoiscripts/{{ .host.distro.family }}/**/*
+.DS_Store
 
 {{- if ne .host.distro.id "windows" }}
 !.chezmoiscripts/_universal/**/*
@@ -9,20 +10,91 @@ key.txt.age
 {{- end }}
 
 {{- if ne .host.distro.family "darwin" }}
+dot_local/assets/Betelgeuse.macOS.terminal
 Library
 {{- end }}
 
 {{- if ne .host.distro.family "linux" }}
-dot_local/bin/executable_install-gnome-extensions
-dot_local/bin/executable_kde-wallpaper
-dot_VirtualBox
+dot_config/autostart/
+dot_config/cockpit/
+dot_config/dconf/
+dot_config/firejail/
+dot_config/fontconfig/
+dot_config/gtk-1.0/
+dot_config/gtk-2.0/
+dot_config/gtk-3.0/
+dot_config/Kvantum/
+dot_config/plasma/
+dot_config/qubes/
+dot_config/rofi-user/
+dot_config/samba/
+dot_config/timeshift/
+dot_config/xfce4/
+dot_config/xsettingsd/
+dot_config/zap/
+dot_config/gtkrc
+dot_config/kcminputrc
+dot_config/kdeglobals
+dot_config/konsolerc
+dot_config/ksplashrc
+dot_config/ktimezonedrc
+dot_config/kwinrc
+dot_config/mimeapps.list
+dot_config/plasma-localerc
+dot_config/plasmarc
+dot_local/bin/firejail/
+dot_local/grub.d/
+dot_local/konsole/
+dot_local/share/kde4/
+dot_local/share/xfce4/
+dot_var/
+dot_VirtualBox/
 dot_Xresources
-{{- end }}
-
-{{- if ne .host.qubes true }}
-dot_local/bin/executable_ramqube
 {{- end }}
 
 {{- if ne .host.distro.family "windows" }}
 AppData/
+{{- end }}
+
+{{ if (not (stat (joinPath .host.home ".config" "age" "chezmoi.txt"))) -}}
+dot_config/system/etc/private_wireguard/encrypted_private_readonly_Mullvad WG Belgium (UDP 4888).conf
+dot_config/system/etc/private_wireguard/encrypted_private_readonly_Mullvad WG Japan (UDP 4888).conf
+dot_config/system/etc/private_wireguard/encrypted_private_readonly_Mullvad WG Moldova (UDP 53).conf
+dot_config/system/etc/private_wireguard/encrypted_private_readonly_Mullvad WG Singapore (UDP 4888).conf
+dot_config/system/etc/private_wireguard/encrypted_private_readonly_Proton WG Cambodia (UDP 51820).conf
+dot_config/system/etc/private_wireguard/encrypted_private_readonly_Proton WG Colombia (UDP 51820).conf
+dot_config/system/etc/private_wireguard/encrypted_private_readonly_Proton WG Cyprus (UDP 51820).conf
+dot_config/system/etc/private_wireguard/encrypted_private_readonly_Proton WG Serbia (UDP 51820).conf
+dot_config/system/etc/private_wireguard/encrypted_private_readonly_Proton WG Slovakia (UDP 51820).conf
+dot_config/system/etc/ssh/encrypted_private_ca.pem
+dot_config/system/usr/local/etc/cloudflared/encrypted_private_cert.pem
+dot_config/vpn/encrypted_private_Proton OVPN Argentina (TCP 443+7770+8443).ovpn
+dot_config/vpn/encrypted_private_Proton OVPN Finland (via Sweden) (TCP 443+7770+8443).ovpn
+dot_config/vpn/encrypted_private_Proton OVPN France (TCP 443+7770+8443).ovpn
+dot_config/vpn/encrypted_private_Proton OVPN Russia (via Iceland) (TCP 443+7770+8443).ovpn
+dot_config/vpn/encrypted_private_Proton OVPN USA (TCP 443+7770+8443).ovpn
+dot_local/etc/ssl/cloudflare/encrypted_private_cloudflare.cer
+dot_local/etc/ssl/cloudflare/encrypted_private_cloudflare.crt
+dot_local/etc/ssl/cloudflare/encrypted_private_cloudflare.pem
+private_dot_ssh/encrypted_id_rsa.pub
+private_dot_ssh/encrypted_private_authorized_keys.yubikey
+private_dot_ssh/encrypted_private_id_rsa
+private_dot_ssh/encrypted_ssh-5-nano
+private_dot_ssh/encrypted_ssh-5-nano.pub
+private_dot_ssh/encrypted_ssh-5-nfc-green
+private_dot_ssh/encrypted_ssh-5-nfc-green.pub
+private_dot_ssh/encrypted_ssh-5-nfc-red
+private_dot_ssh/encrypted_ssh-5-nfc-red.pub
+private_dot_ssh/encrypted_ssh-5-nfc-yellow
+private_dot_ssh/encrypted_ssh-5-nfc-yellow.pub
+private_dot_ssh/encrypted_ssh-5c-green
+private_dot_ssh/encrypted_ssh-5c-green.pub
+private_dot_ssh/encrypted_ssh-5c-nano-green
+private_dot_ssh/encrypted_ssh-5c-nano-green.pub
+private_dot_ssh/encrypted_ssh-5c-nano-laptop
+private_dot_ssh/encrypted_ssh-5c-nano-laptop.pub
+private_dot_ssh/encrypted_ssh-13147527
+private_dot_ssh/encrypted_ssh-13147527.pub
+private_dot_ssh/encrypted_ssh-13196452.pub
+private_dot_ssh/encrypted_ssh-13196452
 {{- end }}

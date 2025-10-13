@@ -1,0 +1,21 @@
+---
+- name: Randomize MAC address and ensure no hostname leaks (Source -> https://github.com/Qubes-Community/Contents/blob/master/docs/privacy/anonymizing-your-mac-address.md)
+  include_tasks: tasks/qubes/randomize-mac.yml
+  when: randomize_mac_address | default(false)
+
+- include_tasks: tasks/qubes/vm-common.yml
+
+- name: Ensure /etc/skel /usr/local.orig is setup for inheritence
+  become: true
+  copy:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    mode: '{{ item.mode }}'
+    remote_src: true
+  with_items:
+    - src: /home
+      dest: /etc/skel
+      mode: preserve
+    - src: /usr/local
+      dest: /usr/local.orig
+      mode: preserve

@@ -1,0 +1,36 @@
+---
+- name: Check whether the structure was recently provisioned
+  stat:
+    path: /tmp/.setup-dom0-{{ formation_slug }}
+  register: phase_fully_provisioned
+
+- name: Shutdown all the VMs
+  include_tasks: tasks/qubes/shutdown-vms.yml
+
+- name: Apply the formation
+  vars:
+    dom0_features:
+      - create-vms
+  include_role:
+    name: professormanhattan.qubes
+  when: not phase_fully_provisioned.stat.exists
+
+- name: Ensure the new VMs have access to sys-firewall so they can be provisioned
+  vars:
+    netvm: sys-firewall
+  include_tasks: tasks/qubes/qvm-netvm.yml
+  loop: '{{ formation | difference(formation_previous | default([])) }}'
+
+- name: Ensure the VMs have the appropriate volumes configured
+  include_tasks: tasks/qubes/qvm-volume.yml
+  loop: '{{ formation | difference(formation_previous | default([])) }}'
+  loop_control:
+    loop_var: vm
+  when: hostvars[vm].volume is defined
+
+- name: Register "fully provisioned" indicator temporary file
+  copy:
+    content: |
+      done
+    dest: /tmp/.setup-dom0-{{ formation_slug }}
+  when: not phase_fully_provisioned.stat.exists

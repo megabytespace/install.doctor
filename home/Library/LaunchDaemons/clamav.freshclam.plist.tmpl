@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>clamav.freshclam</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>{{ lookPath "freshclam" }}</string>
+    <string>-d</string>
+  </array>
+  <key>KeepAlive</key>
+  <false/>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StartInterval</key>
+  <integer>1800</integer>
+  <key>UserName</key>
+  <string>clamav</string>
+  <key>StandardErrorPath</key>
+  <string>/Library/Logs/freshclam.error.log</string>
+  <key>StandardOutPath</key>
+  <string>/Library/Logs/freshclam.debug.log</string>
+</dict>
+</plist>

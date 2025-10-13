@@ -1,0 +1,21 @@
+[plugins]
+active-plugins=['time', 'spell', 'sort', 'snippets', 'quickopen', 'quickhighlight', 'pythonconsole', 'modelines', 'filebrowser', 'externaltools', 'docinfo']
+
+[plugins/filebrowser]
+root='file:///'
+tree-view=true
+virtual-root='file:///home/parallels/Downloads'
+
+[plugins/spell]
+highlight-misspelled=true
+
+[preferences/editor]
+auto-save=false
+background-pattern='none'
+display-overview-map=true
+display-right-margin=true
+insert-spaces=false
+right-margin-position=uint32 80
+scheme='cobalt'
+tabs-size=uint32 4
+wrap-last-split-mode='word'

@@ -1,0 +1,16 @@
+{{ if eq .host.distro.family "darwin" -}}
+<dict>
+	<key>enable</key>
+	<true />
+	<key>onboarding</key>
+	<false />
+	<key>organization</key>
+	<string>{{ .host.cloudflare.teamsOrg }}</string>
+	<key>service_mode</key>
+	<string>warp</string>
+	<key>auth_client_id</key>
+	<string>{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_TEAMS_CLIENT_ID")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_TEAMS_CLIENT_ID") | decrypt | trim -}}{{ else }}{{- env "CLOUDFLARE_TEAMS_CLIENT_ID" -}}{{ end }}</string>
+	<key>auth_client_secret</key>
+	<string>{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_TEAMS_CLIENT_SECRET")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_TEAMS_CLIENT_SECRET") | decrypt | trim -}}{{ else }}{{- env "CLOUDFLARE_TEAMS_CLIENT_SECRET" -}}{{ end }}</string>
+</dict>
+{{ end -}}

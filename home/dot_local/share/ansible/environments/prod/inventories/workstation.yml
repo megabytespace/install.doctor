@@ -1,0 +1,27 @@
+---
+all:
+  children:
+    windows:
+      children:
+        desktop:
+          hosts:
+            workstation:
+              ansible_connection: winrm
+              ansible_winrm_transport: basic
+              ansible_port: 5985
+              ansible_host: localhost
+              ansible_password: AnsibleTest999
+              ansible_username: Brian
+              ansible_user: Brian
+              ansible_python_interpreter: python3
+              ansible_winrm_scheme: http
+    ubuntu:
+      children:
+        wsl:
+          hosts:
+            workstation-ubuntu-wsl:
+              ansible_connection: local
+              ansible_sudo_pass: '{{ admin_password }}'
+              ansible_password: '{{ admin_password }}'
+              ansible_python_interpreter: python3
+              ansible_user: '{{ admin_username }}'

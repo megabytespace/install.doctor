@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-### Ensure Qubes templates exist and download if they are not present
-for TEMPLATE of {{ .qubes.templates | toString | replace "[" "" | replace "]" "" }}; do
-  if [ ! -f "/var/lib/qubes/vm-templates/$TEMPLATE" ]; then
-    logg info "Installing $TEMPLATE"
-    sudo qubes-dom0-update "qubes-template-$TEMPLATE"
-  fi
-done

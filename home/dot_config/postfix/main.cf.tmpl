@@ -1,0 +1,14 @@
+### INSTALL DOCTOR MANAGED ### START
+
+header_size_limit = 4096000
+inet_interfaces = loopback-only
+myhostname = {{ .host.domain }}
+relayhost = [{{ .host.smtp.host }}]:{{ .host.smtp.port }}
+smtp_header_checks = regexp:/etc/postfix/header_checks
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+smtp_sasl_security_options = noanonymous
+smtp_sasl_tls_security_options = noanonymous
+smtp_tls_security_level = encrypt
+
+### INSTALL DOCTOR MANAGED ### END

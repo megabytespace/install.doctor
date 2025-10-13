@@ -1,12 +1,12 @@
 <!-- ⚠️ This README has been generated from the file(s) ".config/docs/blueprint-readme-misc.md" ⚠️--><div align="center">
   <center>
-    <a href="https://github.com/megabyte-labs/sexy-start">
-      <img width="148" height="148" alt="Sexy Start logo" src="https://gitlab.com/megabyte-labs/sexy-start/-/raw/master/logo.png" />
+    <a href="https://github.com/megabyte-labs/install.doctor">
+      <img width="320" alt="Install Doctor logo" src="https://gitlab.com/megabyte-labs/install.doctor/-/raw/master/docs/logo-full.png" />
     </a>
   </center>
 </div>
 <div align="center">
-  <center><h1 align="center"><i></i>Cross-Platform Sexy Start<i></i></h1></center>
+  <center><h1 align="center"><i></i>Install Doctor, The Desktop Provisioning System<i></i></h1></center>
   <center><h4 style="color: #18c3d1;">Maintained by <a href="https://megabyte.space" target="_blank">Megabyte Labs</a></h4><i></i></center>
 </div>
 
@@ -14,19 +14,19 @@
   <a href="https://megabyte.space" title="Megabyte Labs homepage" target="_blank">
     <img alt="Homepage" src="https://img.shields.io/website?down_color=%23FF4136&down_message=Down&label=Homepage&logo=home-assistant&logoColor=white&up_color=%232ECC40&up_message=Up&url=https%3A%2F%2Fmegabyte.space&style=for-the-badge" />
   </a>
-  <a href="https://github.com/megabyte-labs/sexy-start/blob/master/docs/CONTRIBUTING.md" title="Learn about contributing" target="_blank">
+  <a href="https://github.com/megabyte-labs/install.doctor/blob/master/docs/CONTRIBUTING.md" title="Learn about contributing" target="_blank">
     <img alt="Contributing" src="https://img.shields.io/badge/Contributing-Guide-0074D9?logo=github-sponsors&logoColor=white&style=for-the-badge" />
   </a>
   <a href="https://app.slack.com/client/T01ABCG4NK1/C01NN74H0LW/details/" title="Chat with us on Slack" target="_blank">
     <img alt="Slack" src="https://img.shields.io/badge/Slack-Chat-e01e5a?logo=slack&logoColor=white&style=for-the-badge" />
   </a>
-  <a href="https://gitter.im/megabyte-labs/community" title="Chat with the community on Gitter" target="_blank">
-    <img alt="Gitter" src="https://img.shields.io/gitter/room/megabyte-labs/community?logo=gitter&logoColor=white&style=for-the-badge" />
+  <a href="https://app.element.io/#/room/#install.doctor:matrix.org" title="Chat with the community via Matrix.org" target="_blank">
+    <img alt="Matrix" src="https://img.shields.io/matrix/install.doctor:matrix.org?logo=matrix&logoColor=white&style=for-the-badge" />
   </a>
-  <a href="https://github.com/megabyte-labs/sexy-start" title="GitHub mirror" target="_blank">
+  <a href="https://github.com/megabyte-labs/install.doctor" title="GitHub mirror" target="_blank">
     <img alt="GitHub" src="https://img.shields.io/badge/Mirror-GitHub-333333?logo=github&style=for-the-badge" />
   </a>
-  <a href="https://gitlab.com/megabyte-labs/sexy-start" title="GitLab repository" target="_blank">
+  <a href="https://gitlab.com/megabyte-labs/install.doctor" title="GitLab repository" target="_blank">
     <img alt="GitLab" src="https://img.shields.io/badge/Repo-GitLab-fc6d26?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgAQMAAABJtOi3AAAABlBMVEUAAAD///+l2Z/dAAAAAXRSTlMAQObYZgAAAHJJREFUCNdNxKENwzAQQNEfWU1ZPUF1cxR5lYxQqQMkLEsUdIxCM7PMkMgLGB6wopxkYvAeI0xdHkqXgCLL0Beiqy2CmUIdeYs+WioqVF9C6/RlZvblRNZD8etRuKe843KKkBPw2azX13r+rdvPctEaFi4NVzAN2FhJMQAAAABJRU5ErkJggg==&style=for-the-badge" />
   </a>
 </div>
@@ -57,9 +57,9 @@
 
 ## Overview
 
-Want to try out a new desktop jam-packed with a whole suite of GitHub's most-starred projects? Betelgeuse is a combination of application settings, theme files, and a performant yet flexible software installer written with [ZX](https://github.com/google/zx). It is easily customizable, with optional prompts that ask you for API keys if you want to completely automate everything. The installer supports almost any operating system, just checkout the [software.yml file](https://gitlab.com/megabyte-labs/hiawatha-dotfiles/-/blob/master/software.yml). It uses [Chezmoi](https://github.com/twpayne/chezmoi) to apply file changes in an interactive way. It is not your typical Chezmoi project - it is built around the philosophy that you should be able to bash all your computers to bits with a hammer and then resurrect them the next day ✝️️ by storing stateful data to an encrypted S3 bucket and automating desktop configuration as much as possible.
+Want to try out a new desktop jam-packed with a whole suite of GitHub's most-starred projects? Install Doctor is a combination of application settings, theme files, and a performant yet flexible software installer written with [ZX](https://github.com/google/zx). It is easily customizable, with optional prompts that ask you for API keys if you want to completely automate everything. The installer supports almost any operating system, just checkout the [software.yml file](https://gitlab.com/megabyte-labs/install.doctor/-/blob/master/software.yml). It uses [Chezmoi](https://github.com/twpayne/chezmoi) to apply file changes in an interactive way. It is not your typical Chezmoi project - it is built around the philosophy that you should be able to bash all your computers to bits with a hammer and then resurrect them the next day ✝️️ by storing stateful data to an encrypted S3 bucket and automating desktop configuration as much as possible.
 
-Sexy Start is a cross-platform development environment provisioning system. The project began as an ongoing Ansible project named [Gas Station](https://github.com/megabyte-labs/gas-station) but transitioned to a dotfile-ish approach for easier adoption and less overhead. It is intended for:
+Install Doctor is a cross-platform development environment provisioning system. The project began as an ongoing Ansible project named [Gas Station](https://github.com/megabyte-labs/gas-station) but transitioned to a dotfile-ish approach for easier adoption and less overhead. It is intended for:
 
 1. Power users that want to maximize their long-term efficiency by incorporating the [most-starred applications / projects / CLIs on GitHub](https://stars.megabyte.space) into their stack.
 2. Users that distro hop but want to retain their favorite tools regardless of whether they are using macOS, Windows, or Linux
@@ -87,7 +87,7 @@ START_REPO=my-gh-user/my-fork-name bash <(curl -sSL https://install.doctor/start
 Alternatively, if you want to host your project on GitLab or another git provider, then just specify the git remote's URL:
 
 ```
-START_REPO=git@gitlab.com:megabyte-labs/sexy-start.git bash <(curl -sSL https://install.doctor/start)
+START_REPO=git@gitlab.com:megabyte-labs/install.doctor.git bash <(curl -sSL https://install.doctor/start)
 ```
 
 ### Quick Start Notes
@@ -135,7 +135,7 @@ Qubes support is on its way.
 
 ## Gas Station
 
-This project began as something to supplement our provisioning system that uses Ansible. The system is called [Gas Station](https://gitlab.com/megabyte-labs/gas-station). It includes hundreds of Ansible roles. If you look at the [`software.yml`](/sexy-start) file, you will notice that some of the Ansible roles that Gas Station provides are inside of it. By default, this project will try to install software / dependencies using other, lighter methods before resorting to using Ansible. This is because of the software installer order that is defined at the top of the software.yml file. Gas Station is also still used to house some of the variables / data that this project uses.
+This project began as something to supplement our provisioning system that uses Ansible. The system is called [Gas Station](https://gitlab.com/megabyte-labs/gas-station). It includes hundreds of Ansible roles. If you look at the [`software.yml`](/software.yml) file, you will notice that some of the Ansible roles that Gas Station provides are inside of it. By default, this project will try to install software / dependencies using other, lighter methods before resorting to using Ansible. This is because of the software installer order that is defined at the top of the software.yml file. Gas Station is also still used to house some of the variables / data that this project uses.
 
 <a href="#chezmoi" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
 
@@ -157,7 +157,7 @@ rm -rf ~/.config/chezmoi && rm -rf ~/.cache/chezmoi
 
 ## Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/megabyte-labs/sexy-start/issues). If you would like to contribute, please take a look at the [contributing guide](https://github.com/megabyte-labs/sexy-start/blob/master/docs/CONTRIBUTING.md).
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/megabyte-labs/install.doctor/issues). If you would like to contribute, please take a look at the [contributing guide](https://github.com/megabyte-labs/install.doctor/blob/master/docs/CONTRIBUTING.md).
 
 <details>
 <summary><b>Sponsorship</b></summary>
@@ -199,4 +199,4 @@ Below you will find a list of services we leverage that offer special incentives
 
 ## License
 
-Copyright © 2020-2021 [Megabyte LLC](https://megabyte.space). This project is [MIT](https://gitlab.com/megabyte-labs/sexy-start/-/blob/master/LICENSE) licensed.
+Copyright © 2020-2021 [Megabyte LLC](https://megabyte.space). This project is [MIT](https://gitlab.com/megabyte-labs/install.doctor/-/blob/master/LICENSE) licensed.

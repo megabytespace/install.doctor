@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# ==============================================
+# Script Name: trim_and_combine.sh
+# Description: Trims the first and last minute of an MP4 video,
+#              combines it with an audio WEBM file, and outputs a
+#              QuickTime-compatible MP4 file.
+# Usage:       ./trim_and_combine.sh <input_video.mp4> <input_audio.webm> [output_video.mp4]
+# ==============================================
+
+set -e  # Exit immediately on any error
+
+# Function to display usage instructions
+usage() {
+    echo "Usage: $0 <input_video.mp4> <input_audio.webm> [output_video.mp4]"
+    echo "  - input_video.mp4: Path to the input MP4 video file."
+    echo "  - input_audio.webm: Path to the input WEBM audio file."
+    echo "  - output_video.mp4 (optional): Path for the output file (default: output.mp4)."
+    exit 1
+}
+
+# Check for correct number of arguments
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
+    usage
+fi
+
+# Parse input arguments
+INPUT_VIDEO=$1
+INPUT_AUDIO=$2
+OUTPUT_VIDEO=${3:-output.mp4}  # Default to "output.mp4" if no third argument is provided
+
+# Check if input files exist
+if [ ! -f "$INPUT_VIDEO" ]; then
+    echo "Error: Video file '$INPUT_VIDEO' not found!" >&2
+    exit 1
+fi
+
+if [ ! -f "$INPUT_AUDIO" ]; then
+    echo "Error: Audio file '$INPUT_AUDIO' not found!" >&2
+    exit 1
+fi
+
+# Retrieve audio duration
+AUDIO_DURATION=$(ffprobe -i "$INPUT_AUDIO" -show_entries format=duration -v quiet -of csv="p=0")
+if [ -z "$AUDIO_DURATION" ]; then
+    echo "Error: Failed to retrieve audio duration from '$INPUT_AUDIO'." >&2
+    exit 1
+fi
+
+# Ensure audio duration is sufficient for trimming
+if (( $(echo "$AUDIO_DURATION <= 120" | bc -l) )); then
+    echo "Error: Audio duration ($AUDIO_DURATION seconds) is too short for trimming the video by 1 minute on both ends." >&2
+    exit 1
+fi
+
+# Calculate the end time for the trimmed video
+VIDEO_END_TIME=$(awk "BEGIN {print $AUDIO_DURATION - 60}")
+
+# Generate the trimmed and combined video
+echo "Processing video..."
+ffmpeg -i "$INPUT_VIDEO" -i "$INPUT_AUDIO" \
+    -ss 00:01:00 -to "$VIDEO_END_TIME" \
+    -c:v libx264 -preset slow -crf 23 -profile:v high -level:v 4.0 -pix_fmt yuv420p \
+    -c:a aac -b:a 160k -movflags +faststart \
+    -shortest "$OUTPUT_VIDEO"
+
+# Check if the output file was created successfully
+if [ -f "$OUTPUT_VIDEO" ]; then
+    echo "Successfully created output file: $OUTPUT_VIDEO"
+    echo "The output video is now compatible with QuickTime."
+else
+    echo "Error: Failed to create the output video." >&2
+    exit 1
+fi
+
+# Final message
+echo "Done! Output video has been optimized for QuickTime playback."

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
+  </dict>
+	<key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+    <key>PathState</key>
+    <dict>
+      <key>/Volumes/Public</key>
+      <true/>
+    </dict>
+  </dict>
+	<key>Label</key>
+	<string>rclone.public</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/rclone-mount</string>
+		<string>volume</string>
+		<string>{{ .user.username }}</string>
+		<string>Public</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+    <key>StandardErrorPath</key>
+	<string>/Library/Logs/public-daemon.error.log</string>
+	<key>StandardOutPath</key>
+	<string>/Library/Logs/public-daemon.debug.log</string>
+</dict>
+</plist>

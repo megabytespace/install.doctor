@@ -1,0 +1,49 @@
+---
+# yamllint disable rule:line-length
+user_configs:
+  - username: "{{ ansible_user | default(lookup('env', 'USER')) }}"
+    git_user_email: '{{ git_user_email | default(omit) }}'
+    git_user_name: '{{ git_user_email | default(omit) }}'
+    netrc_hosts:
+      - machine: surge.surge.sh
+        username: '{{ surgesh_username }}'
+        password: '{{ surgesh_password }}'
+    ngrok_token: '{{ ngrok_token }}'
+    npm_author_email: '{{ npm_author_email }}'
+    npm_author_name: '{{ npm_author_name }}'
+    npm_author_url: https://megabyte.space
+    rclone:
+      - name: Digital Ocean
+        provider: digitalocean
+        config: |
+          type = s3
+          env_auth = false
+          access_key_id = {{ digitalocean_access_key_id }}
+          secret_access_key = {{ digitalocean_secret_access_key }}
+          endpoint = nyc3.digitaloceanspaces.com
+          acl = private
+      - name: Google
+        provider: google
+        config: |
+          type = drive
+          client_id = {{ google_drive_client_id }}
+          client_secret = {{ google_drive_client_secret }}
+          scope = drive
+          token = {"access_token":"{{ google_drive_access_token }}","token_type":"Bearer","refresh_token":"{{ google_drive_refresh_token }}","expiry":"2020-08-12T00:45:51.652771516-04:00"}
+          root_folder_id = {{ google_drive_root_folder_id }}
+      - name: OneDrive
+        provider: onedrive
+        config: |
+          type = onedrive
+          token = {"access_token":"{{ onedrive_access_token }}","token_type":"Bearer","refresh_token":"{{ onedrive_refresh_token }}","expiry":"2020-08-12T00:47:01.9828663-04:00"}
+          drive_id = {{ onedrive_drive_id }}
+          drive_type = personal
+    ssh_authorized_keys: '{{ default_ssh_authorized_keys | default([]) }}'
+    ssh_private_keys: '{{ default_ssh_private_keys | default([]) }}'
+    tinypng_api_key: '{{ tinypng_api_key }}'
+    vagrant_cloud_token: '{{ vagrant_cloud_token }}'
+    vscode_extensions: '{{ vscode_extensions }}'
+  - username: root
+    git_user_email: '{{ git_user_email | default(omit) }}'
+    git_user_name: '{{ git_user_email | default(omit) }}'
+    system: true

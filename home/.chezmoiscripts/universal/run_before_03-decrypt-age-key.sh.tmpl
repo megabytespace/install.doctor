@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+# @file Chezmoi-Age Secret Decryption
+# @brief Ensures `age` is installed and then decrypts the `home/key.txt.age` file so that Chezmoi can utilize encrypted files
+# @description
+#     This script begins by ensuring `age` is installed, the defualt program Chezmoi utilizes for handling encryption.
+#     The script then allows you to generate the decrypted `~/.config/age/chezmoi.txt` file by prompting you for the password
+#     to `home/key.txt.age` which is the encrypted encryption key file for using Chezmoi to add encrypted files to your Install
+#     Doctor fork. If no password is passed to the decryption password prompt, then all of the `encrypted_` files in the fork
+#     are deleted so that Chezmoi does not try to decrypt files without a decryption key file.
+#
+#     ## Headless Installs
+#
+#     If you do not want the script to prompt you for a password, then you can pass in an environment variable with
+#     `HEADLESS_INSTALL=true`. This variable ensures that nothing requiring input from the user blocks the provisioning process.
+#     If you want to automate a headless install that requires access to `encrypted_` files and encrypted variables, then
+#     you can save the decrypted Age key to `~/.config/age/chezmoi.txt` prior to running `bash <(curl -sSL https://install.doctor/start)`.
+#
+#     Alternatively, you can pass in your Age decryption passphrase in using the `AGE_PASSWORD` environment variable.
+#     Install Doctor will use this variable along with expect to headlessly automate the password prompt during the
+#     decryption process.
+#
+#     ## GPG
+#
+#     It is also possible to configure Chezmoi to utilize GPG instead of Age. This might be beneficial if you want to
+#     use a smart card / YubiKey for hardware-backed encryption. Otherwise, Age is a great encryption tool.
+#
+#     ## Notes
+#
+#     _It is possible that hardware-based smart-card-like GPG encryption might not work properly with Chezmoi yet.
+#     Learned this by attempting to use a YubiKey GPG setup using [this guide](https://github.com/drduh/YubiKey-Guide) and trying to get it to work with Chezmoi._
+
+{{ includeTemplate "universal/logg-before" }}
+{{ includeTemplate "universal/profile-before" }}
+
+# @description Helper function utilized by [[decryptKey]] that removes all `encrypted_` files from the Chezmoi source
+#     if the Age decryption process fails due to wrong password or from not being set up yet.
+decryptionFailure() {
+  gum log -sl info 'Proceeding without decrypting age encryption key stored at ~/.local/share/chezmoi/home/key.txt.age'
+  gum log -sl info 'To have Chezmoi handle your encryption (so you can store your private files publicly) take a look at https://shorturl.at/jkpzG'
+  gum log -sl info 'Removing all files that begin with encrypted_ because decryption failed'
+  find "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi" -type f -name "encrypted_*" | while read ENCRYPTED_FILE; do
+    gum log -sl info "Removing $ENCRYPTED_FILE"
+    rm -f "$ENCRYPTED_FILE"
+  done
+}
+
+# @description Helper function utilized by [[decryptKey]] to ensure the `age` command is available
+installAge() {
+  if ! command -v age > /dev/null; then
+    gum log -sl info 'Running brew install age'
+    brew install --quiet age
+  fi
+}
+
+# @description Helper function utilized by [[decryptKey]] to ensure the `expect` command is available
+installExpect() {
+  if ! command -v unbuffer > /dev/null; then
+    gum log -sl info 'Running brew install expect / unbuffer'
+    brew install --quiet expect
+  fi
+}
+
+# @description Decrypt private Chezmoi key if it is not already present at `${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt`
+decryptKey() {
+  if command -v age > /dev/null; then
+    if [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" ]; then
+      mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/age"
+      if [ -z "$AGE_PASSWORD" ]; then
+        logg star 'PRESS ENTER if you have not set up your encryption token yet'
+        age --decrypt --output "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" "{{ .chezmoi.sourceDir }}/key.txt.age" || EXIT_CODE=$?
+        if [ -n "$EXIT_CODE" ]; then
+          decryptionFailure
+        else
+          gum log -sl info 'The encryption key was successfully decrypted'
+        fi
+      else
+        installExpect
+        expect -c "set timeout -1
+        spawn age --decrypt --output "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/key.txt.age"
+        expect \"Enter passphrase:\"
+        send \"${AGE_PASSWORD}\r\"
+        expect eof" &> /dev/null || EXIT_CODE=$?
+        if [ -n "$EXIT_CODE" ]; then
+          gum log -sl info 'There was an issue decrypting the key.txt.age file with the provided AGE_PASSWORD'
+          decryptionFailure
+        else
+          gum log -sl info 'The encryption key was successfully decrypted using expect and the provided AGE_PASSWORD'
+        fi
+      fi
+    fi
+  fi
+}
+
+### Only run decryption process if HEADLESS_INSTALL variable is not set
+if [ -z "$HEADLESS_INSTALL" ]; then
+  installAge
+  decryptKey
+elif [ -n "$HEADLESS_INSTALL" ] && [ -n "$AGE_PASSWORD" ]; then
+  installAge
+  decryptKey
+else
+  gum log -sl info 'Skipping Age key decryption process - HEADLESS_INSTALL and AGE_PASSWORD should be passed in as env variables to automate the process'
+fi
+
+### Ensure proper permissions on private key
+if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" ]; then
+  gum log -sl info 'Ensuring proper permissions on Chezmoi / age decryption key'
+  gum log -sl info 'Chezmoi / age decryption key is stored in '"${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt"
+  chmod 600 "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt"
+fi

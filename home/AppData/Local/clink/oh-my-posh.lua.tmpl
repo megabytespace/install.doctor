@@ -1,0 +1,3 @@
+{{- if eq .host.distro.family "windows" -}}
+load(io.popen('oh-my-posh init cmd'):read("*a"))()
+{{- end -}}

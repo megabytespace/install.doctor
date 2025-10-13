@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -Eeo pipefail
+trap "rm -f ~/.gist" ERR
+
+### Load GITHUB_GIST_TOKEN using envchain
+if command -v envchain > /dev/null; then
+    export $(envchain default env | grep 'GITHUB_GIST_TOKEN')
+    echo "$GITHUB_GIST_TOKEN" > ~/.gist
+fi
+
+### Pass command to gist
+gist $*
+
+### Remove home directory clutter
+rm -f ~/.gist

@@ -1,0 +1,37 @@
+---
+- hosts: localhost
+  gather_facts: true # Needed on macOS
+  vars:
+    autologin_enabled: true
+  tasks:
+    - name: Check if /proc/version is present
+      ansible.builtin.stat:
+        path: /proc/version
+      register: proc_version
+    - name: Determining if environment is a WSL environment
+      command: grep Microsoft /proc/version
+      register: microsoft_grep
+      when: proc_version.stat.exists
+    - name: Add WSL hosts to the wsl host group
+      set_fact:
+        wsl_environment: true
+      when:
+        - proc_version.stat.exists
+        - microsoft_grep.rc == 0
+    - include_role:
+        name: ../roles/system/connect
+    - include_role:
+        name: ../roles/system/firewall
+      when: not (wsl_environment | default(false))
+    - include_role:
+        name: ../roles/system/common
+    - include_role:
+        name: ../roles/system/disks
+    - include_role:
+        name: ../roles/virtualization/docker
+      when: not (wsl_environment | default(false))
+    - include_role:
+        name: ../roles/services/cockpit
+      when: not (wsl_environment | default(false))
+    - include_role:
+        name: ../roles/helpers/reboot

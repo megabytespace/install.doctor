@@ -1,0 +1,20 @@
+---
+- name: Prepare
+  hosts: "{{ lookup('env', 'MOLECULE_GROUP') | default('all', true) }}"
+  gather_facts: false
+  tasks:
+    - become: true
+      changed_when: false
+      name: Bootstrap Python for Ansible
+      raw: |
+        command -v python3 python || (
+        command -v apk >/dev/null && sudo apk add --no-progress --update python3 ||
+        (test -e /usr/bin/dnf && sudo dnf install -y python3) ||
+        (test -e /usr/bin/apt && (apt -y update && apt install -y python-minimal)) ||
+        (test -e /usr/bin/yum && sudo yum -y -qq install python3) ||
+        (test -e /usr/sbin/pkg && sudo env ASSUME_ALWAYS_YES=yes pkg update && sudo env ASSUME_ALWAYS_YES=yes pkg install python3) ||
+        (test -e /usr/sbin/pkg_add && sudo /usr/sbin/pkg_add -U -I -x python%3.7) ||
+        echo "Warning: Python not boostrapped due to unknown platform."
+        )
+      when:
+        - ansible_connection != 'winrm'

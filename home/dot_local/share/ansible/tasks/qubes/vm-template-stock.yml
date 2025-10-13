@@ -1,0 +1,179 @@
+---
+- name: Determine if RPM Fusion was already enabled
+  become: true
+  stat:
+    path: /root/.setup-rpm-fusion-enabled
+  register: template_rpm_fusion
+  when: ansible_os_family == 'RedHat'
+
+- name: Ensure RPM Fusion package repositories are enabled on RedHat-flavored systems
+  become: true
+  shell:
+    cmd: |
+      dnf config-manager --set-enabled rpmfusion-free
+      dnf config-manager --set-enabled rpmfusion-free-updates
+      dnf config-manager --set-enabled rpmfusion-nonfree
+      dnf config-manager --set-enabled rpmfusion-nonfree-updates
+  when:
+    - ansible_os_family == 'RedHat'
+    - not template_rpm_fusion.stat.exists
+    - not ('-minimal' in inventory_hostname)
+
+- name: Register RPM Fusion enabled indicator
+  become: true
+  copy:
+    content: |
+      done
+    dest: /root/.setup-rpm-fusion-enabled
+  when:
+    - ansible_os_family == 'RedHat'
+    - not template_rpm_fusion.stat.exists
+
+- name: Ensure Debian systems are updated
+  become: true
+  apt:
+    cache_valid_time: 3600
+    force_apt_get: true
+    update_cache: true
+    upgrade: dist
+  timeout: 900
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure RedHat systems are updated
+  become: true
+  dnf:
+    name: '*'
+    state: latest
+    update_cache: true
+  timeout: 900
+  when: ansible_os_family == 'RedHat'
+
+- name: Check if Archlinux has refreshed keys
+  become: true
+  stat:
+    path: /root/.setup-pacman-refreshed-keys
+  register: pacman_key_refresh
+  when: ansible_os_family == 'Archlinux'
+
+- name: Ensure Archlinux pacman GPG keys are updated
+  become: true
+  shell: pacman-key --refresh-keys
+  when:
+    - ansible_os_family == 'Archlinux'
+    - not pacman_key_refresh.stat.exists
+
+- name: Ensure Archlinux key refresh is saved to prevent unnecessary future calls
+  become: true
+  copy:
+    content: |
+      done
+    dest: /root/.setup-pacman-refreshed-keys
+  when:
+    - ansible_os_family == 'Archlinux'
+    - not pacman_key_refresh.stat.exists
+
+- name: Ensure Archlinux systems are updated
+  become: true
+  community.general.pacman:
+    update_cache: true
+    upgrade: true
+    extra_args: --ignore=*pulse*
+    update_cache_extra_args: --noconfirm
+    upgrade_extra_args: --ignore="*pulse*"
+  when: ansible_os_family == 'Archlinux'
+
+- name: Install common software packages
+  become: true
+  ansible.builtin.package:
+    name: '{{ common_software_packages | default([]) }}'
+    state: latest
+  ignore_errors: '{{ qubes_prerelease | default(false) }}'
+
+- name: Clone the yay repository (Archlinux)
+  ansible.builtin.git:
+    repo: https://aur.archlinux.org/yay.git
+    dest: ~/.local/yay
+    version: master
+  when: ansible_os_family == 'Archlinux'
+
+- name: Check if yay is installed
+  command: type yay
+  register: yay_type
+  failed_when: false
+  changed_when: false
+  when: ansible_os_family == 'Archlinux'
+
+- name: Ensure Go is installed which is a requirement for installing yay (Archlinux)
+  become: true
+  community.general.pacman:
+    name: go
+    state: latest
+  when: ansible_os_family == 'Archlinux'
+
+- name: Install yay (Archlinux)
+  ansible.builtin.shell:
+    cmd: echo Y | makepkg -si
+  args:
+    chdir: ~/.local/yay
+  when:
+    - ansible_os_family == 'Archlinux'
+    - yay_type.rc != 0
+
+- name: Check if snap is installed
+  command: type snap
+  register: snap_type
+  failed_when: false
+  changed_when: false
+  when: ansible_os_family == 'Archlinux'
+  ignore_errors: '{{ qubes_prerelease | default(false) }}'
+
+- name: Install snapd with yay (Archlinux)
+  ansible.builtin.shell:
+    cmd: yay --noconfirm -Sy snapd
+  when:
+    - ansible_os_family == 'Archlinux'
+    - snap_type.rc != 0
+
+- name: Detect presence of /var/lib/snapd/snap
+  stat:
+    path: /var/lib/snapd/snap
+  register: var_lib_snapd
+
+- name: Ensure /snap is symlinked to /var/lib/snapd/snap
+  become: true
+  file:
+    src: /var/lib/snapd/snap
+    dest: /snap
+    state: link
+  when: var_lib_snapd.stat.exists
+
+- name: Ensure snapd is enabled and running
+  become: true
+  ansible.builtin.systemd:
+    enabled: true
+    state: started
+    name: snapd
+    daemon_reload: true
+  when: not ('-minimal' in inventory_hostname)
+  ignore_errors: '{{ qubes_prerelease | default(false) }}'
+
+- name: Apply full theme and dotfiles
+  include_role:
+    name: professormanhattan.theme
+
+- include_tasks: tasks/qubes/vm-common.yml
+
+- name: Ensure /etc/skel /usr/local.orig is setup for inheritence
+  become: true
+  copy:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    mode: '{{ item.mode }}'
+    remote_src: true
+  with_items:
+    - src: /home
+      dest: /etc/skel
+      mode: preserve
+    - src: /usr/local
+      dest: /usr/local.orig
+      mode: preserve

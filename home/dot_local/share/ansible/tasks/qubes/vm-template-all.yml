@@ -1,0 +1,18 @@
+---
+- name: Ensure directory for custom Ansible facts exists
+  become: true
+  ansible.builtin.file:
+    state: directory
+    recurse: yes
+    path: /rw/config/qubes-bind-dirs.d
+  when: persistent_docker_volumes | default(false)
+
+- name: Ensure Docker files are persistent
+  copy:
+    content: |
+      binds+=( '/var/lib/docker' )
+      binds+=( '/etc/docker' )
+    dest: /rw/config/qubes-bind-dirs.d/50-docker.conf
+  when: persistent_docker_volumes | default(false)
+
+- include_tasks: tasks/qubes/vm-common.yml

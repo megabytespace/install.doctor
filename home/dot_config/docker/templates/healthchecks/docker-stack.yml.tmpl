@@ -1,0 +1,156 @@
+---
+version: '3.7'
+
+services:
+  healthchecks:
+    image: lscr.io/linuxserver/healthchecks:latest
+    container_name: Healthchecks
+    depends_on:
+      - postgres
+    networks:
+      - healthchecks_network
+      - nginx_network
+    environment:
+      ALLOWED_HOSTS: "{{ .docker.healthchecks.allowedHosts }}"
+      APPRISE_ENABLED: "False"
+      DB_HOST: "postgres"
+      DB_NAME: "healthdb"
+      DB_PASSWORD_FILE: /run/secrets/healthchecks_db_password
+      DB_USER: "healthuser"
+      DEBUG: "False"
+      DEFAULT_FROM_EMAIL: "no-reply@{{ .host.domain }}"
+      DISCORD_CLIENT_ID_FILE: /run/secrets/discord_client_id
+      DISCORD_CLIENT_SECRET_FILE: /run/secrets/discord_client_secret
+      EMAIL_HOST_PASSWORD_FILE: /run/secrets/sendgrid_api_key
+      EMAIL_HOST_USER: "{{ .host.smtp.user }}"
+      EMAIL_HOST: "{{ .host.smtp.host }}"
+      EMAIL_PORT: "{{ .host.smtp.port }}"
+      EMAIL_USE_TLS: "True"
+      MATRIX_ACCESS_TOKEN_FILE: /run/secrets/matrix_access_token
+      MATRIX_HOMESERVER_FILE: /run/secrets/matrix_homeserver
+      MATRIX_USER_ID_FILE: /run/secrets/matrix_username
+      PGID: 1000
+      PROMETHEUS_ENABLED: "True"
+      PUID: 1000
+      PUSHBULLET_CLIENT_ID_FILE: /run/secrets/pushbullet_client_id
+      PUSHBULLET_CLIENT_SECRET_FILE: /run/secrets/pushbullet_client_secret
+      S3_ACCESS_KEY_FILE: /run/secrets/healthchecks_s3_access_key
+      S3_BUCKET: "health.{{ .host.domain }}"
+      S3_ENDPOINT: "{{ .docker.healthchecks.s3Endpoint }}"
+      S3_REGION: ""
+      S3_SECRET_KEY_FILE: /run/secrets/healthchecks_s3_secret_key
+      SECRET_KEY_FILE: /run/secrets/healthchecks_secret_key
+      SHELL_ENABLED: "True"
+      SITE_LOGO_URL: "{{ .docker.healthchecks.siteLogoUrl }}"
+      SITE_NAME: "{{ .docker.healthchecks.siteName }}"
+      SITE_ROOT: "{{ .docker.healthchecks.siteRoot }}"
+      SLACK_CLIENT_ID_FILE: /run/secrets/slack_client_id
+      SLACK_CLIENT_SECRET_FILE: /run/secrets/slack_client_secret
+      SLACK_ENABLED: "True"
+      SUPERUSER_EMAIL: "{{ .user.email }}"
+      SUPERUSER_PASSWORD_FILE: /run/secrets/healthchecks_superuser_password
+      TELEGRAM_BOT_NAME_FILE: /run/secrets/telegram_bot_name
+      TELEGRAM_TOKEN_FILE: /run/secrets/telegram_bot_token
+      TWILIO_ACCOUNT_FILE: /run/secrets/twilio_account_sid
+      TWILIO_AUTH_FILE: /run/secrets/twilio_auth_token
+      TWILIO_FROM_FILE: /run/secrets/twilio_from_number
+      TZ: "{{ .user.timezone }}"
+      WEBHOOKS_ENABLED: "True"
+    deploy:
+      mode: replicated
+      replicas: 1
+    volumes:
+      - healthchecks_config:/config
+    expose:
+      - "8071:8000"
+      - "2525:2525"
+    restart: unless-stopped
+    secrets:
+      - healthchecks_db_password
+      - healthchecks_s3_access_key
+      - healthchecks_s3_secret_key
+      - healthchecks_secret_key
+      - healthchecks_superuser_password
+      - matrix_access_token
+      - matrix_homeserver
+      - matrix_username
+      - pushbullet_client_id
+      - pushbullet_client_secret
+      - sendgrid_api_key
+      - slack_client_id
+      - slack_client_secret
+      - telegram_bot_name
+      - telegram_bot_token
+      - twilio_account_sid
+      - twilio_auth_token
+      - twilio_from_number
+
+  postgres:
+    container_name: Postgres
+    image: postgres:10
+    restart: unless-stopped
+    volumes:
+      - healthchecks_postgres:/var/lib/postgresql/data
+    networks:
+      - healthchecks_network
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/healthchecks_db_password
+      POSTGRES_USER: healthuser
+      POSTGRES_DB: healthdb
+    deploy:
+      mode: replicated
+      replicas: 1
+    secrets:
+      - healthchecks_db_password
+
+networks:
+  healthchecks_network:
+    driver: overlay
+    attachable: true
+    internal: true
+  nginx_network:
+    external: true
+
+secrets:
+  healthchecks_db_password:
+    external: true
+  healthchecks_secret_key:
+    external: true
+  healthchecks_superuser_password:
+    external: true
+  healthchecks_s3_access_key:
+    external: true
+  healthchecks_s3_secret_key:
+    external: true
+  matrix_access_token:
+    external: true
+  matrix_homeserver:
+    external: true
+  matrix_username:
+    external: true
+  pushbullet_client_id:
+    external: true
+  pushbullet_client_secret:
+    external: true
+  sendgrid_api_key:
+    external: true
+  slack_client_id:
+    external: true
+  slack_client_secret:
+    external: true
+  telegram_bot_name:
+    external: true
+  telegram_bot_token:
+    external: true
+  twilio_account_sid:
+    external: true
+  twilio_auth_token:
+    external: true
+  twilio_from_number:
+    external: true
+
+volumes:
+  healthchecks_config:
+    name: healthchecks_config
+  healthchecks_postgres:
+    name: healthchecks_postgres

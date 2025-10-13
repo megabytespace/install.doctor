@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
+  </dict>
+    <key>Label</key>
+    <string>clamav.notification</string>
+    <key>ProgramArguments</key>
+	<array>
+		<string>{{ lookPath "clamav-notification" }}</string>
+	</array>
+    <key>WatchPaths</key>
+    <array>
+        <string>/opt/quarantine</string>
+    </array>
+    <key>AbandonProcessGroup</key>
+    <true/>
+	<key>StandardOutPath</key>
+	<string>/Library/Logs/clamav.notification.debug.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Library/Logs/clamav.notification.error.log</string>
+</dict>
+</plist>

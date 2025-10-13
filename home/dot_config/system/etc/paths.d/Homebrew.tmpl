@@ -1,0 +1,5 @@
+{{- if stat (joinPath "opt" "homebrew" "bin") -}}
+/opt/homebrew/bin
+{{- else if stat (joinPath "home" "linuxbrew" ".linuxbrew" "bin") -}}
+/home/linuxbrew/.linuxbrew/bin
+{{- end -}}

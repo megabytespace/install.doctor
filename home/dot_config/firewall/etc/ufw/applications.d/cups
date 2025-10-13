@@ -1,0 +1,4 @@
+[CUPS]
+title=CUPS
+description=CUPS printer server
+ports=631/tcp

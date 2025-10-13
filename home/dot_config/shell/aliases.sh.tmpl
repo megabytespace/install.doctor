@@ -1,0 +1,352 @@
+#!/usr/bin/env sh
+# @file Aliases
+# @brief Houses the aliases that are included by `~/.bashrc` and `~/.zshrc`
+# @description
+#     This script is included by `~/.bashrc` and `~/.zshrc` to provide command aliases.
+
+### macOS Polyfills
+# Note: May cause conflicts
+if [ -d /Applications ] && command -v brew > /dev/null; then
+  # Causes issues with stty
+  # PATH="$(brew --prefix)/opt/coreutils/libexec/gnubin:$PATH"
+  PATH="$(brew --prefix)/opt/gnu-indent/libexec/gnubin:$PATH"
+  PATH="$(brew --prefix)/opt/gnu-sed/libexec/gnubin:$PATH"
+  PATH="$(brew --prefix)/opt/gnu-tar/libexec/gnubin:$PATH"
+  export PATH
+fi
+
+# Basic command aliases for verbosity / simplicity
+alias cp='cp -v'
+# alias ln='ln -sriv' # ln: illegal option -- r
+alias mv='mv -vi'
+alias rm='rm -vi'
+
+### Colorize
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+alias diff='diff --color=auto'
+# iproute2mac not working with this alias
+# alias ip='ip --color=auto'
+alias pacman='pacman --color=auto'
+
+### TOP - order based on preference of "top" application (last item will always be chosen if installed, e.g. glances)
+if command -v glances > /dev/null; then
+  alias top='glances'
+elif command -v htop > /dev/null; then
+  alias top='bashtop'
+fi
+
+### batcat
+if command -v batcat > /dev/null; then
+  alias bat='batcat'
+fi
+
+### bat
+if command -v bat > /dev/null; then
+  export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+  alias bat-help='bat --plain --language=help'
+  alias cat='bat -pp'
+  alias less='bat --paging=always'
+  help() {
+    "$@" --help 2>&1 | bat-help
+  }
+fi
+
+### Chezmoi
+alias chezmoihome='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home"'
+alias chezmoiscripts='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi//home/.chezmoiscripts"'
+alias chezmoisecrets='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/.chezmoitemplates/secrets"'
+
+### curl-impersonate
+# https://github.com/lwthiker/curl-impersonate
+alias curl-impersonate='docker run --rm lwthiker/curl-impersonate:0.5-chrome curl_chrome110'
+
+### curlie
+### Curlie handles compression differently than curl. The bootstrap script
+# invoked by `bash <(curl -sSL https://install.doctor/start)` also requires
+# the `--compressed` flag when this alias is enabled.
+# if command -v curlie > /dev/null; then
+#   alias curl='curlie'
+# fi
+
+### eza
+if command -v eza > /dev/null; then
+  alias ls='eza --long --all --color auto --icons --sort=type'
+  alias tree='eza --tree'
+  alias la='ls -la'
+  alias lt='ls --tree --level=2'
+else
+  # Show full output when using ls
+  alias ls='ls -AlhF --color=auto'
+fi
+
+### fdfind
+if command -v fdfind > /dev/null; then
+  alias fd='fdfind'
+fi
+
+### gping
+# Replacement for ping that includes graph
+if command -v gping > /dev/null; then
+  alias ping='gping'
+fi
+
+# Setup rclone docker plugin permissions if docker group exists
+if [ -d /var/lib/docker-plugins/rclone ]; then
+  # Check if docker group exists (cross-platform)
+  if command -v getent > /dev/null 2>&1; then
+    # Linux/Unix systems
+    if getent group docker > /dev/null 2>&1; then
+      sudo chown -R root:docker /var/lib/docker-plugins/rclone
+      sudo chmod -R 755 /var/lib/docker-plugins/rclone
+    fi
+  elif [ -d /Applications ] && [ -d /Library ]; then
+    # macOS - check using dscl
+    if dscl . -read /Groups/docker > /dev/null 2>&1; then
+      sudo chown -R root:docker /var/lib/docker-plugins/rclone
+      sudo chmod -R 755 /var/lib/docker-plugins/rclone
+    fi
+  fi
+fi
+### safe-rm
+# TODO: Integrate this so it fails gracefully if folder does not exist (i.e. safe-rm -rf ~/Crunch should not return an error)
+# if command -v safe-rm > /dev/null; then
+#   alias rm='safe-rm'
+# fi
+
+### VIM
+if command -v vim > /dev/null; then
+  alias vi="vim"
+  alias v="vim"
+fi
+
+### NVIM
+if command -v nvim > /dev/null; then
+  alias nvim='env -u VIMINIT -u MYVIMRC nvim'
+fi
+
+### mitmproxy / mitmweb
+if command -v mitmproxy > /dev/null; then
+  alias mitmproxy='mitmproxy --set confdir=${XDG_CONFIG_HOME:-$HOME/.config}/mitmproxy'
+fi
+if command -v mitmweb > /dev/null; then
+  alias mitmweb='mitmweb --set confdir=${XDG_CONFIG_HOME:-$HOME/.config}/mitmproxy'
+fi
+
+### readlink
+if command -v greadlink > /dev/null && [ -d /Applications ] && [ -d /System ]; then
+  alias readlink='greadlink'
+fi
+
+### ripgrep
+if command -v rg > /dev/null; then
+  alias rgrep='rg --color=auto'
+fi
+
+### xclip
+alias xclip='xclip -selection c'
+
+### yank
+if command -v yank-cli > /dev/null; then
+  alias yank='yank-cli'
+fi
+
+### Zola
+if command -v org.getzola.zola > /dev/null; then
+  alias zola="flatpak run org.getzola.zola"
+fi
+
+# Fix for auto expansion (source: https://wiki.archlinux.org/title/Sudo#Passing_aliases)
+alias sudo='sudo '
+
+# Reload current shell
+alias reload='exec ${SHELL} -l'
+
+# Create an Authelia password hash
+alias authelia-password='docker run authelia/authelia:latest authelia hash-password'
+
+# Shows IP addresses that are currently banned by fail2ban
+alias banned='sudo zgrep "Ban" /var/log/fail2ban.log*'
+
+alias connections='nm-connection-editor'
+
+# Command-line DNS utility
+if ! command -v dog > /dev/null; then
+  alias dog="docker run -it --rm dog"
+fi
+
+# Download a file
+alias download='curl --continue-at - --location --progress-bar --remote-name --remote-time'
+
+# Download a website
+alias download-site='wget --mirror -p --convert-links -P'
+
+# Flush DNS
+alias flush-dns='sudo systemd-resolve --flush-caches && sudo systemd-resolve --statistics'
+
+# FontBook for macOS
+alias fontbook="open -b com.apple.FontBook"
+
+# Get the possible GRUB resolutions
+alias grub-resolutions='sudo hwinfo --framebuffer'
+
+# Execute git command with sudo priviledges while retaining .gitconfig
+alias gsudo='sudo git -c "include.path="${XDG_CONFIG_DIR:-$HOME/.config}/git/config\" -c \"include.path=$HOME/.gitconfig\"'
+
+# Create hashed password for Ansible user creation
+alias hash-password='mkpasswd --method=sha-512'
+
+# History alias
+alias hh=hstr
+
+# Show IP address
+alias ip-address='curl http://ipecho.net/plain; echo'
+
+# Configures Java to use ~/.config/java
+alias java='java -Djava.util.prefs.userRoot="${XDG_CONFIG_HOME:-$HOME/.config}/java"'
+
+# Shows local IP addresses
+alias local-ip-address="ifconfig | grep -Eo 'inet (addr:|adr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1'"
+
+# Create parent directories automatically
+alias mkdir='mkdir -pv'
+
+# Make mount command output readable
+alias mount='mount | column -t'
+
+# Link pip to pip3
+if ! command -v pip > /dev/null; then
+  alias pip='pip3'
+fi
+
+# Link python to python3
+if [ -f /usr/bin/python3 ]; then
+  alias python='/usr/bin/python3'
+elif [ -f /usr/local/bin/python3 ]; then
+  alias python='/usr/local/bin/python3'
+fi
+
+# Masked sudo password entry
+if command -v gum > /dev/null; then
+  alias please="gum input --password | sudo -nS"
+fi
+
+# Convert macOS plist to XML (for source control)
+alias plist-xml='plutil -convert xml1'
+
+# Recoverpy
+alias recoverpy='python3 -m recoverpy'
+
+# Performance Test
+alias perftest='mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/perftest" && curl -sL yabs.sh | bash -s -- -w "${XDG_DATA_HOME:-$HOME/.local/share}/perftest/$(date +%Y%m%d_%H%M%S)"'
+
+# @description Adds an alias to use Docker to run [pfFocus](https://github.com/TKCERT/pfFocus) which is a Python package that
+#     allows you to convert a pfSense export into a readable markdown file. Example: `pf-format < input.xml > output.md`
+function pf-format() {
+  docker run --rm -i ghcr.io/tkcert/pffocus "$*"
+}
+
+# Output plist in readable format
+alias plcat='plutil -convert xml1 -o -'
+
+# Show open ports
+alias ports='sudo netstat -tulanp'
+
+# Shuts down the computer, skipping the shutdown scripts
+alias poweroff='sudo /sbin/poweroff'
+
+# Open the Rclone web GUI
+alias rclone-gui='rclone rcd --rc-web-gui --rc-user=admin --rc-pass=pass --rc-serve'
+
+# Reboot the computer
+alias reboot='sudo /sbin/reboot'
+
+# Launch the Python Simple HTTP Server
+alias serve='python -m SimpleHTTPServer'
+
+# Generate a SHA1 digest
+alias sha1='openssl sha1'
+
+# Generate SHA256 digest
+alias sha256='openssl sha256'
+
+# Shutdown the computer
+alias shutdown='sudo /sbin/shutdown'
+
+# Speed test
+alias speedtest='wget -O /dev/null http://speedtest.wdc01.softlayer.com/downloads/test10.zip'
+
+# Shortcut for config file
+alias ssh-config='${EDITOR:code} ~/.ssh/config'
+
+# Pastebin
+alias sprunge='curl -F "sprunge=<-" http://sprunge.us'
+
+if command -v torsocks > /dev/null; then
+  # Disable Tor for current shell
+  alias toroff='source torsocks off'
+
+  # Enable Tor for current shell
+  alias toron='source torsocks on'
+fi
+
+# Test Tor connection
+alias tortest='curl --socks5-hostname 127.0.0.1:9050 --silent https://check.torproject.org/  | head -25'
+
+# Unban IP address (e.g. unban 10.14.24.14)
+alias unban='sudo fail2ban-client set sshd unbanip'
+
+# Recursively encrypts files using Ansible Vault
+alias unvault-dir='find . -type f -printf "%h/\"%f\" " | xargs ansible-vault decrypt'
+
+# Alias for updating software
+if command -v sysget > /dev/null; then
+  alias upgrade='sudo sysget update && sudo sysget upgrade'
+else
+  # TODO - Add other package managers
+  if command -v apt-get > /dev/null; then
+    alias upgrade='sudo apt-get update && sudo apt-get upgrade'
+  fi
+fi
+
+# Recursively encrypts files using Ansible Vault
+alias vault-dir='find . -type f -printf "%h/\"%f\" " | xargs ansible-vault encrypt'
+
+# Removes audio from a video
+alias removeaudio='ffmpeg -i "$1" -an -c:v copy "${1%.*}_noaudio.${1##*.}"'
+
+# Reverse engineer Dockerfiles from containers
+alias whaler="docker run -t --rm -v /var/run/docker.sock:/var/run/docker.sock:ro pegleg/whaler"
+
+# Shows nice looking report of weather
+if command -v wego > /dev/null; then
+  alias weather='wego'
+else
+  alias weather='curl -A curl wttr.in'
+fi
+
+# Change .wget-hsts file location
+alias wget="wget --hsts-file ~/.local/wget-hsts"
+
+### Yarn
+alias yarn='yarn --use-yarnrc "${XDG_CONFIG_HOME:-$HOME/.config}/yarn/config"'
+
+alias yt-dl-audio='yt-dlp --ignore-errors --output "%(title)s.%(ext)s" --extract-audio --audio-format mp3'
+
+# Running this will update GPG to point to the current YubiKey
+alias yubi-stub='gpg-connect-agent "scd serialno" "learn --force" /bye'
+
+### cd aliases
+
+alias Applications='cd $HOME/Applications'
+alias Cloud='cd $HOME/Cloud'
+alias Config='cd $HOME/.config'
+alias Desktop='cd $HOME/Desktop'
+alias Downloads='cd $HOME/Downloads'
+alias Library='cd $HOME/Library'
+alias Local='cd $HOME/.local'
+alias Movies='cd $HOME/Movies'
+alias Music='cd $HOME/Music'
+alias Pictures='cd $HOME/Pictures'
+alias Public='cd $HOME/Public'

@@ -1,0 +1,10 @@
+# The URL of the relay server.
+relay: portal.spatiumportae.com
+# Log debug output to file.
+verbose: false
+# Prompt for overwriting duplicates when receiving files.
+prompt_overwrite_files: true
+# The port used when serving the relay using "portal serve".
+relay_serve_port: 8080
+# The style of the TUI.
+tui_style: rich

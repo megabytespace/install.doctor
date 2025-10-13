@@ -1,0 +1,11 @@
+---
+qubes_software:
+  kubernetes-tmpl:
+    - kdash
+    - kn
+    - kubenav
+    - linkerd2
+  media-tmpl:
+    - webtorrent
+  services-tmpl:
+    - g-assist

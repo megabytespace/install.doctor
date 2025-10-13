@@ -1,0 +1,1 @@
+These profiles are unused but are left here as an example should we decide to support `ufw` as well.

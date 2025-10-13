@@ -1,0 +1,20 @@
+{
+  "$ref": "#/definitions/VaultSchema",
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "definitions": {
+    "VaultSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "admin_password": {
+          "type": "string"
+        },
+        "admin_username": {
+          "type": "string"
+        }
+      },
+      "required": ["admin_password", "admin_username"],
+      "title": "VaultSchema",
+      "type": "object"
+    }
+  }
+}

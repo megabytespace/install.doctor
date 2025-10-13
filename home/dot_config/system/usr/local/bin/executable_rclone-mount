@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+# @file Secure RClone Mount
+# @brief Secure helper utility for mounting RClone S3 buckets
+# @description
+#     This script securely assists a system service to ensure RClone S3 mounts are managed safely.
+#     It validates user inputs, sets up necessary folder structures with secure permissions,
+#     verifies RClone configurations, and mounts S3 buckets with optimal and secure settings.
+#     The script is modular, handles errors gracefully, logs operations, and supports configurability for
+#     easier customization and multi-user/multi-mount scenarios.
+
+set -euo pipefail
+
+# Exit script early if macOS and macFUSE is not available
+if [ -d /Applications ] && [ -d /System ]; then
+  # Check for macFUSE system extension (newer macOS)
+  if ! systemextensionsctl list | grep -q 'osxfuse'; then
+    # Optionally fallback to checking kext (older versions)
+    if ! kextstat | grep -q 'macFUSE'; then
+      sleep 10
+      exit 1
+    fi
+  fi
+fi
+
+### Functions
+
+# @description Log messages with timestamps
+log() {
+  gum log -sl info "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
+# @description Validate input arguments
+validateInputs() {
+  if [[ $# -lt 3 || $# -gt 4 ]]; then
+    gum log -sl error "Invalid usage"
+    gum log -sl info "Usage: $0 <type> <user> <mount>" >&2
+    exit 1
+  fi
+
+  # Sanitize inputs
+  TYPE=$(echo "$1" | grep -E "^[a-zA-Z0-9_-]+$" || {
+    gum log -sl error "Invalid type: $1" >&2
+    exit 1
+  })
+  USER=$(echo "$2" | grep -E "^[a-zA-Z0-9_]+$" || {
+    gum log -sl error "Invalid user: $2" >&2
+    exit 1
+  })
+  MOUNT=$(echo "$3" | grep -E "^[a-zA-Z0-9_-]+$" || {
+    gum log -sl error "Invalid mount: $3" >&2
+    exit 1
+  })
+}
+
+# @description Define mount-related variables
+setMountVariables() {
+  if [[ "$TYPE" == "user" ]]; then
+    MOUNT_REF="$USER-s3"
+    MOUNT_LOWERCASE="User"
+    VOL_NAME="User"
+  else
+    MOUNT_REF="$MOUNT"
+    MOUNT_LOWERCASE="$(echo "$MOUNT" | tr "[:upper:]" "[:lower:]")"
+  fi
+
+  if [[ "$TYPE" == "user" ]]; then
+    USER_FOLDER=$([[ -d /Applications && -d /System ]] && echo "Users" || echo "home")
+    CACHE_FOLDER="${XDG_CACHE_HOME:-$HOME/.cache}/rclone/$MOUNT_REF"
+    CONFIG_FOLDER="/$USER_FOLDER/$USER/.config/rclone"
+    LOG_FOLDER="$HOME/.local/var/log/rclone"
+    mkdir -p "$LOG_FOLDER/user"
+    MOUNT_PATH="/$USER_FOLDER/$USER/Cloud/$MOUNT"
+  else
+    CACHE_FOLDER="/var/cache/rclone/$MOUNT_REF"
+    CONFIG_FOLDER="/etc"
+    LOG_FOLDER="/var/log/rclone"
+    MOUNT_PATH="/$([[ -d /Applications && -d /System ]] && echo "Volumes" || echo "mnt")/$MOUNT"
+  fi
+}
+
+# @description Ensure necessary folders and permissions
+ensureFolders() {
+  for FOLDER in "$CACHE_FOLDER" "$LOG_FOLDER" "$MOUNT_PATH"; do
+    if [[ ! -d "$FOLDER" ]]; then
+      mkdir -p "$FOLDER"
+      chmod 755 "$FOLDER"
+      chown "$USER:rclone" "$FOLDER"
+    fi
+  done
+}
+
+# @description Validate and secure rclone configuration
+validateRcloneConfig() {
+  RCLONE_CONF="$CONFIG_FOLDER/rclone.conf"
+  if [[ ! -f "$RCLONE_CONF" ]]; then
+    gum log -sl error "RClone configuration file not found: $RCLONE_CONF" >&2
+    exit 1
+  fi
+
+  log "Securing RClone configuration file: $RCLONE_CONF"
+  chmod 600 "$RCLONE_CONF"
+  chown "$USER:rclone" "$RCLONE_CONF"
+
+  RCLONE_IGNORE="$CONFIG_FOLDER/rcloneignore"
+  if [[ ! -f "$RCLONE_IGNORE" && -f "/etc/rcloneignore" ]]; then
+    RCLONE_IGNORE="/etc/rcloneignore"
+  fi
+}
+
+# @description Handles conditional logic for setting file permissions and ownership
+setPermissions() {
+  if [ "$TYPE" = 'user' ]; then
+    FILE_PERMS="0660"
+    DIR_PERMS="0770"
+    MOUNT_UID="$(id -u "$USER")"
+    MOUNT_GID="$(id -g rclone)"
+  elif [ "$TYPE" = 'volume' ]; then
+    if [ "$MOUNT" = 'Private' ]; then
+      FILE_PERMS="0664"
+      DIR_PERMS="0775"
+      # Allow user access by using their UID but rclone group
+      MOUNT_UID="$(id -u "$USER")"
+      MOUNT_GID="$(id -g rclone)"
+    elif [ "$MOUNT" = 'Public' ]; then
+      FILE_PERMS="0664"
+      DIR_PERMS="0775"
+      # Allow user access by using their UID but rclone group
+      MOUNT_UID="$(id -u "$USER")"
+      MOUNT_GID="$(id -g rclone)"
+    fi
+  fi
+}
+
+# @description Mount the RClone bucket securely
+mountRclone() {
+  unset AWS_CA_BUNDLE
+  export PATH="$PATH:/usr/local/bin:/usr/bin"
+
+  log "Mounting RClone bucket: $MOUNT_REF to $MOUNT_PATH"
+  rclone --config "$RCLONE_CONF" \
+    mount \
+    --allow-other=true \
+    --uid "$MOUNT_UID" \
+    --gid "$MOUNT_GID" \
+    --file-perms "$FILE_PERMS" \
+    --dir-perms "$DIR_PERMS" \
+    --buffer-size 1G \
+    --bwlimit 200M \
+    --cache-chunk-path "$CACHE_FOLDER/$MOUNT_REF-chunks" \
+    --cache-db-path "$CACHE_FOLDER/$MOUNT_REF-db" \
+    --cache-dir "$CACHE_FOLDER/$MOUNT_REF-vfs" \
+    --cache-info-age 1m \
+    --cache-tmp-upload-path "$CACHE_FOLDER/$MOUNT_REF-upload" \
+    --cache-workers 8 \
+    --cache-writes \
+    --checkers 16 \
+    --dir-cache-time 30s \
+    --drive-use-trash=false \
+    --exclude-from "$RCLONE_IGNORE" \
+    --log-file "$LOG_FOLDER/$MOUNT_LOWERCASE.log" \
+    --log-level INFO \
+    --no-modtime \
+    --noapplexattr \
+    --poll-interval 15s \
+    --stats 0 \
+    --vfs-cache-max-age 1000h \
+    --vfs-cache-max-size 2G \
+    --vfs-cache-mode full \
+    --vfs-cache-poll-interval 15s \
+    --vfs-fast-fingerprint \
+    --vfs-read-ahead 128M \
+    --vfs-read-chunk-size 16M \
+    --vfs-read-chunk-size-limit 128M \
+    --volname "${VOL_NAME:-$MOUNT_REF}" \
+    "$MOUNT_REF":"$MOUNT_LOWERCASE" "$MOUNT_PATH"
+}
+
+# @description Main script execution
+main() {
+  validateInputs "$@"
+  setMountVariables
+  ensureFolders
+  validateRcloneConfig
+  setPermissions
+  mountRclone
+}
+
+# Run the script
+main "$@"

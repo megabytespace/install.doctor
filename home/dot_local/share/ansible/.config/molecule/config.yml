@@ -1,0 +1,27 @@
+---
+dependency:
+  name: shell
+  command: |
+    if type task > /dev/null; then
+      task ansible:test:molecule:dependencies
+    else
+      ansible-galaxy install --ignore-errors -r requirements.yml
+    fi
+provisioner:
+  name: ansible
+  options:
+    vvv: true
+  playbooks:
+    converge: ../converge.yml
+    prepare: ../../.config/molecule/prepare.yml
+    docker:
+      create: ../../.config/molecule/docker.create.yml
+      destroy: ../../.config/molecule/docker.destroy.yml
+    gce:
+      create: ../../.config/molecule/gce.create.yml
+      destroy: ../../.config/molecule/gce.destroy.yml
+    vagrant:
+      create: ../../.config/molecule/vagrant.create.yml
+      destroy: ../../.config/molecule/vagrant.destroy.yml
+verifier:
+  name: ansible

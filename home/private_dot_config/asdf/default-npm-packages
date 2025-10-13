@@ -1,2 +1,0 @@
-# Default NPM packages installed whenever ASDF Node version is changed
-# Note: Prefer using Volta since it does not have to reinstall the CLIs when switching versions

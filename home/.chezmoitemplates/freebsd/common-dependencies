@@ -1,8 +1,12 @@
 {{- $packages := list
+  "age"
   "gcc"
   "gcc-c++"
+  "go"
   "kernel-devel"
+  "locate"
   "nodejs"
   "npm"
+  "progress"
 -}}
 {{- $packages | join " " -}}

@@ -1,0 +1,3 @@
+{{- if and (eq .host.distro.family "darwin") (lookPath "code") -}}
+{{ .chezmoi.homeDir }}/.config/Code/User/extensions.json
+{{- end -}}

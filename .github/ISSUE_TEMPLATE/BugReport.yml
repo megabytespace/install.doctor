@@ -1,7 +1,7 @@
 ---
 name: 🐛 Bug Report
 description: Stumbled upon an error? Submit a bug report.
-labels: [question]
+labels: [bug]
 body:
   - type: markdown
     attributes:

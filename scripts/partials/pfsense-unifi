@@ -1,0 +1,11 @@
+# @description This function installs UniFi onto a pfSense / OPNSense FreeBSD environment. It leverages scripts provided by
+#     the [unofficial pfSense UniFi project on GitHub](https://github.com/unofficial-unifi/unifi-pfsense). The script runs
+#     the script provided by the project and then enables the UniFi service.
+#
+#     If you run into issues, please see the project's GitHub link (referenced above). It may take a couple minutes for the
+#     UniFi service to start up after `service unifi.sh start` is run because the start service exits fast while booting up
+#     the UniFi service in the background.
+enableUniFi() {
+  fetch -o - https://raw.githubusercontent.com/unofficial-unifi/unifi-pfsense/master/install-unifi/install-unifi.sh | sh -s
+  service unifi.sh start
+}

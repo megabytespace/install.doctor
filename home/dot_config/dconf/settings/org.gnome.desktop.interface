@@ -1,0 +1,16 @@
+[/]
+clock-format='12h'
+clock-show-seconds=true
+clock-show-weekday=true
+color-scheme='prefer-dark'
+cursor-theme='Sweet'
+document-font-name='Zilla Slab Medium 11'
+enable-hot-corners=true
+font-antialiasing='rgba'
+font-hinting='medium'
+font-name='Montserrat Medium 11'
+gtk-theme='Betelgeuse'
+icon-theme='Betelgeuse'
+locate-pointer=true
+monospace-font-name='Hack Nerd Font 11'
+text-scaling-factor=1.0

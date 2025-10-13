@@ -1,0 +1,23 @@
+---
+- name: Spin up disposable Qube to attach/transfer files from USB
+  qubesos:
+    guest: packer-usb-transfer-vm
+    label: red
+    state: running
+    template: debian-11-minimal-dvm
+
+- name: Check if the USB storage device is already attached to the disposable USB Qube
+  command: test -n "$(qvm-device usb list | grep "{{ qubes_ventoy_usb_description }}" | sed 's/^[^ ]*[ ]*[^ ]*[ ]*\([^ ]*\)$/\1/')"
+  changed_when: false
+  register: usb_device_test
+
+- name: Acquire the appropriate USB storage device ID
+  command: qvm-device usb list | grep "{{ qubes_ventoy_usb_description }}" | sed 's/^\([^ ]*\) .*/\1/'
+  changed_when: false
+  register: devid_usb_list
+  when: usb_device_test.rc == 1
+
+- name: Attach the USB storage device to the disposable USB Qube
+  command: qvm-device usb attach packer-usb-transfer-vm "{{ devid_usb_list.stdout }}"
+  changed_when: true
+  when: usb_device_test.rc == 1

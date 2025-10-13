@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-for DESKTOP_APP of BraveSoftware Ferdium "Google Assistant" Mailspring "Standard Notes" TeamViewer zoom.us

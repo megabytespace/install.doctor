@@ -1,0 +1,74 @@
+---
+# - name: Clone the VM-lockdown repository
+#   become: true
+#   ansible.builtin.git:
+#     repo: https://github.com/tasket/Qubes-VM-hardening.git
+#     dest: /usr/src/hardening
+#
+# - name: Run the installer
+#   become: true
+#   command: |
+#     bash install
+#     bash configure-sudo-prompt --force
+#   args:
+#     chdir: /usr/src/hardening
+#     creates: /lib/systemd/system/vm-boot-protect.service
+
+- name: Ensure qubes-gpg-split and qubes-u2f are installed (unofficial templates may fail since the packages are not available)
+  become: true
+  ansible.builtin.package:
+    name:
+      - qubes-gpg-split
+      - qubes-u2f
+    state: latest
+  ignore_errors: true
+
+- name: Ensure terminal Brewfile is installed
+  shell: provision terminal
+  failed_when: false
+  args:
+    executable: /bin/bash
+
+- name: Ensure all the common roles are applied to the custom TemplateVMs
+  include_role:
+    name: '{{ role }}'
+  loop:
+    # - roles/system/dns # Goes wherever DNS resolver is pending Qubes Forum answer
+    - roles/services/antivirus
+    - roles/services/elasticagent
+    - roles/services/portmaster
+    - roles/services/wazuh
+    - roles/applications/tabby
+  loop_control:
+    label: '{{ inventory_hostname }}'
+    loop_var: role
+
+- name: Ensure default application launchers are configured to use DVMs
+  include_tasks: tasks/qubes/preferred-app.yml
+  loop: '{{ mimetype_handlers }}'
+
+- name: Configure VMs to forward TCP traffic on certain ports to OPNsense
+  vars:
+    systemd_services:
+      - name: opnsense-http-service
+        port: 80
+      - name: opnsense-https-service
+        port: 443
+  include_tasks: tcp-port-bind.yml
+
+- include_tasks: tasks/qubes/vm-common.yml
+
+- name: Ensure /etc/skel /usr/local.orig is setup for inheritence
+  become: true
+  copy:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    mode: '{{ item.mode }}'
+    remote_src: true
+  with_items:
+    - src: /home
+      dest: /etc/skel
+      mode: preserve
+    - src: /usr/local
+      dest: /usr/local.orig
+      mode: preserve

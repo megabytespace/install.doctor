@@ -1,0 +1,70 @@
+{
+  "slack_token": "{{ if and (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SLACK_API_TOKEN")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SLACK_API_TOKEN") | decrypt | trim -}}{{ else }}{{- env "SLACK_API_TOKEN" -}}{{ end }}",
+  "sidebar_width": 3,
+  "notify": "mention",
+  "emoji": true,
+  "key_map": {
+    "command": {
+      "i": "mode-insert",
+      "/": "mode-search",
+      "k": "channel-up",
+      "j": "channel-down",
+      "g": "channel-top",
+      "G": "channel-bottom",
+      "K": "thread-up",
+      "J": "thread-down",
+      "<previous>": "chat-up",
+      "C-b": "chat-up",
+      "C-u": "chat-up",
+      "<next>": "chat-down",
+      "C-f": "chat-down",
+      "C-d": "chat-down",
+      "n": "channel-search-next",
+      "N": "channel-search-previous",
+      "'": "channel-jump",
+      "q": "quit",
+      "<f1>": "help"
+    },
+    "insert": {
+      "<left>": "cursor-left",
+      "<right>": "cursor-right",
+      "<enter>": "send",
+      "<escape>": "mode-command",
+      "<backspace>": "backspace",
+      "C-8": "backspace",
+      "<delete>": "delete",
+      "<space>": "space"
+    },
+    "search": {
+      "<left>": "cursor-left",
+      "<right>": "cursor-right",
+      "<escape>": "clear-input",
+      "<enter>": "clear-input",
+      "<backspace>": "backspace",
+      "C-8": "backspace",
+      "<delete>": "delete",
+      "<space>": "space"
+    }
+  },
+  "theme": {
+    "view": {
+      "fg": "white",
+      "bg": "default",
+      "border_fg": "white",
+      "border_bg": "",
+      "label_fg": "white",
+      "label_bg": ""
+    },
+    "channel": {
+      "prefix": "",
+      "icon": "",
+      "text": ""
+    },
+    "message": {
+      "time_format": "15:04",
+      "name": "",
+      "time": "",
+      "text": ""
+    }
+  }
+}

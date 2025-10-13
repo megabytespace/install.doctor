@@ -1,3 +1,0 @@
-# Default Python packages installed whenever ASDF Python version is changed
-# Note: Prefer using PIPX since it does not have to reinstall the CLIs when switching versions
-pytest

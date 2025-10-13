@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>NGINX</short>
+  <description>Website and application server / proxy</description>
+  <port protocol="tcp" port="80"/>
+  <port protocol="tcp" port="443"/>
+</service>

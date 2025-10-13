@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+echo "There are new items for review in the system /opt/quarantine folder" | mail -s "ClamAV Quarantined Possible Malware" root

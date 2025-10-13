@@ -1,0 +1,15 @@
+[Unit]
+Description=RClone S3 (Private)
+After=network-online.target
+
+[Service]
+Type=simple
+User=rclone
+Group=rclone
+ExecStart=/usr/local/bin/rclone-mount "volume" "{{ .user.username }}" "Private"
+ExecStop=/bin/fusermount -u "/mnt/Private"
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

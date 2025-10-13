@@ -1,0 +1,53 @@
+---
+ports:
+  dns: 53
+  tls: 853
+  https: 443
+  http: 4000
+
+log:
+  level: info
+  format: text
+  timestamp: true
+  privacy: false
+
+upstreams:
+  groups:
+    default:
+      - 159.69.114.157
+      - 116.203.32.217
+      - tcp-tls:fdns1.dismail.de:853
+      - https://dns.digitale-gesellschaft.ch/dns-query
+
+bootstrapDns:
+  - tcp+udp:1.1.1.1
+  - https://1.1.1.1/dns-query
+
+blocking:
+  blackLists:
+    ads:
+      - https://easylist.to/easylist/easyprivacy.txt
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews/hosts
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+      - https://s3.amazonaws.com/lists.disconnect.me/simple_ad.txt
+      - https://s3.amazonaws.com/lists.disconnect.me/simple_tracking.txt
+      - https://sysctl.org/cameleon/hosts
+  clientGroupsBlock:
+    default:
+      - ads
+  blockType: zeroIp
+
+caching:
+  minTime: 5m
+  maxTime: 0
+  prefetching: true
+
+prometheus:
+  enable: true
+  path: /metrics
+
+queryLog:
+  type: none
+
+specialUseDomains:
+  rfc6762-appendixG: true

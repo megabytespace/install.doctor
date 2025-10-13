@@ -11,7 +11,8 @@
 # Themer.dev: https://themer.dev/?calculateIntermediaryShades.dark=true&colors.dark.shade0=%23161925&colors.dark.shade7=%23C3C7D1&colors.dark.accent0=%23ED254E&colors.dark.accent3=%2371F79F&colors.dark.accent2=%23F9DC5C&colors.dark.accent4=%2300C1E4&colors.dark.accent5=%237CB7FF&colors.dark.accent7=%23C74D89&colors.dark.accent6=%23C3C7D1&colors.dark.accent1=%23DCDFE4&colors.light.accent0=%23FF4972&colors.light.accent3=%2395FFC3&colors.light.accent2=%23FFFF80&colors.light.accent5=%23A0DBFF&colors.light.accent7=%23EB71AD&colors.light.accent6=%234C5058&colors.light.shade7=%234C5058&colors.light.shade0=%23FFFFFF&colors.light.accent4=%2324E5FF&colors.light.accent1=%23DCDFE4&activeColorSet=dark
 
 # Required for styled logging
-{{- includeTemplate "universal/logg-compat" }}
+
+{{ includeTemplate "universal/logg-compat" }}
 
 export COLOR_01="#282C34"           # Black
 export COLOR_02="#ED254E"           # Red
@@ -35,13 +36,6 @@ export BACKGROUND_COLOR="#161925"   # Background Color
 export FOREGROUND_COLOR="#C3C7D1"   # Foreground Color (text)
 export CURSOR_COLOR="$FOREGROUND_COLOR" # Cursor color
 export PROFILE_NAME="Betelgeuse"
-
-if [ ! -e gconftool-2 ] && [ -f /etc/debian_version ]; then
-  logg 'Running `sudo apt-get update`'
-  sudo apt-get update
-  logg 'Running `sudo apt-get install -y gconf2`'
-  sudo apt-get install -y gconf2
-fi
 
 # |
 # | Early pre-requisites check
@@ -675,36 +669,60 @@ apply_konsole() {
 }
 
 apply_darwin() {
-  # |
-  # | Applying values on iTerm2
-  # | ===========================================
+  ### Skip iTerm.app terminal theme because it is already stored in ~/Library/Preferences
+  if [ "$TERM_PROGRAM" != "iTerm.app" ]; then
+    # |
+    # | Applying values on iTerm2
+    # | ===========================================
+export COLOR_01="#282C34"           # Black
+export COLOR_02="#ED254E"           # Red
+export COLOR_03="#71F79F"           # Green
+export COLOR_04="#F9DC5C"           # Yellow
+export COLOR_05="#7CB7FF"           # Blue
+export COLOR_06="#C74D89"           # Magenta
+export COLOR_07="#00C1E4"           # Cyan
+export COLOR_08="#DCDFE4"           # Light gray
 
-  BACKGROUND_COLOR=$(convertNameAndRGBtoITerm "Background Color" "$BACKGROUND_COLOR")
-  FOREGROUND_COLOR=$(convertNameAndRGBtoITerm "Foreground Color" "$FOREGROUND_COLOR")
-  COLOR_01=$(convertNameAndRGBtoITerm "Ansi 0 Color"             "$COLOR_01")
-  COLOR_02=$(convertNameAndRGBtoITerm "Ansi 1 Color"             "$COLOR_02")
-  COLOR_03=$(convertNameAndRGBtoITerm "Ansi 2 Color"             "$COLOR_03")
-  COLOR_04=$(convertNameAndRGBtoITerm "Ansi 3 Color"             "$COLOR_04")
-  COLOR_05=$(convertNameAndRGBtoITerm "Ansi 4 Color"             "$COLOR_05")
-  COLOR_06=$(convertNameAndRGBtoITerm "Ansi 5 Color"             "$COLOR_06")
-  COLOR_07=$(convertNameAndRGBtoITerm "Ansi 6 Color"             "$COLOR_07")
-  COLOR_08=$(convertNameAndRGBtoITerm "Ansi 7 Color"             "$COLOR_08")
-  COLOR_09=$(convertNameAndRGBtoITerm "Ansi 8 Color"             "$COLOR_09")
-  COLOR_10=$(convertNameAndRGBtoITerm "Ansi 9 Color"             "$COLOR_10")
-  COLOR_11=$(convertNameAndRGBtoITerm "Ansi 10 Color"            "$COLOR_11")
-  COLOR_12=$(convertNameAndRGBtoITerm "Ansi 11 Color"            "$COLOR_12")
-  COLOR_13=$(convertNameAndRGBtoITerm "Ansi 12 Color"            "$COLOR_13")
-  COLOR_14=$(convertNameAndRGBtoITerm "Ansi 13 Color"            "$COLOR_14")
-  COLOR_15=$(convertNameAndRGBtoITerm "Ansi 14 Color"            "$COLOR_15")
-  COLOR_16=$(convertNameAndRGBtoITerm "Ansi 15 Color"            "$COLOR_16")
+export COLOR_09="#4C5058"           # Dark gray
+export COLOR_10="#FF4972"           # Light Red
+export COLOR_11="#95FFC3"           # Light Green
+export COLOR_12="#FFFF80"           # Light Yellow
+export COLOR_13="#A0DBFF"           # Light Blue
+export COLOR_14="#EB71AD"           # Light Magenta
+export COLOR_15="#24E5FF"           # Light Cyan
+export COLOR_16="#FFFFFF"           # White
 
-  # Assemble color scheme file contents
-  ITERMCOLORS='<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict>'${BACKGROUND_COLOR}${FOREGROUND_COLOR}${COLOR_01}${COLOR_02}${COLOR_03}${COLOR_04}${COLOR_05}${COLOR_06}${COLOR_07}${COLOR_08}${COLOR_09}${COLOR_10}${COLOR_11}${COLOR_12}${COLOR_13}${COLOR_14}${COLOR_15}'</dict></plist>'
+export BACKGROUND_COLOR="#161925"   # Background Color
+export FOREGROUND_COLOR="#C3C7D1"   # Foreground Color (text)
+export CURSOR_COLOR="$FOREGROUND_COLOR" # Cursor color
+export PROFILE_NAME="Betelgeuse"
+    BACKGROUND_COLOR=$(convertNameAndRGBtoITerm "Background Color" "$BACKGROUND_COLOR")
+    FOREGROUND_COLOR=$(convertNameAndRGBtoITerm "Foreground Color" "$FOREGROUND_COLOR")
+    COLOR_01=$(convertNameAndRGBtoITerm "Ansi 0 Color"             "$COLOR_01")
+    COLOR_02=$(convertNameAndRGBtoITerm "Ansi 1 Color"             "$COLOR_02")
+    COLOR_03=$(convertNameAndRGBtoITerm "Ansi 2 Color"             "$COLOR_03")
+    COLOR_04=$(convertNameAndRGBtoITerm "Ansi 3 Color"             "$COLOR_04")
+    COLOR_05=$(convertNameAndRGBtoITerm "Ansi 4 Color"             "$COLOR_05")
+    COLOR_06=$(convertNameAndRGBtoITerm "Ansi 5 Color"             "$COLOR_06")
+    COLOR_07=$(convertNameAndRGBtoITerm "Ansi 6 Color"             "$COLOR_07")
+    COLOR_08=$(convertNameAndRGBtoITerm "Ansi 7 Color"             "$COLOR_08")
+    COLOR_09=$(convertNameAndRGBtoITerm "Ansi 8 Color"             "$COLOR_09")
+    COLOR_10=$(convertNameAndRGBtoITerm "Ansi 9 Color"             "$COLOR_10")
+    COLOR_11=$(convertNameAndRGBtoITerm "Ansi 10 Color"            "$COLOR_11")
+    COLOR_12=$(convertNameAndRGBtoITerm "Ansi 11 Color"            "$COLOR_12")
+    COLOR_13=$(convertNameAndRGBtoITerm "Ansi 12 Color"            "$COLOR_13")
+    COLOR_14=$(convertNameAndRGBtoITerm "Ansi 13 Color"            "$COLOR_14")
+    COLOR_15=$(convertNameAndRGBtoITerm "Ansi 14 Color"            "$COLOR_15")
+    COLOR_16=$(convertNameAndRGBtoITerm "Ansi 15 Color"            "$COLOR_16")
 
-  # Dump iTerm color scheme to file and import it by opening it
-  echo "${ITERMCOLORS}" > "${PROFILE_NAME}.itermcolors"
-  open "${PROFILE_NAME}.itermcolors"
-  rm   "${PROFILE_NAME}.itermcolors"
+    # Assemble color scheme file contents
+    ITERMCOLORS='<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict>'${BACKGROUND_COLOR}${FOREGROUND_COLOR}${COLOR_01}${COLOR_02}${COLOR_03}${COLOR_04}${COLOR_05}${COLOR_06}${COLOR_07}${COLOR_08}${COLOR_09}${COLOR_10}${COLOR_11}${COLOR_12}${COLOR_13}${COLOR_14}${COLOR_15}'</dict></plist>'
+
+    # Dump iTerm color scheme to file and import it by opening it
+    echo "${ITERMCOLORS}" > "${PROFILE_NAME}.itermcolors"
+    open "${PROFILE_NAME}.itermcolors"
+    rm   "${PROFILE_NAME}.itermcolors"
+  fi
 }
 
 apply_gtk() {
@@ -831,7 +849,7 @@ appy_tilixschemes() {
     # so we have to update color palette for the current profile in order to switch to the new theme
     # but only set the palette on the last loop to avoid a flashing terminal
     if ((LOOP == OPTLENGTH)); then
-      cp -f  ${scratchdir}/* "$HOME/.config/tilix/schemes/"
+      cp -f  ${scratchdir}/* "${XDG_CONFIG_HOME:-$HOME/.config}/tilix/schemes/"
       rm -rf "${scratchdir}"
       read -r -p "All done - apply new theme? [y/N] " -n 1 TILIX_RES
       if [[ ${TILIX_RES::1} =~ ^(y|Y)$ ]]; then

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# @file .local/bin/gitomatic-service
+# @brief Helper script to run gitomatic to monitor git repositories
+# @description
+#     This script is executed by gitomatic systemd service. `gitomatic` does not support monitoring multiple
+#     repositories in a single process. This script starts as many gitomatic processes as there are repositories.
+#
+#     This feature allows you to specify git repositories and corresponding paths to keep in-sync, using both git
+#     push and pull.
+#
+#     ## Links
+#
+#     [Systemd Unit file](https://github.com/megabyte-labs/install.doctor/blob/master/home/dot_config/gitomatic/gitomatic.service.tmpl)
+
+if command -v gitomatic > /dev/null && command -v jq > /dev/null && command -v yq > /dev/null && command -v git > /dev/null; then
+  if [ -d /Applications ] && [ -d /System ]; then
+    USER_FOLDER="/Users"
+  else
+    USER_FOLDER="/home"
+  fi
+
+  ### Cycle through user folder chezmoi.yaml configurations
+  while read FOLDER; do
+    USER_FROM_FOLDER="$(echo "$FOLDER" | sed 's/\/\(.*\)$/\1/')"
+    CHEZMOI_YAML="$USER_FOLDER/$USER_FROM_FOLDER/.config/chezmoi/chezmoi.yaml"
+    if [ -f "$CHEZMOI_YAML" ]; then
+      for IM in $(yq eval -o=j "$CHEZMOI_YAML" | jq -cr '.data.user.gitomatic[]'); do
+        GIT="$(echo "$IM" | jq -r '.git' -)"
+        GIT_PATH="$(echo "$IM" | jq -r '.path' -)"
+        if [ ! -d "$GIT_PATH" ]; then
+          sudo su - "$USER_FROM_FOLDER" -c 'git clone "$GIT" "$GIT_PATH"'
+        fi
+        cd "$GIT_PATH"
+        sudo su - "$USER_FROM_FOLDER" -c 'gitomatic -email "$(git config user.email)" "$GIT_PATH" &'
+      done
+    fi
+  done < <(find "$USER_FOLDER" -mindepth 1 -maxdepth 1 -type d)
+
+  ### Handle root user config
+  if [ -f /root/.config/chezmoi/chezmoi.yaml ]; then
+    for IM in $(yq eval -o=j /root/.config/chezmoi.chezmoi.yaml | jq -cr '.data.user.gitomatic[]'); do
+      GIT="$(echo "$IM" | jq -r '.git' -)"
+      GIT_PATH="$(echo "$IM" | jq -r '.path' -)"
+      if [ ! -d "$GIT_PATH" ]; then
+        git clone "$GIT" "$GIT_PATH"
+      fi
+      cd "$GIT_PATH"
+      gitomatic -email "$(git config user.email)" "$GIT_PATH" &
+    done
+  fi
+else
+  echo 'gitomatic, jq, yq, and git should be installed!' && exit 1
+fi

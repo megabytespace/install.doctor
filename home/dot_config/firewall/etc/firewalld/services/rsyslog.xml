@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>rsyslog</short>
+  <description>rsyslog - enhanced, multi-threaded syslogd</description>
+  <port protocol="tcp" port="514"/>
+</service>

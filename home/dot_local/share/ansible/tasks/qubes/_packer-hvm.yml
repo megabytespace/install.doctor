@@ -1,0 +1,56 @@
+---
+- name: Create LVM volume
+  # TODO: Convert to Ansible syntax
+  command: sudo lvcreate -n "{{ vm.lvm }}" -V "{{ vm.disk_size | default('100G') }}" --thinpool vm-pool qubes_dom0
+- name: Format the volume to EXT4
+  # TODO: Convert to Ansible syntax
+  command: sudo mkfs.ext4 /dev/qubes_dom0/{{ vm.lvm }}
+- name: Create mounting point
+  become: true
+  file:
+    mode: 0755
+    path: /srv/disks/{{ vm.lvm }}
+    state: directory
+- name: Mount the volume
+  become: true
+  ansible.posix.mount:
+    path: /dev/qubes_dom0/{{ vm.lvm }}
+    src: /srv/disks/{{ vm.lvm }}
+    state: present
+- name: Update the permissions of the mount
+  become: true
+  file:
+    path: /srv/{{ vm.lvm }}
+    owner: '{{ ansible_user | default(ansible_env.USERNAME) }}'
+    group: '{{ ansible_user | default(ansible_env.USERNAME) }}'
+    mode: 0755
+- name: Determine if the image for {{ vm.name }} is already present
+  ansible.builtin.stat:
+    path: /srv/disks/{{ vm.lvm }}/{{ vm.slug | lower }}.img
+  register: vm_image_path
+- name: Copy raw image to dom0
+  command: |
+    qvm-run --pass-io {{ qubes_usb_transfer_vm }} "cat /media/user/disk/img/{{ vm.slug | lower }}.img" > '/srv/disks/{{ vm.lvm }}/{{ vm.slug }}.img'
+  when: not vm_image_path.stat.exists
+- name: Creating TemplateVM for {{ vm.name }}
+  # Cannot use `qubesos:` because it relies on `--root-move-from`
+  # TODO: Check if template exists already
+  command: >
+    qvm-create
+    --class TemplateVM
+    --label purple
+    --property=include_in_backups=true
+    --property=kernel=''
+    --property=maxmem=8192
+    --property=memory=4096
+    --property=vcpus=4
+    --property=virt_mode=hvm
+    --root-move-from /srv/disks/{{ vm.lvm }}/{{ vm.slug | lower }}.img
+    {{ (vm.slug | lower) + '-desktop-base' }}
+- name: Create AppVMs based on the TemplateVM for {{ vm.name }}
+  # TODO: Check if template exists already
+  qubesos:
+    guest: "{{ vm.name + '-desktop-base' }}"
+    label: purple
+    state: create
+    template: "{{ (vm.slug | lower) + '-desktop' }}"

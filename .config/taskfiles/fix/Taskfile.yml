@@ -277,11 +277,11 @@ tasks:
       start: Running Prettier on {{if .CLI_ARGS}}`{{.CLI_ARGS}}`{{else}}project{{end}}
     cmds:
       - cmd: |
-          prettier --plugin node_modules/prettier-plugin-toml-fixed --ignore-path {{.PRETTIERIGNORE_CONFIG}} \
+          prettier --ignore-path {{.PRETTIERIGNORE_CONFIG}} \
           --write {{if .CLI_ARGS}}{{.CLI_ARGS}}{{else}}.{{end}} || EXIT_CODE=$?
           if [ -n "$EXIT_CODE" ]; then
             .config/log warn 'Failed to run `prettier` - falling back to `prettier`'
-            prettier --plugin node_modules/prettier-plugin-toml-fixed --ignore-path {{.PRETTIERIGNORE_CONFIG}} \
+            prettier --ignore-path {{.PRETTIERIGNORE_CONFIG}} \
             --write {{if .CLI_ARGS}}{{.CLI_ARGS}}{{else}}.{{end}}
           fi
         ignore_error: true

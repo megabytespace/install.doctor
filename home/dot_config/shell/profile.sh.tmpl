@@ -1,0 +1,156 @@
+#!/usr/bin/env sh
+# @file Shared Profile
+# @brief Main shell profile that is used to combine the shared profile configurations that are used by both the `~/.bashrc` and `~/.zshrc` files
+# @description
+#     This script is included by `~/.bashrc` and `~/.zshrc` to include imports and settings that are common to both the Bash
+#     and ZSH shells.
+
+# shellcheck disable=SC1090,SC1091,SC2016
+
+# Aliases / Functions / Exports
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/exports.sh" ] || . "${XDG_CONFIG_HOME:-$HOME/.config}/shell/exports.sh"
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/aliases.sh" ] || . "${XDG_CONFIG_HOME:-$HOME/.config}/shell/aliases.sh"
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/functions.sh" ] || . "${XDG_CONFIG_HOME:-$HOME/.config}/shell/functions.sh"
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/apps.sh" ] || . "${XDG_CONFIG_HOME:-$HOME/.config}/shell/apps.sh"
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/docker.sh" ] || . "${XDG_CONFIG_HOME:-$HOME/.config}/shell/docker.sh"
+
+### Bash / ZSH
+if [ "$BASH_SUPPORT" = 'true' ]; then
+  ### OS Detection
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    if [ "$ID" = 'alpine' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'arch' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'centos' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'coreos' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'debian' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'deepin' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'elementary' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'endeavour' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'freebsd' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'gentoo' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'kali' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'linuxmint' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'manjaro' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'nixos' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'openbsd' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'opensuse' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'parrot' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'pop_os' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'raspberry_pi' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'redhat' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'fedora' ]; then
+      OS_ICON=""
+    elif [ "$ID" = 'ubuntu' ]; then
+      OS_ICON=""
+    else
+      OS_ICON=""
+    fi
+    export OS_ICON
+  else
+    if [ -d /Applications ] && [ -d /Library ] && [ -d /System ]; then
+      # macOS
+      OS_ICON=""
+    else
+      OS_ICON=""
+    fi
+    export OS_ICON
+  fi
+
+  ### pkgx / dev
+  if command -v pkgx > /dev/null; then
+    eval "$(pkgx --quiet dev --shellcode)"
+  fi
+
+  ### Directory Colors
+  if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/lscolors.sh" ]; then
+    . "${XDG_CONFIG_HOME:-$HOME/.config}/shell/lscolors.sh"
+  fi
+
+
+  ### fzf-git
+  # if [ -f "${$XDG_DATA_HOME:-$HOME/.local/share}/fzf/fzf-git.bash" ]; then
+  #   . "${$XDG_DATA_HOME:-$HOME/.local/share}/fzf/fzf-git.bash"
+  # fi
+
+  ### git-fuzzy
+  if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/git-fuzzy/bin" ]; then
+    export PATH="${XDG_DATA_HOME:-$HOME/.local/share}/git-fuzzy/bin:$PATH"
+  fi
+
+  ### MOTD
+  if [ "$SHOW_MOTD" = 'true' ] && [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/motd.sh" ]; then
+    . "${XDG_CONFIG_HOME:-$HOME/.config}/shell/motd.sh"
+  fi
+
+  ### SUDO_ASKPASS
+  if [ -d /Applications ] && [ -d /System ]; then
+    SUDO_ASKPASS="$HOME/.local/bin/sudo-askpass"
+  fi
+fi
+
+### Cargo
+if [ -f "$CARGO_HOME/env" ]; then
+  . "$CARGO_HOME/env"
+fi
+
+### Docker Functions / Aliases
+# This file is used as an example file since it conflicts with the installation process of many libraries.
+# Also, using Firejail is the preferred method of limiting the permissions of a process so there is no need
+# to use Docker aliases since Firejail is superior (according to: https://news.ycombinator.com/item?id=21497677)
+# if [ -f "$HOME/.local/scripts/docker-functions.bash" ]; then
+#   . "$HOME/.local/scripts/docker-functions.bash"
+# fi
+
+### emsdk
+if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/emsdk" ]; then
+  export PATH="$PATH:${XDG_DATA_HOME:-$HOME/.local/share}/emsdk"
+  export EMSDK="${XDG_DATA_HOME:-$HOME/.local/share}/emsdk"
+  export EMSDK_QUIET=1
+fi
+
+### fzf-tmux
+# if [ -f "${$XDG_DATA_HOME:-$HOME/.local/share}/fzf/fzf-tmux.bash" ]; then
+#   . "${$XDG_DATA_HOME:-$HOME/.local/share}/fzf/fzf-tmux.bash"
+# fi
+
+### McFly
+export MCFLY_PROMPT="❯"
+if [ -d /Applications ] && [ -d /System ]; then
+  if [ "$(defaults read -g AppleInterfaceStyle 2> /dev/null)" != "Dark" ]; then
+      export MCFLY_LIGHT=TRUE
+  fi
+fi
+
+### Tea
+# TODO: Fix this so it does not cause errors as Chezmoi runs
+# if command -v tea > /dev/null; then
+#   source <(tea --magic)
+# fi
+
+### VIM
+export GVIMINIT='source $MYGVIMRC'
+export MYGVIMRC="${XDG_CONFIG_HOME:-$HOME/.config}/vim/gvimrc"
+export VIMINIT='source $MYVIMRC'
+export MYVIMRC="${XDG_CONFIG_HOME:-$HOME/.config}/vim/vimrc"

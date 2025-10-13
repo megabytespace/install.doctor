@@ -1,6 +1,6 @@
 {
   "private": false,
-  "name": "@mblabs/sexy-start",
+  "name": "@mblabs/install-doctor",
   "version": "0.0.1",
   "description": "A glorious combination of application / theme settings and a performant cross-platform, desktop-oriented software suite.",
   "license": "MIT",
@@ -8,11 +8,11 @@
   "homepage": "https://megabyte.space",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/megabyte-labs/sexy-start.git"
+    "url": "git+https://github.com/megabyte-labs/install.doctor.git"
   },
   "bugs": {
     "email": "help@megabyte.space",
-    "url": "https://gitlab.com/megabyte-labs/sexy-start/-/issues"
+    "url": "https://gitlab.com/megabyte-labs/install.doctor/-/issues"
   },
   "type": "commonjs",
   "main": "dist/main.js",
@@ -31,6 +31,7 @@
     "prepare": "bash start.sh && (test -f Taskfile.yml && task npm:prepare) || true",
     "release": "bash start.sh && task publish:semantic-release",
     "repair": "bash <(curl -sS https://install.doctor/repair)",
+    "sort:software": "yq -i 'sort_keys(..)' software.yml",
     "start": "test -z $SKIP_NPM_START && bash start.sh || true",
     "test": "bash start.sh && task donothing",
     "unpack": "bash start.sh && task npm:bundle:unpack",
@@ -44,7 +45,9 @@
   },
   "typings": "dist/main.d.ts",
   "dependencies": {
-    "tslib": "latest"
+    "nestia": "latest",
+    "tslib": "latest",
+    "bin-wrapper": "latest"
   },
   "peerDependenciesMeta": {
     "eslint": {
@@ -87,26 +90,26 @@
     "node": ">=18.4.0"
   },
   "publishConfig": {
-    "@gitlab:registry": "https://gitlab.com/api/v4/projects/33994416/packages/npm/",
+    "@gitlab:registry": "https://gitlab.com/api/v4/projects/42515222/packages/npm/",
     "access": "public",
     "registry": "https://registry.npmjs.org/",
     "tag": "edge"
   },
   "blueprint": {
     "description": "A glorious combination of application / theme settings and a performant cross-platform, desktop-oriented software suite.",
-    "github_id": "R_kgDOIq_huw",
+    "github_id": "R_kgDOIxh9bQ",
     "gitlab_group_id": "3940994",
-    "gitlab_project_id": "33994416",
+    "gitlab_project_id": "42515222",
     "group": "npm",
-    "name": "Sexy Start",
-    "overview": "Want to try out a new desktop jam-packed with a whole suite of GitHub's most-starred projects? Betelgeuse is a combination of application settings, theme files, and a performant yet flexible software installer written with [ZX](https://github.com/google/zx). It is easily customizable, with optional prompts that ask you for API keys if you want to completely automate everything. The installer supports almost any operating system, just checkout the [software.yml file](https://gitlab.com/megabyte-labs/hiawatha-dotfiles/-/blob/master/software.yml). It uses [Chezmoi](https://github.com/twpayne/chezmoi) to apply file changes in an interactive way. It is not your typical Chezmoi project - it is built around the philosophy that you should be able to bash all your computers to bits with a hammer and then resurrect them the next day ✝️️ by storing stateful data to an encrypted S3 bucket and automating desktop configuration as much as possible.",
+    "name": "Install Doctor",
+    "overview": "Want to try out a new desktop jam-packed with a whole suite of GitHub's most-starred projects? Install Doctor is a combination of application settings, theme files, and a performant yet flexible software installer written with [ZX](https://github.com/google/zx). It is easily customizable, with optional prompts that ask you for API keys if you want to completely automate everything. The installer supports almost any operating system, just checkout the [software.yml file](https://gitlab.com/megabyte-labs/install.doctor/-/blob/master/software.yml). It uses [Chezmoi](https://github.com/twpayne/chezmoi) to apply file changes in an interactive way. It is not your typical Chezmoi project - it is built around the philosophy that you should be able to bash all your computers to bits with a hammer and then resurrect them the next day ✝️️ by storing stateful data to an encrypted S3 bucket and automating desktop configuration as much as possible.",
     "repository": {
-      "github": "https://github.com/megabyte-labs/sexy-start",
-      "gitlab": "https://gitlab.com/megabyte-labs/sexy-start"
+      "github": "https://github.com/megabyte-labs/install.doctor",
+      "gitlab": "https://gitlab.com/megabyte-labs/install.doctor"
     },
-    "slug": "sexy-start",
+    "slug": "install-doctor",
     "subgroup": "misc",
-    "title": "Cross-Platform Sexy Start"
+    "title": "Install Doctor, The Desktop Provisioning System"
   },
   "changelog": {
     "displayTypes": [

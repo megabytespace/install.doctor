@@ -13,6 +13,6 @@ This project incorporates design patterns from the [Megabyte Labs](https://megab
 
 There are currently boilerplates and templates written in the following languages:
 
-* TypeScript (primary language)
-* Python
-* Go
+- TypeScript (primary language)
+- Python
+- Go

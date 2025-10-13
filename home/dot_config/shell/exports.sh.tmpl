@@ -1,0 +1,612 @@
+#!/usr/bin/env sh
+# @file Environment Variables
+# @brief Houses the environment variables that are included by `~/.bashrc` and `~/.zshrc`
+# @description
+#     This script is included by `~/.bashrc` and `~/.zshrc` to provide environment variables that play harmoniously with
+#     the default Install Doctor configurations.
+
+### Language / Fonts
+export LANG="en_US.UTF-8"
+export LC_ALL="en_US.UTF-8"
+
+### Licensing
+export ACCEPT_EULA=y
+
+### Disable Telemetry
+export DO_NOT_TRACK=1
+export FUNCTIONS_CORE_TOOLS_TELEMETRY_OPTOUT=1
+
+### XDG
+# Source: # https://wiki.archlinux.org/index.php/XDG_Base_Directory
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_STATE_HOME="$HOME/.local/state"
+export XDG_RUNTIME_DIR=
+{{- if eq .host.distro.family "darwin" -}}
+  "$TMPDIR"
+{{- else if not .host.headless -}}
+  "/run/user/$(id -u)"
+{{- else -}}
+  "/tmp"
+{{- end }}
+{{ if not .host.headless }}
+export XDG_MUSIC_DIR="$HOME/Music"
+export XDG_VIDEOS_DIR="$HOME/Videos"
+export XDG_DESKTOP_DIR="$HOME/Desktop"
+export XDG_PICTURES_DIR="$HOME/Pictures"
+export XDG_DOWNLOAD_DIR="$HOME/Downloads"
+export XDG_DOCUMENTS_DIR="$HOME/Documents"
+export XDG_TEMPLATES_DIR="$HOME/Templates"
+export XDG_PUBLICSHARE_DIR="$HOME/Public"
+{{ end }}
+
+### Theme
+export COLOR_SCHEME=dark
+export GTK_RC_FILES="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-1.0/gtkrc"
+export GTK2_RC_FILES="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-2.0/gtkrc"
+
+### PATH
+export PATH="/opt/local/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/bin/cask:$PATH"
+export PATH="$HOME/.local/bin/docker:$PATH"
+export PATH="$HOME/.local/bin/firejail:$PATH"
+export PATH="$HOME/.local/bin/flatpak:$PATH"
+export PATH="$HOME/.local/bin/gpt:$PATH"
+export PATH="$HOME/.local/bin/pipx:$PATH"
+export PATH="$HOME/.local/bin/post-installx:$PATH"
+if [ -f /usr/bin/qubes-session ]; then
+  export PATH="$HOME/.local/bin/qubes:$PATH"
+fi
+export SSH_KEY_PATH="$HOME/.ssh/id_rsa"
+
+### Homebrew
+export HOMEBREW_NO_ENV_HINTS=true
+export HOMEBREW_NO_ANALYTICS=1
+if [ -d /home/linuxbrew/.linuxbrew/bin ]; then
+  export HOMEBREW_PREFIX="/home/linuxbrew/.linuxbrew"
+  export HOMEBREW_CELLAR="/home/linuxbrew/.linuxbrew/Cellar"
+  export HOMEBREW_REPOSITORY="/home/linuxbrew/.linuxbrew/Homebrew"
+  export PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin${PATH+:$PATH}"
+  export MANPATH="/home/linuxbrew/.linuxbrew/share/man${MANPATH+:$MANPATH}:"
+  export INFOPATH="/home/linuxbrew/.linuxbrew/share/info:${INFOPATH:-}"
+  export WHALEBREW_INSTALL_PATH="/home/linuxbrew/.linuxbrew/whalebrew"
+elif [ -d "$HOME/.linuxbrew/bin" ]; then
+  export HOMEBREW_PREFIX="$HOME/.linuxbrew"
+  export HOMEBREW_CELLAR="$HOME/.linuxbrew/Cellar"
+  export HOMEBREW_REPOSITORY="$HOME/.linuxbrew/Homebrew"
+  export PATH="$HOME/.linuxbrew/bin:$HOME/.linuxbrew/sbin${PATH+:$PATH}"
+  export MANPATH="$HOME/.linuxbrew/share/man${MANPATH+:$MANPATH}:"
+  export INFOPATH="$HOME/.linuxbrew/share/info:${INFOPATH:-}"
+  export WHALEBREW_INSTALL_PATH="$HOME/.linuxbrew/whalebrew"
+  eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
+elif [ -f /opt/homebrew/bin/brew ]; then
+  eval $(/opt/homebrew/bin/brew shellenv)
+elif [ -f /usr/local/bin/brew ]; then
+  eval $(/usr/local/bin/brew shellenv)
+fi
+
+### Android Studio
+export ANDROID_AVD_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/android/avd"
+if [ -d /Applications ] && [ -d /System ]; then
+  ### macOS
+  export WHALEBREW_INSTALL_PATH="/usr/local/bin"
+  export ANDROID_SDK_HOME="$HOME/Library/Android/sdk"
+  export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+  export ANDROID_HOME="$HOME/Library/Android/sdk"
+  if [ -d "$HOME/Library/Android" ]; then
+    export PATH="$PATH:$HOME/Library/Android/sdk/cmdline-tools/latest/bin"
+    export PATH="$PATH:$HOME/Library/Android/sdk/platform-tools"
+    export PATH="$PATH:$HOME/Library/Android/sdk/tools/bin"
+    export PATH="$PATH:$HOME/Library/Android/sdk/tools"
+  fi
+else
+  ### Linux / Windows
+  export ANDROID_SDK_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/android/sdk"
+  export ANDROID_SDK_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/android/sdk"
+  export ANDROID_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/sdk"
+  export PATH="$PATH:${XDG_DATA_HOME:-$HOME/.local/share}/android/sdk/cmdline-tools/latest/bin"
+  export PATH="$PATH:${XDG_DATA_HOME:-$HOME/.local/share}/android/sdk/platform-tools"
+  export PATH="$PATH:${XDG_DATA_HOME:-$HOME/.local/share}/android/sdk/tools/bin"
+  export PATH="$PATH:${XDG_DATA_HOME:-$HOME/.local/share}/android/sdk/tools"
+fi
+
+### Ansible
+export ANSIBLE_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/ansible"
+export ANSIBLE_CONFIG="$ANSIBLE_HOME/ansible.cfg"
+export ANSIBLE_GALAXY_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ansible/galaxy_cache"
+if [ -f /usr/bin/qubes-session ]; then
+  export PATH="$PATH:$HOME/.local/share/ansible-qubes/bin"
+fi
+
+### Aqua
+export AQUA_ROOT_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/aqua"
+export AQUA_GLOBAL_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/aqua/aqua.yaml"
+export PATH="${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin:$PATH"
+
+### AWS CLI
+export AWS_SHARED_CREDENTIALS_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/aws/credentials"
+export AWS_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/aws/config"
+
+### Azure CLI
+export AZURE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/azure"
+
+### bat
+export BAT_CONFIG_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/bat/config"
+
+### Cargo
+export CARGO_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/cargo"
+export PATH="$PATH:$CARGO_HOME/bin"
+if [ -d "${HOMEBREW_PREFIX:-/opt/homebrew}/opt/rustup/bin" ]; then
+  export PATH="${HOMEBREW_PREFIX:-/opt/homebrew}/opt/rustup/bin:$PATH"
+fi
+export RUSTUP_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/rustup"
+
+### Composer
+export COMPOSER_BIN_DIR="$HOME/.local/bin/composer"
+# TODO
+# export COMPOSER_CAFILE=""
+export PATH="$PATH:$COMPOSER_BIN_DIR"
+
+### Bash
+export BASH_COMPLETION_USER_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/bash-completion/bash_completion"
+
+### Bash It
+# Don't check mail when opening terminal.
+unset MAILCHECK
+export GIT_HOSTING='git@gitlab.com'
+if command -v irssi > /dev/null; then
+  export IRC_CLIENT='irssi'
+fi
+# Set this to the command you use for todo.txt-cli TODO -- figure this out with Standard Notes / Lepton / or nb
+export TODO="t"
+export SCM_CHECK=true
+
+### Boringtun
+if command -v boringtun-cli > /dev/null; then
+  export WG_QUICK_USERSPACE_IMPLEMENTATION=boringtun-cli
+fi
+
+### BitWarden
+# https://bitwarden.com/help/cli/#using-an-api-key
+# BW_CLIENTID client_id
+# BW_CLIENTSECRET
+
+### Cheat
+if command -v fzf > /dev/null; then
+  export CHEAT_USE_FZF=true
+fi
+
+### Concurrent
+export CONCURRENT_LOG_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/concurrent"
+
+### cURL
+export CURLOPT_ACCEPT_ENCODING=true
+
+### Dagu
+export DAGU_HOME="${XDG_CONFIG_HOME:-$HOME/.config}/dagu"
+
+### Debian
+export DEBIAN_FRONTEND=noninteractive
+
+### Desk
+export DESK_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/desk"
+export DESK_DESKS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/desk/desks"
+
+### Deta
+export DETA_INSTALL="${XDG_DATA_HOME:-$HOME/.local/share}/deta"
+export PATH="$PATH:$DETA_INSTALL/bin"
+
+### Docker
+export DOCKER_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/docker"
+export DOCKER_HOST="unix:///var/run/docker.sock"
+export MACHINE_STORAGE_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/docker-machine"
+export PATH="$DOCKER_CONFIG/cli-plugins:$PATH"
+
+### Dotnet
+export DOTNET_CLI_HOME="${XDG_CONFIG_HOME:-$HOME/.config}/dotnet"
+if [ -d /Applications ] && [ -d /Library ]; then
+  export DOTNET_ROOT="${HOMEBREW_PREFIX:-/opt/homebrew}/opt/dotnet/libexec"
+elif [ -d /home/linuxbrew/.linuxbrew/opt/dotnet ]; then
+  export DOTNET_ROOT="/home/linuxbrew/.linuxbrew/opt/dotnet/libexec"
+fi
+export MONO_GAC_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
+export PATH="$PATH:${XDG_CONFIG_HOME:-$HOME/.config}/dotnet/.dotnet/tools"
+
+### Elastic Agent
+# https://www.elastic.co/guide/en/fleet/current/agent-environment-variables.html#env-common-vars
+
+### emsdk
+export PATH="${XDG_DATA_HOME:-$HOME/.local/share}/emsdk:$PATH"
+
+### ffmpeg
+export FFMPEG_DATADIR="${XDG_CONFIG_HOME:-$HOME/.config}/ffmpeg"
+
+### Flatpak
+if command -v flatpak > /dev/null; then
+  FLATPAK_INSTALLATIONS="$(flatpak --installations)"
+  export PATH="$FLATPAK_INSTALLATIONS/exports/bin:$PATH"
+  export XDG_DATA_DIRS="${XDG_CONFIG_HOME:-$HOME/.local/share}/flatpak/exports/share:$FLATPAK_INSTALLATIONS/exports/share:$XDG_DATA_DIRS"
+fi
+
+### FreeBSD
+export ASSUME_ALWAYS_YES="yes"
+export DEFAULT_ALWAYS_YES="yes"
+
+### fzf
+if command -v fd > /dev/null; then
+  export FZF_DEFAULT_COMMAND='fd --type f --strip-cwd-prefix --hidden --follow --exclude .git'
+  export FZF_DEFAULT_OPTS='--layout=reverse --inline-info'
+  export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+fi
+
+### gcloud
+if command -v python3 > /dev/null; then
+  export CLOUDSDK_PYTHON="$(which python3)"
+fi
+
+### Git
+export GIT_MERGE_AUTOEDIT=no
+
+### gitfuzzy
+if command -v delta > /dev/null; then
+  export GF_BAT_STYLE=changes
+  export GF_BAT_THEME=zenbur
+  export GF_SNAPSHOT_DIRECTORY="${XDG_DATA_HOME:-$HOME/.local/share}/git-fuzzy/snapshots"
+  export GF_PREFERRED_PAGER="delta --theme=gruvbox --highlight-removed -w __WIDTH__"
+fi
+
+### Go
+export GOPATH="${XDG_DATA_HOME:-$HOME/.local/share}/go"
+export GO111MODULE=on
+export PATH="$PATH:${GOPATH}/bin"
+if command -v go > /dev/null && command -v brew > /dev/null; then
+  if [ -d /home/linuxbrew/.linuxbrew/opt/go ]; then
+    GOROOT="/home/linuxbrew/.linuxbrew/opt/go/libexec"
+  elif [ -d /opt/homebrew/opt/go ]; then
+    GOROOT="/opt/homebrew/opt/go/libexec"
+  elif [ -f /usr/bin/go ] && [ -d /usr/lib/go ]; then
+    GOROOT="/usr/lib/go"
+  else
+    GOROOT="/usr/lib/go"
+  fi
+  export GOROOT
+  export PATH="$PATH:${GOROOT}/bin"
+fi
+
+### Gradle
+export GRADLE_USER_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/gradle"
+
+### GitLab Runner
+export CONFIG_FILE=${XDG_CONFIG_HOME:-$HOME/.config}/gitlab-runner/config.toml
+
+### Hishtory
+export HISHTORY_PATH="~/.config/hishtory"
+export HSTR_CONFIG=hicolor
+export HSTR_TIOCSTI=y
+
+### Homebrew
+export HOMEBREW_BUNDLE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/Brewfile"
+export HOMEBREW_CASK_OPTS="--appdir=/Applications --display-times --no-quarantine --quiet"
+
+### HTTPie
+export HTTPIE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/httpie"
+
+### IntelliJ IDEA
+if [ -f "/Applications/IntelliJ IDEA CE.app/Contents/MacOS/idea" ]; then
+  export PATH="$PATH:/Applications/IntelliJ IDEA CE.app/Contents/MacOS"
+  alias idea.sh='idea'
+elif [ -f "/snap/intellij-idea-community/current/bin/idea.sh" ]; then
+  export PATH="$PATH:/snap/intellij-idea-community/current/bin"
+fi
+
+### IPFS
+export IPFS_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/ipfs"
+
+### Invoice
+export INVOICE_LOGO="${HOME}/.local/share/assets/icon-jest.png"
+export INVOICE_FROM="Megabyte Labs"
+export INVOICE_TO="Megabyte Labs Customer"
+export INVOICE_TAX=0
+export INVOICE_RATE=140
+
+### JuiceFS
+export JFS_PRIVATE_KEY="$HOME/.local/etc/juicefs/cert.pem"
+export JFS_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/juicefs"
+
+### k9s
+export K9SCONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/k9s"
+
+### KDE
+export KDEHOME="${XDG_CONFIG_HOME:-$HOME/.config}/kde"
+
+### Keybase
+if [ -f /Applications/Keybase.app/Contents/SharedSupport/bin/keybase ]; then
+  export PATH="/Applications/Keybase.app/Contents/SharedSupport/bin:$PATH"
+fi
+
+### Kodi
+export KODI_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/kodi"
+
+### Krew
+export KREW_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/krew"
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+
+### Kube
+export KUBECONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/kube"
+
+### Lexicon
+export LEXICON_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/lexicon"
+export TLDEXTRACT_CACHE_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/lexicon"
+
+### MacPrefs
+export MACPREFS_BACKUP_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/macprefs"
+
+### Maven
+export MAVEN_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/maven/settings.xml"
+alias mvn="mvn -s $MAVEN_CONFIG"
+
+### McFly
+export MCFLY_FUZZY=2
+export MCFLY_RESULTS=14
+export MCFLY_KEY_SCHEME=vim
+
+### minikube
+export MINIKUBE_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/minikube"
+
+### mise
+export MISE_GO_DEFAULT_PACKAGES_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/mise/default-go-pkgs"
+export MISE_NODE_DEFAULT_PACKAGES_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/mise/default-node-pkgs"
+export MISE_RUBY_DEFAULT_PACKAGES_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/mise/default-ruby-pkgs"
+export MISE_PYTHON_DEFAULT_PACKAGES_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/mise/default-python-pkgs"
+
+### Monero
+if [ -f /Applications/monero-wallet-gui.app/Contents/MacOS/monerod ]; then
+  export PATH="$PATH:/Applications/monero-wallet-gui.app/Contents/MacOS"
+fi
+
+### Mutagen
+export MUTAGEN_DATA_DIRECTORY="${XDG_DATA_HOME:-$HOME/.local/share}/mutagen"
+
+### MySQL
+export MYSQL_HISTFILE="${XDG_DATA_HOME:-$HOME/.local/share}/mysql_history"
+
+### .netrc
+export NETRC="${XDG_CONFIG_HOME:-$HOME/.config}/netrc"
+
+### Navi
+export NAVI_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/navi/config.yaml"
+
+### Nix
+# TODO: Fix this
+# export NIX_SSL_CERT_FILE="$HOME/.local/etc/ssl/cloudflare/cloudflare.crt"
+
+### nnn
+if command -v nnn > /dev/null; then
+  alias n='nnn -de'
+  alias N='sudo -E nnn -dH'
+  alias nnn-install-plugins='curl -Ls https://raw.githubusercontent.com/jarun/nnn/master/plugins/getplugs | sh'
+  export NNN_RCLONE='rclone mount --read-only --no-checksum'
+  export NNN_SSHFS='sshfs -o reconnect,idmap=user,cache_timeout=3600'
+fi
+
+### Node.js
+export NODE_REPL_HISTORY="${XDG_DATA_HOME:-$HOME/.local/share}/node_repl_history"
+if [ -f "$HOME/.local/etc/ssl/cloudflare/cloudflare.pem" ]; then
+  export NODE_EXTRA_CA_CERTS="$HOME/.local/etc/ssl/cloudflare/cloudflare.pem"
+fi
+
+### NPM
+export NPM_CONFIG_USERCONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/npm/npmrc"
+
+### ntfy
+export AUTO_NTFY_DONE_IGNORE="code nvim vim screen meld"
+
+### NTL
+export NTL_RUNNER="pnpm"
+export NTL_RERUN_CACHE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ntl"
+export NTL_RERUN_CACHE_NAME="cache"
+export NTL_RERUN_CACHE_MAX="100"
+
+### NuGet
+export NUGET_PACKAGES="${XDG_DATA_HOME:-$HOME/.local/share}/nuget"
+
+### Parallels
+export PARALLEL_HOME="${XDG_CONFIG_HOME:-$HOME/.config}/parallel"
+
+### Pass
+export PASSWORD_STORE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/pass"
+
+### PIPX
+export PIPX_BIN_DIR="$HOME/.local/bin/pipx"
+if command -v python3 > /dev/null; then
+  export PIPX_DEFAULT_PYTHON="$(which python3)"
+fi
+
+### Poetry
+export POETRY_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/poetry"
+export PATH="$POETRY_HOME/bin:$PATH"
+
+### Porter
+export PORTER_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/porter"
+export PATH="$PATH:$PORTER_HOME"
+
+### Postgres
+export PSQLRC="${XDG_CONFIG_HOME:-$HOME/.config}/pg/psqlrc"
+export PSQL_HISTORY="$XDG_STATE_HOME/psql_history"
+export PGPASSFILE="${XDG_CONFIG_HOME:-$HOME/.config}/pg/pgpass"
+export PGSERVICEFILE="${XDG_CONFIG_HOME:-$HOME/.config}/pg/pg_service.conf"
+
+### PNPM
+export PNPM_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/pnpm"
+export PATH="$PATH:$PNPM_HOME"
+
+### Prettierd
+# Specify location of the default Prettierd configuration
+# export PRETTIERD_DEFAULT_CONFIG=""
+
+### Proto
+export PROTO_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/proto"
+
+### Python / CA Certificate
+# Used by Python, cURL, and other tools
+if [ -f "$HOME/.local/etc/ssl/curl/cacert.pem" ]; then
+  export CERT_PATH="$HOME/.local/etc/ssl/curl/cacert.pem"
+  export SSL_CERT_FILE="$CERT_PATH"
+  export REQUESTS_CA_BUNDLE="$CERT_PATH"
+elif command -v python3 > /dev/null && pip3 list | grep certifi > /dev/null; then
+  export CERT_PATH="$(python3 -m certifi)" || export CERT_PATH="$(python -m certifi)" || export CERT_PATH="$HOME/.local/etc/ssl/curl/cacert.pem"
+  export SSL_CERT_FILE="$CERT_PATH"
+  export REQUESTS_CA_BUNDLE="$CERT_PATH"
+fi
+
+### Readline
+export INPUTRC="${XDG_CONFIG_HOME:-$HOME/.config}/readline/inputrc"
+
+### Redis
+export REDISCLI_HISTFILE="${XDG_DATA_HOME:-$HOME/.local/share}/redis/rediscli_history"
+export REDISCLI_RCFILE="${XDG_CONFIG_HOME:-$HOME/.config}/redis/redisclirc"
+
+### R
+export R_HOME_USER="${XDG_CONFIG_HOME:-$HOME/.config}/R"
+export R_PROFILE_USER="${XDG_CONFIG_HOME:-$HOME/.config}/R/profile"
+export R_HISTFILE="${XDG_CONFIG_HOME:-$HOME/.config}/R/history"
+
+### ripgrep
+export RIPGREP_CONFIG_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/ripgrep/config"
+
+### Ruby
+# Add Homebrew Ruby install location to PATH (for macOS and tools that require a more recent version than the bundled system version)
+if [ -d /usr/local/opt/ruby/bin ]; then
+  export PATH="/usr/local/opt/ruby/bin:$PATH"
+elif [ -d "${HOMEBREW_PREFIX:-/opt/homebrew}/opt/ruby/bin" ]; then
+  export PATH="${HOMEBREW_PREFIX:-/opt/homebrew}/opt/ruby/bin:$PATH"
+fi
+export GEM_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/gems"
+export GEM_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/gems"
+export GEM_SPEC_CACHE="$GEM_HOME/specs"
+export PATH="$PATH:$GEM_HOME/bin"
+
+### SDKMan
+export SDKMAN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sdkman"
+
+### Sheldon
+export SHELDON_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sheldon"
+export SHELDON_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sheldon"
+
+### Steampipe
+export STEAMPIPE_INSTALL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/steampipe"
+export STEAMPIPE_TELEMETRY=none
+
+### Update
+if [ -d "$HOME/.local/bin/update/bin" ]; then
+  export PATH="$PATH:$HOME/.local/bin/update/bin"
+fi
+
+### Vagrant
+export VAGRANT_ALIAS_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/vagrant/aliases"
+export VAGRANT_DEFAULT_PROVIDER=virtualbox
+export VAGRANT_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/vagrant.d"
+if [ -d /opt/vagrant-vmware-desktop/bin ]; then
+  export PATH="/opt/vagrant-vmware-desktop/bin:$PATH"
+fi
+
+### Visual Studio Code
+export VSCODE_EXTENSIONS="${XDG_DATA_HOME:-$HOME/.local/share}/vscode"
+
+### Volta
+export VOLTA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/volta"
+export PATH="$VOLTA_HOME/bin:$PATH"
+
+### Wakatime
+export WAKATIME_HOME="${XDG_CONFIG_HOME:-$HOME/.config}/wakatime"
+export WAKATIME_API_KEY="{{ if and (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "WAKATIME_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/VAGRANT_CLOUD_TOKEN") | decrypt | trim }}{{ else }}{{ env "WAKATIME_API_KEY" }}{{ end }}"
+
+### Wazuh
+export WAZUH_MANAGER="{{ .host.wazuhManager }}"
+if [ -d /Library/Ossec/bin ]; then
+  export PATH="$PATH:/Library/Ossec/bin"
+elif [ -d /var/ossec/bin ]; then
+  export PATH="$PATH:/var/ossec/bin"
+fi
+
+### Wego Weather CLI
+export WEGORC="${XDG_CONFIG_HOME:-$HOME/.config}/wego/wegorc"
+
+### wget
+export WGETRC="${XDG_CONFIG_HOME:-$HOME/.config}/wget/wgetrc"
+
+### Whalebrew
+export WHALEBREW_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/whalebrew"
+
+### .zsh_sessions
+# Source: https://apple.stackexchange.com/questions/427561/macos-zsh-sessions-zsh-history-and-setopt-append-history
+export SHELL_SESSIONS_DISABLE=1
+
+### CloudFlare Wrangler
+export WRANGLER_INSTALL_PATH="${XDG_DATA_HOME:-$HOME/.local/share}/wrangler"
+export WRANGLER_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/wrangler"
+
+### Man pages
+export LESS_TERMCAP_mb=$'\e[1;32m'
+export LESS_TERMCAP_md=$'\e[1;32m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[1;4;31m'
+export LESSHISTFILE="$XDG_STATE_HOME"/less/history
+export MANPAGER="less -X"
+
+### Magic Enter (ZSH)
+export MAGIC_ENTER_GIT_COMMAND='git status -u .'
+export MAGIC_ENTER_OTHER_COMMAND='ls -lh .'
+
+### Line Wrap
+setterm -linewrap on 2>/dev/null
+
+### History
+export HISTCONTROL=ignorespace
+export HISTSIZE=1000000000
+export HISTFILESIZE=$HISTSIZE
+export HIST_STAMPS=mm/dd/yyyy
+export SAVEHIST=50000
+
+### Editor
+{{ if not .host.headless }}
+if command -v codium > /dev/null; then
+  export EDITOR='codium'
+  export VISUAL="$EDITOR"
+elif command -v code > /dev/null; then
+  export EDITOR='code'
+  export VISUAL="$EDITOR"
+else
+  # Source: https://unix.stackexchange.com/questions/4859/visual-vs-editor-what-s-the-difference
+  export EDITOR='vi'
+  if command -v nvim > /dev/null; then
+    export VISUAL='nvim'
+  else
+    export VISUAL="$EDITOR"
+  fi
+fi
+{{ else }}
+export EDITOR='vi'
+if command -v nvim > /dev/null; then
+  export VISUAL='nvim'
+  export PATH="$PATH:$HOME/.local/share/nvim/bin"
+else
+  export VISUAL="$EDITOR"
+fi
+{{ end }}
+
+### Browser
+export BROWSER="{{ .user.defaultBrowser }}"
+
+### WSL
+if [ -d /proc ] && [[ "$(grep Microsoft /proc/version > /dev/null)" ]]; then
+  # Source: https://stackoverflow.com/questions/61110603/how-to-set-up-working-x11-forwarding-on-wsl2
+  export LIBGL_ALWAYS_INDIRECT="1"
+  export DISPLAY=$(ip route list default | awk '{print $3}'):0
+  export BROWSER='/mnt/c/Program\ Files/BraveSoftware/Brave-Browser/Application/brave.exe'
+fi

@@ -1,0 +1,84 @@
+[/]
+folder-children=['Utilities', 'YaST', '8a93b308-03aa-40e9-b29a-d1c65112ac1f', '39b85a30-6c2e-4259-8413-af2445323494', 'bbfa71c4-ed16-4d50-8903-bde1b04e3932', '0803a860-84f7-46ff-9a6c-3501b759a7ee', '09604638-5b89-4c66-b5c1-e41e79554db0', '2470d5ec-b93c-4000-ad46-bc667f5fc659', '4955bb63-4bbd-45a4-b8e8-4c5921d192b1', '2ea720ad-db1d-46fa-abe5-bbb8069fc6db', '5480b78d-c902-4852-8bef-82033f76ac3c', '45d84110-1ffe-49ca-8b6c-a102437e19ad', '14a61cfb-0906-47ad-bd6f-6bab5704e3f6', '23181ba1-22e0-4b18-a9c8-daa59a9d6d0d', '8afa4262-8595-4a6b-ab66-3a584854f5f4', '4573be28-6153-4df6-811e-763450ebc62d', 'c8c7fdb7-3b03-4bd1-a411-4106a74025b6']
+
+[folders/0803a860-84f7-46ff-9a6c-3501b759a7ee]
+apps=['altair_altair.desktop', 'io.beekeeperstudio.Studio.desktop', 'org.gnome.meld.desktop', 'mockoon_mockoon.desktop', 'com.emqx.MQTTX.desktop', 'com.getpostman.Postman.desktop', 'powershell_powershell.desktop', 'app.resp.RESP.desktop', 'scrcpy_scrcpy.desktop', 'org.wireshark.Wireshark.desktop']
+name='Programming'
+
+[folders/09604638-5b89-4c66-b5c1-e41e79554db0]
+apps=['brasero.desktop', 'com.github.Johnn3y.Forklift.desktop', 'tv.kodi.Kodi.desktop', 'org.gnome.Photos.desktop', 'tv.plex.PlexHTPC.desktop', 'shotwell.desktop', 'org.videolan.VLC.desktop', 'io.webtorrent.WebTorrent.desktop']
+name='Media'
+translate=false
+
+[folders/14a61cfb-0906-47ad-bd6f-6bab5704e3f6]
+apps=['org.cockpit_project.CockpitClient.desktop', 'org.gnome.NetworkDisplays.desktop', 'org.remmina.Remmina.desktop', 'com.teamviewer.TeamViewer.desktop', 'termius-app_termius-app.desktop', 'remote-viewer.desktop']
+name='Remote'
+translate=false
+
+[folders/23181ba1-22e0-4b18-a9c8-daa59a9d6d0d]
+apps=['ledger-live-desktop.desktop', 'org.getmonero.Monero.desktop']
+name='Crypto'
+translate=false
+
+[folders/2470d5ec-b93c-4000-ad46-bc667f5fc659]
+apps=['com.discordapp.Discord.desktop', 'im.riot.Riot.desktop', 'org.jitsi.jitsi-meet.desktop', 'keybase.desktop', 'com.microsoft.Teams.desktop', 'org.signal.Signal.desktop', 'com.skype.Client.desktop', 'com.slack.Slack.desktop', 'org.telegram.desktop.desktop', 'us.zoom.Zoom.desktop']
+name='Social'
+translate=false
+
+[folders/2ea720ad-db1d-46fa-abe5-bbb8069fc6db]
+apps=['io.github.shiftey.Desktop.desktop', 'com.axosoft.GitKraken.desktop', 'in.srev.guiscrcpy.desktop', 'lepton_lepton.desktop', 'com.rafaelmardojai.WebfontKitGenerator.desktop']
+name='Development'
+translate=false
+
+[folders/39b85a30-6c2e-4259-8413-af2445323494]
+apps=['com.google.AndroidStudio.desktop', 'cc.arduino.IDE2.desktop', 'intellij-idea-community_intellij-idea-community.desktop', 'kontena-lens_kontena-lens.desktop', 'nvim.desktop', 'io.neovim.nvim.desktop', 'vim.desktop', 'com.visualstudio.code.desktop']
+name='IDEs'
+translate=false
+
+[folders/4573be28-6153-4df6-811e-763450ebc62d]
+apps=['com.github.tchx84.Flatseal.desktop', 'onlykey-app_onlykey-app.desktop', 'portmaster.desktop', 'protonvpn.desktop', 'com.yubico.yubioath.desktop']
+name='Security'
+translate=false
+
+[folders/45d84110-1ffe-49ca-8b6c-a102437e19ad]
+apps=['org.cryptomator.Cryptomator.desktop', 'org.filezillaproject.Filezilla.desktop', 'net.agalwood.Motrix.desktop', 'org.qbittorrent.qBittorrent.desktop', 'com.seafile.Client.desktop', 'transmission-gtk.desktop', 'app.vup.Vup.desktop', 'app.drey.Warp.desktop']
+name='Transfer'
+translate=false
+
+[folders/4955bb63-4bbd-45a4-b8e8-4c5921d192b1]
+apps=['com.usebottles.bottles.desktop', 'org.gnome.Boxes.desktop', 'multipass_gui.desktop', 'virt-manager.desktop', 'vmware-netcfg.desktop', 'virtualbox.desktop', 'vmware-player.desktop']
+name='Virtualization'
+translate=false
+
+[folders/5480b78d-c902-4852-8bef-82033f76ac3c]
+apps=['org.gnome.Evolution.desktop', 'firefox.desktop', 'firefox_firefox.desktop', 'org.mozilla.firefox.desktop', 'com.google.Chrome.desktop', 'com.microsoft.Edge.desktop', 'com.getmailspring.Mailspring.desktop', 'com.gitlab.newsflash.desktop', 'ch.protonmail.protonmail-bridge.desktop', 'protonmail-import-export-app.desktop', 'ch.protonmail.protonmail-import-export-app.desktop', 'thunderbird.desktop', 'org.mozilla.Thunderbird.desktop']
+name='Internet'
+
+[folders/8a93b308-03aa-40e9-b29a-d1c65112ac1f]
+apps=['libreoffice-startcenter.desktop', 'org.libreoffice.LibreOffice.base.desktop', 'libreoffice-calc.desktop', 'org.libreoffice.LibreOffice.calc.desktop', 'org.libreoffice.LibreOffice.draw.desktop', 'libreoffice-draw.desktop', 'org.libreoffice.LibreOffice.impress.desktop', 'libreoffice-impress.desktop', 'libreoffice-math.desktop', 'org.libreoffice.LibreOffice.math.desktop', 'org.libreoffice.LibreOffice.desktop', 'libreoffice-writer.desktop', 'org.libreoffice.LibreOffice.writer.desktop', 'microsoft-todo-unofficial_microsoft-todo-unofficial.desktop']
+name='Office'
+
+[folders/8afa4262-8595-4a6b-ab66-3a584854f5f4]
+apps=['org.gnome.Cheese.desktop', 'org.gnome.Lollypop.desktop', 'org.js.nuclear.Nuclear.desktop', 'org.gnome.Photos.desktop', 'tv.plex.PlexDesktop.desktop', 'org.gnome.Shotwell.desktop', 'org.gnome.SoundRecorder.desktop', 'org.gnome.Totem.desktop']
+name='Sound & Video'
+
+[folders/Utilities]
+apps=['org.gnome.Calculator.desktop', 'org.gnome.Calendar.desktop', 'org.gnome.Connections.desktop', 'ca.desrt.dconf-editor.desktop', 'org.gnome.DejaDup.desktop', 'app.drey.Dialect.desktop', 'org.gnome.baobab.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.Evince.desktop', 'com.mattjakeman.ExtensionManager.desktop', 'org.gnome.Extensions.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.eog.desktop', 'org.raspberrypi.rpi-imager.desktop', 're.sonny.Junction.desktop', 'org.gnome.seahorse.Application.desktop', 'io.github.fabrialberio.pinapp.desktop', 'setroubleshoot.desktop', 'org.gnome.Software.desktop', 'gnome-system-monitor.desktop', 'org.gnome.gedit.desktop', 'org.gnome.Tour.desktop', 'org.gnome.tweaks.desktop', 'org.gnome.TextEditor.desktop', 'software-properties-drivers.desktop', 'simple-scan.desktop', 'gnome-language-selector.desktop', 'org.gnome.PowerStats.desktop', 'software-properties-gtk.desktop', 'gnome-session-properties.desktop', 'usb-creator-gtk.desktop', 'timeshift-gtk.desktop', 'org.gnome.Todo.desktop', 'snap-store_ubuntu-software.desktop', 'gnome-abrt.desktop', 'gnome-system-log.desktop', 'nm-connection-editor.desktop', 'org.gnome.Dictionary.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Usage.desktop', 'vinagre.desktop', 'kvantummanager.desktop', 'update-manager.desktop', 'org.gnome.Weather.desktop', 'org.gabmus.whatip.desktop', 'yelp.desktop']
+categories=['X-GNOME-Utilities']
+name='X-GNOME-Utilities.directory'
+translate=true
+
+[folders/YaST]
+categories=['X-SuSE-YaST']
+name='suse-yast.directory'
+translate=true
+
+[folders/bbfa71c4-ed16-4d50-8903-bde1b04e3932]
+apps=['com.github.maoschanz.drawing.desktop', 'com.github.finefindus.eyedropper.desktop', 'org.flameshot.Flameshot.desktop', 'org.gimp.GIMP.desktop', 'fr.handbrake.ghb.desktop', 'org.inkscape.Inkscape.desktop', 'inkscape_inkscape.desktop', 'io.github.seadve.Kooha.desktop', 'org.kde.krita.desktop', 'com.uploadedlobster.peek.desktop', 'org.shotcut.Shotcut.desktop']
+name='Editing'
+translate=false
+
+[folders/c8c7fdb7-3b03-4bd1-a411-4106a74025b6]
+apps=['re.rizin.cutter.desktop', 'org.fritzing.Fritzing.desktop']
+name='Engineering'
+translate=false

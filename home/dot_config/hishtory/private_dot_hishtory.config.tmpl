@@ -1,0 +1,22 @@
+{
+    "user_secret": "{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "HISHTORY_USER_SECRET")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/HISHTORY_USER_SECRET") | decrypt | trim }}{{ else }}{{ env "HISHTORY_USER_SECRET" }}{{ end }}",
+    "is_enabled": true,
+    "last_saved_history_line": "",
+    "have_missed_uploads": false,
+    "missed_upload_timestamp": 0,
+    "have_completed_initial_import": true,
+    "enable_control_r_search": true,
+    "displayed_columns": [
+        "Hostname",
+        "CWD",
+        "Timestamp",
+        "Runtime",
+        "Exit Code",
+        "Command",
+        "Git Remote"
+    ],
+    "custom_columns":[{"column_name":"Git Remote","column_command":"(git remote -v 2\u003e/dev/null | grep origin 1\u003e/dev/null ) \u0026\u0026 git remote get-url origin || true"}],
+    "is_offline": false,
+    "filter_duplicate_commands": true,
+    "timestamp_format": "Jan 2 2006 15:04:05 MST"
+}

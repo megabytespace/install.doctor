@@ -1,6 +1,18 @@
 {{- $packages := list
+  "age"
   "bash"
+  "dconf"
+  "fuse"
+  "fuse-devel"
+  "golang-go"
+  "gnome"
+  "locate"
   "nodejs"
   "npm"
+  "pkgconf-pkg-config"
+  "progress"
+  "rust"
+  "sddm"
+  "secure-delete"
 -}}
 {{- $packages | join " " -}}

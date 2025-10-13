@@ -256,6 +256,11 @@ tasks:
       - >
         readme generate --headingPrefix '{}' --silent --config .variables.json
         --input ".config/docs/{{.README_TEMPLATE}}"
+      - |
+        if [ -f docs/img/logo-full.png ]; then
+          sed -i 's/\/-\/raw\/master\/logo.png/\/-\/raw\/master\/docs\/img\/logo-full.png/' README.md
+          sed -i 's/width="148" height="148"/height="69"/' README.md
+        fi
       - task: markdown:scrub
         vars:
           SCRUB_FILE: README.md

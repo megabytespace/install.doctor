@@ -1,0 +1,923 @@
+#!/usr/bin/env bash
+# @file System Tweaks
+# @brief Applies a set of system tweaks such as ensuring the hostname is set, setting the timezone, and more
+# @description
+#     This script applies system tweaks that should be made before the rest of the provisioning process.
+
+{{ includeTemplate "universal/profile-before" }}
+{{ includeTemplate "universal/logg-before" }}
+
+export VOLTA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/volta"
+export PATH="$VOLTA_HOME/bin:$PATH"
+
+# @description
+#     This script determines the ideal `/swapfile` size by checking how much RAM is available on the system.
+#     It then creates the appropriate `/swapfile` by considering factors such as the file system type. It
+#     currently supports BTRFS and regular file systems.
+#
+#     After the `/swapfile` is created, it is enabled and assigned the appropriate permissions.
+#
+#     #### TODO
+#
+#     * Add logic that creates a swapfile for ZFS-based systems
+#     * Integrate logic from https://gitlab.com/megabyte-labs/gas-station/-/blob/master/roles/system/common/tasks/linux/swap.yml
+allocateSwap() {
+  if [ "{{ .host.distro.family }}" = "linux" ]; then
+    if [ ! -f /swapfile ]; then
+      ### Determine ideal size of /swapfile
+      MEMORY_IN_KB="$(grep MemTotal /proc/meminfo | sed 's/.* \(.*\) kB/\1/')"
+      MEMORY_IN_GB="$((MEMORY_IN_KB / 1024 / 1024))"
+      if [ "$MEMORY_IN_GB" -gt 64 ]; then
+        SWAP_SPACE="$((MEMORY_IN_GB / 10))"
+      elif [ "$MEMORY_IN_GB" -gt 32 ]; then
+        SWAP_SPACE="$((MEMORY_IN_GB / 8))"
+      elif [ "$MEMORY_IN_GB" -gt 8 ]; then
+        SWAP_SPACE="$((MEMORY_IN_GB / 4))"
+      else
+        SWAP_SPACE="$MEMORY_IN_GB"
+      fi
+
+      ### Create /swapfile
+      FS_TYPE="$(df -Th | grep ' /$' | sed 's/[^ ]*\s*\([^ ]*\).*/\1/')"
+      if [ "$FS_TYPE" == 'btrfs' ]; then
+        gum log -sl info 'Creating BTRFS /swapfile'
+        sudo btrfs filesystem mkswapfile /swapfile
+      elif [ "$FS_TYPE" == 'zfs' ]; then
+        gum log -sl warn 'ZFS system detected - add logic here to add /swapfile'
+      else
+        gum log -sl info "Creating a $SWAP_SPACE GB /swapfile"
+        sudo fallocate -l "${SWAP_SPACE}G" /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+      fi
+
+      ### Enable the /swapfile
+      if [ -f /swapfile ]; then
+        gum log -sl info 'Running sudo swapon /swapfile'
+        sudo swapon /swapfile
+        if cat /etc/fstab | grep "/swapfile"; then
+          sudo sed -i '/\/swapfile/\/swapfile none swap defaults 0 0/' /etc/fstab
+        else
+          echo "/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab > /dev/null
+        fi
+      fi
+    fi
+  fi
+}
+
+# @description
+#     This script imports your publicly hosted GPG key using `pgp.mit.edu` as the key host. It then assigns it
+#     the ultimate trust level. It also downloads and configures GPG to use the configuration defined in `.config.gpg`
+#     in the `home/.chezmoidata.yaml` file.
+configureGPG() {
+  export KEYID="{{ .user.gpg.id }}"
+  if [ -n "$KEYID" ] && command -v gpg > /dev/null; then
+    if [ ! -d "$HOME/.gnupg" ]; then
+      mkdir "$HOME/.gnupg"
+    fi
+    chown "$(whoami)" "$HOME/.gnupg"
+    chmod 700 "$HOME/.gnupg"
+    chown -Rf "$(whoami)" "$HOME/.gnupg/"
+    find "$HOME/.gnupg" -type f -exec chmod 600 {} \;
+    find "$HOME/.gnupg" -type d -exec chmod 700 {} \;
+    if [ ! -f "$HOME/.gnupg/gpg.conf" ]; then
+      logg 'Downloading hardened gpg.conf file to ~/.gpnupg/gpg.conf'
+      curl -sSL --compressed "{{ .config.gpg }}" > "$HOME/.gnupg/gpg.conf"
+      chmod 600 "$HOME/.gnupg/gpg.conf"
+    fi
+    gum log -sl info 'Killing dirmngr instance and reloading daemon with standard-resolver' && sudo pkill dirmngr
+    dirmngr --daemon --standard-resolver
+    KEYID_TRIMMED="$(echo "$KEYID" | sed 's/^0x//')"
+    if ! gpg --list-secret-keys --keyid-format=long | grep "$KEYID_TRIMMED" > /dev/null; then
+      if [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/private_dot_gnupg/private_public/private_${KEYID}.asc" ]; then
+        gum log -sl info "Importing GPG key stored in ${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/private_dot_gnupg/private_public/private_${KEYID}.asc since its name matches the GPG key ID in .chezmoi.yaml.tmpl"
+        gpg --import "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/private_dot_gnupg/private_public/private_${KEYID}.asc" && gum log -sl info 'Successfully imported master GPG key'
+      else
+        gum log -sl info 'Attempting to download the specified public GPG key ({{ .user.gpg.id }}) from public keyservers'
+        gpg --keyserver https://pgp.mit.edu --recv "$KEYID" || EXIT_CODE=$?
+        if [ -n "$EXIT_CODE" ]; then
+          gum log -sl info 'Non-zero exit code received when downloading public GPG key'
+          gpg --keyserver hkps://pgp.mit.edu --recv "$KEYID" || EXIT_CODE=$?
+          if [ -n "$EXIT_CODE" ]; then
+            gum log -sl info 'Non-zero exit code received when trying to retrieve public user GPG key on hkps://pgp.mit.edu'
+          else
+            gum log -sl info 'Successfully imported configured public user GPG key'
+          fi
+        fi
+      fi
+    else
+      gum log -sl info 'Key is already in keyring'
+    fi
+    gum log -sl info 'Stopping dirmngr'
+    gpgconf --kill dirmngr && gum log -sl info 'Stopped dirmngr' || info warn 'Failed to stop dirmngr'
+    logg 'Ensuring the trust of the provided public GPG key is set to maximum'
+    echo -e "trust\n5\ny" | gpg --command-fd 0 --edit-key "$KEYID"
+  else
+    gum log -sl warn 'gpg appears to be unavailable. Is it installed and on the PATH?'
+  fi
+}
+
+# @description Disable the creation of `.DS_Store` files on macOS.
+disableDStoreFileCreation() {
+  if command -v m > /dev/null; then
+    gum log -sl info 'Disabling creation of .DS_Store files'
+    echo y | m dir dsfiles off > /dev/null
+  fi
+}
+
+# @description Enables transparent dark-mode on macOS
+enableDarkTransparentMode() {
+  if command -v m > /dev/null; then
+    gum log -sl info 'Enabling dark mode' && m appearance darkmode YES > /dev/null
+    gum log -sl info 'Enabling theme transparency' && m appearance transparency YES > /dev/null
+  fi
+}
+
+# @description Helper function for installing Homebrew packages that have a matching package name and binary executable name.
+ensureBrewPackageInstalled() {
+  if ! command -v "$1" > /dev/null; then
+    if command -v brew; then
+      gum log -sl info "Installing $1 via Homebrew"
+      brew install --quiet "$1" || EXIT_CODE=$?
+      if [ -n "$EXIT_CODE" ]; then
+        gum log -sl error "$1 was not successfully installed via Homebrew"
+        unset EXIT_CODE
+      fi
+    else
+      gum log -sl error "brew is unavailable. Cannot use it to perform installation of $1"
+    fi
+  else
+    gum log -sl info "$1 is already installed"
+  fi
+}
+
+# @description Ensure delta is installed via Homebrew
+ensureDeltaInstalled() {
+  if ! command -v delta > /dev/null; then
+    if command -v brew; then
+      logg 'Installing delta via Homebrew'
+      brew install --quiet git-delta || DELTA_EXIT_CODE=$?
+      if [ -n "$DELTA_EXIT_CODE" ]; then
+        gum log -sl error 'git-delta was not successfully installed via Homebrew'
+      fi
+    else
+      logg 'brew is unavailable. Cannot use it to perform a system installation of node.'
+    fi
+  else
+    logg 'delta is available'
+  fi
+}
+
+# @description Ensure Node is installed via Homebrew
+ensureNodeInstalled() {
+  ### Ensure node is installed
+  if ! command -v node > /dev/null; then
+    if command -v brew; then
+      logg 'Installing node via Homebrew'
+      brew install --quiet node || NODE_EXIT_CODE=$?
+      if [ -n "$NODE_EXIT_CODE" ]; then
+        gum log -sl warn 'Calling brew link --overwrite node because the Node.js installation seems to be misconfigured'
+        brew link --overwrite node
+      fi
+    else
+      logg 'brew is unavailable. Cannot use it to perform a system installation of node.'
+    fi
+  else
+    logg 'node is available'
+  fi
+}
+
+# @description
+#     This script ensures that there is a group with the same name of the provisioning user available on the system.
+ensureUserGroup() {
+  if [ "{{ .host.distro.family }}" = "darwin" ]; then
+    if [ -n "$USER" ]; then
+      gum log -sl info "Adding the $USER user to the $USER group"
+      ### Ensure user has group of same name (required for Macports)
+      gum log -sl info "Ensuring user ($USER) has a group with the same name ($USER) and that it is a member. Sudo privileges may be required"
+
+      GROUP="$USER"
+      USERNAME="$USER"
+
+      ### Add group
+      sudo dscl . create /Groups/$GROUP
+
+      ### Add GroupID to group
+      if [[ "$(sudo dscl . read /Groups/$GROUP gid 2>&1)" == *'No such key'* ]]; then
+        MAX_ID_GROUP="$(dscl . -list /Groups gid | awk '{print $2}' | sort -ug | tail -1)"
+        GROUP_ID="$((MAX_ID_GROUP+1))"
+        sudo dscl . create /Groups/$GROUP gid "$GROUP_ID"
+      fi
+
+      ### Add user
+      sudo dscl . create /Users/$USERNAME
+
+      ### Add PrimaryGroupID to user
+      if [[ "$(sudo dscl . read /Users/$USERNAME PrimaryGroupID 2>&1)" == *'No such key'* ]]; then
+        sudo dscl . create /Users/$USERNAME PrimaryGroupID 20
+      fi
+
+      ### Add UniqueID to user
+      if [[ "$(sudo dscl . read /Users/$USERNAME UniqueID 2>&1)" == *'No such key'* ]]; then
+        MAX_ID_USER="$(dscl . -list /Users UniqueID | awk '{print $2}' | sort -ug | tail -1)"
+        USER_ID="$((MAX_ID_USER+1))"
+        sudo dscl . create /Users/$USERNAME UniqueID "$USERID"
+      fi
+
+      ### Add user to group
+      sudo dseditgroup -o edit -t user -a $USERNAME $GROUP
+    else
+      gum log -sl warn 'The USER environment variable is unavailable'
+    fi
+  fi
+}
+
+# @description Increases the amount of memory a process can consume on Linux. In the case of `netdata` and other programs, many systems will suggest
+#     increasing the `vm.max_map_count`. According to a [RedHat article](https://access.redhat.com/solutions/99913), the default value is `65530`.
+#     This function increases that value to `262144` if `sysctl` is available on the system.
+increaseMapCount() {
+  if [ ! -d /Applications ] && [ ! -d /System ]; then
+    ### Linux
+    if command -v sysctl > /dev/null; then
+      gum log -sl info 'Increasing vm.max_map_count size to 262144'
+      sudo sysctl -w vm.max_map_count=262144 > /dev/null
+    fi
+  fi
+}
+
+# @description Helper function for installDocker that installs pre-built gVisor using method recommended on official website
+function gVisorPreBuilt() {
+  gum log -sl info 'Installing gVisor using method recommended on official website'
+  set -e
+  mkdir /tmp/gvisor && cd /tmp/gvisor
+  ARCH=$(uname -m)
+  URL="https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}"
+  gum log -sl info 'Downloading gVisor runsc and containerd-shim-runsc-v1 SHA signatures'
+  wget "${URL}/runsc" "${URL}/runsc.sha512" "${URL}/containerd-shim-runsc-v1" "${URL}/containerd-shim-runsc-v1.sha512"
+  sha512sum -c runsc.sha512 -c containerd-shim-runsc-v1.sha512
+  rm -f *.sha512
+  chmod a+rx runsc containerd-shim-runsc-v1
+  sudo mv runsc containerd-shim-runsc-v1 /usr/local/bin
+  sudo chown root: /usr/local/bin/runsc
+  sudo chown root: /usr/local/bin/containerd-shim-runsc-v1
+}
+
+# @description Helper function for installDocker that installs gVisor using alternate Go method described on the GitHub page
+function gVisorGo() {
+  # Official build timed out - use Go method
+  gum log -sl info 'Installing gVisor using the Go fallback method'
+  sudo chown -Rf "$(whoami)" /usr/local/src/gvisor
+  cd /usr/local/src/gvisor
+  echo "module runsc" > go.mod
+  GO111MODULE=on go get gvisor.dev/gvisor/runsc@go
+  CGO_ENABLED=0 GO111MODULE=on sudo -E go build -o /usr/local/bin/runsc gvisor.dev/gvisor/runsc
+  GO111MODULE=on sudo -E go build -o /usr/local/bin/containerd-shim-runsc-v1 gvisor.dev/gvisor/shim
+}
+
+# @description Helper function for installDocker that installs gVisor using the [GitHub developer page method](https://github.com/google/gvisor#installing-from-source). This method requires Docker to be installed
+function gVisorSource() {
+  ### Ensure sources are cloned / up-to-date
+  gum log -sl info 'Building gVisor from source'
+  if [ -d /usr/local/src/gvisor ]; then
+    cd /usr/local/src/gvisor
+    sudo git reset --hard HEAD
+    sudo git clean -fxd
+    sudo git pull origin master
+  else
+    sudo git clone https://github.com/google/gvisor.git /usr/local/src/gvisor
+  fi
+
+  ### Build gVisor
+  cd /usr/local/src/gvisor
+  sudo mkdir -p bin
+  # Wait 5 minutes for build to finish, and if it does not use Go
+  # TODO - Generate container-shim-runsc-v1 as well (low priority since this method is not used and is only recommended for development)
+  sudo timeout 600 make copy TARGETS=runsc DESTINATION=bin/
+  if [ -f ./bin/runsc ]; then
+    sudo cp ./bin/runsc /usr/local/bin
+  else
+    gum log -sl error 'Timed out while building runsc from source (10 minutes)' && exit 6
+  fi
+}
+
+# @description Helper function for installDocker that Installs systemsecret credential helper for Linux
+function installCredentialSecretService() {
+  curl -sSL https://github.com/docker/docker-credential-helpers/releases/download/v0.7.0/docker-credential-secretservice-v0.7.0.linux-amd64 > /tmp/docker-credential-secretservice
+  sudo mv /tmp/docker-credential-secretservice /usr/local/bin/docker-credential-secretservice
+}
+
+# @description
+#     This script ensures Docker is installed and then adds the provisioning user to the `docker` group so that they can
+#     access Docker without `sudo`. It also installs and configures gVisor for use with Docker.
+#
+#     #### gVisor
+#
+#     gVisor is included with our Docker setup because it improves the security of Docker. gVisor is an application kernel, written in Go,
+#     that implements a substantial portion of the Linux system call interface. It provides an additional layer of isolation between running
+#     applications and the host operating system. It has gained a lot of attention, perhaps partly, because it is maintained by Google.
+installDocker() {
+  ### Ensures `~/.config/docker` is symlinked to `~/.docker` which is required for Docker Desktop compatibility since it currently does not honor XDG spec. This will
+  ### remove the current configuration at `~/.docker` if it is present and not symlinked to `~/.config/docker`.
+  if [ "$(readlink -f "$HOME/.docker")" != "${XDG_CONFIG_HOME:-$HOME/.config}/docker" ]; then
+    gum log -sl info 'Removing ~/.docker if present' && rm -rf "$HOME/.docker"
+    gum log -sl info 'Ensuring ~/.config/docker exists' && mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/docker"
+    gum log -sl info 'Symlinking ~/.config/docker to ~/.docker for Docker Desktop compatibility' && ln -s "${XDG_CONFIG_HOME:-$HOME/.config}/docker" "$HOME/.docker"
+  else
+    gum log -sl info 'Symlink from ~/.config/docker to ~/.docker is already present'
+  fi
+
+  ### Install Docker
+  if [ -d /Applications ] && [ -d /System ]; then
+    ### macOS
+    if [ ! -d /Applications/Docker.app ]; then
+      gum log -sl info 'Installing Docker on macOS via Homebrew cask'
+      brew install --cask --quiet --no-quarantine docker
+    else
+      gum log -sl info 'Docker appears to be installed already'
+    fi
+    gum log -sl info 'Opening the Docker for Desktop app so that the Docker engine starts running'
+    # TODO - --install-privileged-components may be necessary for `docker extension` command but it causes the command to no longer work
+    # open --background -a Docker --args --accept-license --unattended --install-privileged-components
+    open --background -a Docker --args --accept-license --unattended
+  elif command -v apt-get > /dev/null; then
+    . /etc/os-release
+    if [ "$ID" == 'ubuntu' ]; then
+      gum log -sl info 'Installing Docker on Ubuntu'
+    else
+      gum log -sl info 'Installing Docker on Debian'
+    fi
+    sudo apt-get update
+    sudo apt-get install -y ca-certificates curl gnupg lsb-release
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL "https://download.docker.com/linux/$ID/gpg" | sudo gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$ID $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  elif command -v dnf > /dev/null; then
+    . /etc/os-release
+    if [ "$ID" == 'centos' ]; then
+      gum log -sl info 'Installing Docker on CentOS'
+    elif [ "$ID" == 'fedora' ]; then
+      gum log -sl info 'Installing Docker on Fedora'
+    else
+      gum log -sl error 'Unknown OS - cannot install Docker' && exit 1
+    fi
+    sudo dnf -y install dnf-plugins-core
+    sudo dnf config-manager --add-repo "https://download.docker.com/linux/$ID/docker-ce.repo"
+    sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  elif command -v yum > /dev/null; then
+    # CentOS
+    gum log -sl info 'Installing Docker on CentOS'
+    sudo yum install -y yum-utils
+    sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    sudo yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  elif command -v apk > /dev/null; then
+    # Alpine
+    gum log -sl info 'Installing Docker on Alpine'
+    sudo apk add --update docker
+  elif command -v pacman > /dev/null; then
+    # Archlinux
+    gum log -sl info 'Installing Docker on Archlinux'
+    sudo pacman -Syu
+    sudo pacman -S docker
+  elif command -v zypper > /dev/null; then
+    # OpenSUSE
+    gum log -sl info 'Installing Docker on OpenSUSE'
+    sudo zypper addrepo https://download.docker.com/linux/sles/docker-ce.repo
+    sudo zypper install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  fi
+
+  ### Add Docker group on Linux
+  if command -v groupadd > /dev/null; then
+    # Linux
+    if ! cat /etc/group | grep docker > /dev/null; then
+      gum log -sl info 'Creating Docker group'
+      sudo groupadd docker
+    fi
+    gum log -sl info 'Adding user to Docker group'
+    sudo usermod -aG docker "$USER"
+  fi
+
+  ### Boot Docker on start with systemd on Linux machines
+  if command -v systemctl > /dev/null; then
+    # Systemd Linux
+    sudo systemctl start docker.service
+    sudo systemctl enable docker.service
+    sudo systemctl enable containerd.service
+  fi
+
+  ### Add gVisor
+  if [ ! -d /Applications ] || [ ! -d /System ]; then
+    ### Linux
+    if ! command -v docker-credential-secretservice > /dev/null; then
+      installCredentialSecretService
+    fi
+
+    if ! command -v runsc > /dev/null; then
+      ### Install gVisor
+      gVisorPreBuilt || PRE_BUILT_EXIT_CODE=$?
+      if [ -n "$PRE_BUILT_EXIT_CODE" ]; then
+        gum log -sl warn 'gVisor failed to install using the pre-built method'
+        gVisorGo || GO_METHOD_EXIT_CODE=$?
+        if [ -n "$GO_METHOD_EXIT_CODE" ]; then
+          gum log -sl warn 'gVisor failed to install using the Go fallback method'
+          gVisorSource || SOURCE_EXIT_CODE=$?
+          if [ -n "$SOURCE_EXIT_CODE" ]; then
+            gum log -sl error 'All gVisor installation methods failed' && exit 1
+          else
+            gum log -sl info 'gVisor installed via source'
+          fi
+        else
+          gum log -sl info 'gVisor installed via Go fallback method'
+        fi
+      else
+        gum log -sl info 'gVisor installed from pre-built Google-provided binaries'
+      fi
+    else
+      gum log -sl info 'runsc is installed'
+    fi
+
+    ### Ensure Docker is configured to use runsc
+    if [ ! -f /etc/docker/daemon.json ]; then
+      ### Configure Docker to use gVisor
+      ### Create /etc/docker/daemon.json
+      gum log -sl info 'Creating /etc/docker'
+      sudo mkdir -p /etc/docker
+      if [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/dot_config/docker/daemon.json.tmpl" ]; then
+        gum log -sl info 'Creating /etc/docker/daemon.json'
+        chezmoi cat "${XDG_CONFIG_HOME:-$HOME/.config}/docker/config.json" | sudo tee /etc/docker/daemon.json
+      else
+        gum log -sl warn "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/dot_config/docker/daemon.json.tmpl is not available so the /etc/docker/daemon.json file cannot be populated"
+      fi
+
+      ### Restart / enable Docker
+      if [[ ! "$(test -d /proc && grep Microsoft /proc/version > /dev/null)" ]] && command -v systemctl > /dev/null; then
+        gum log -sl info 'Restarting Docker service'
+        sudo systemctl restart docker.service
+        sudo systemctl restart containerd.service
+      fi
+
+      ### Test Docker /w runsc
+      gum log -sl info 'Testing that Docker can load application with runsc'
+      docker run --rm --runtime=runsc hello-world || RUNSC_EXIT_CODE=$?
+      if [ -n "$RUNSC_EXIT_CODE" ]; then
+        gum log -sl error 'Failed to run the Docker hello-world container with runsc' && exit 5
+      else
+        gum log -sl info 'Docker successfully ran the hello-world container with runsc'
+      fi
+    fi
+  fi
+
+  ### Docker rclone Volume Plugin
+  if [ -d /Applications ] && [ -d /System ]; then
+    gum log -sl info "Ensuring /private/var/lib/docker-plugins/rclone/cache exists as a directory" && sudo mkdir -p /private/var/lib/docker-plugins/rclone/cache
+    gum log -sl info "Ensuring /private/var/lib/docker-plugins/rclone/config is removed" && sudo rm -rf /private/var/lib/docker-plugins/rclone/config
+    gum log -sl info "Symlinking user rclone config to /private/var/lib/docker-plugins/rclone/config" && sudo ln -s "${XDG_CONFIG_HOME:-$HOME/.config}/rclone" /private/var/lib/docker-plugins/rclone/config
+    gum log -sl info "Installing rclone/docker-volume plugin" && docker plugin install rclone/docker-volume-rclone:$(uname -m) args="-v" --alias rclone --grant-all-permissions config="/private/var/lib/docker-plugins/rclone/config" cache="/private/var/lib/docker-plugins/rclone/cache"
+  else
+    gum log -sl info "Ensuring /var/lib/docker-plugins/rclone/cache exists as a directory" && sudo mkdir -p /var/lib/docker-plugins/rclone/cache
+    gum log -sl info "Ensuring /var/lib/docker-plugins/rclone/config is removed" && sudo rm -rf /var/lib/docker-plugins/rclone/config
+    gum log -sl info "Symlinking user rclone config to /var/lib/docker-plugins/rclone/config" && sudo ln -s "${XDG_CONFIG_HOME:-$HOME/.config}/rclone" /var/lib/docker-plugins/rclone/config
+    gum log -sl info "Installing docker-volume-rclone plugin" && docker plugin install rclone/docker-volume-rclone:$(uname -m) args="-v" --alias rclone --grant-all-permissions
+  fi
+}
+
+# @description
+#     This script enrolls the device as a JumpCloud managed asset. The `JUMPCLOUD_CONNECT_KEY` secret should
+#     be populated using one of the methods described in the [Secrets documentation](https://install.doctor/docs/customization/secrets).
+#
+#     *Note: You should check out the supported systems before trying to enroll devices.*
+#
+#     #### JumpCloud on macOS
+#
+#     macOS offers a native device management feature offered through Apple Business. It is the preferred
+#     method since it offers most of the desirable features (like remote wipe). The [JumpCloud MDM documentation](https://support.jumpcloud.com/support/s/article/Getting-Started-MDM)
+#     details the steps required to register macOS MDM profiles with JumpCloud.
+#
+#     ## Links
+#
+#     * [JumpCloud device management requirements](https://support.jumpcloud.com/support/s/article/jumpcloud-agent-compatibility-system-requirements-and-impacts1)
+installJumpCloud() {
+  if [ "{{ .host.distro.family }}" = "linux" ]; then
+    if [ "{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "JUMPCLOUD_CONNECT_KEY")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/JUMPCLOUD_CONNECT_KEY") | decrypt | trim -}}{{ else }}{{- env "JUMPCLOUD_CONNECT_KEY" -}}{{ end }}" != "" ]; then
+      gum log -sl info 'Enrolling device with JumpCloud by running the kickstart script'
+      curl --tlsv1.2 --silent --show-error --header 'x-connect-key: {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "JUMPCLOUD_CONNECT_KEY")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/JUMPCLOUD_CONNECT_KEY") | decrypt | trim -}}{{ else }}{{- env "JUMPCLOUD_CONNECT_KEY" -}}{{ end }}' https://kickstart.jumpcloud.com/Kickstart | sudo bash
+    fi
+  fi
+}
+
+# @description Installs commonly depended on Python packages
+installSystemPips() {
+  ### Upgrade on macOS
+  if [ -f /Library/Developer/CommandLineTools/usr/bin/python3 ]; then
+    gum log -sl info 'Ensuring macOS system python3 has latest version of pip'
+    /Library/Developer/CommandLineTools/usr/bin/python3 -m pip install --upgrade pip
+  fi
+
+  ### Python 3
+  if command -v pip3 > /dev/null; then
+    if command -v python3 > /dev/null; then
+      if ! python3 -m certifi > /dev/null; then
+        if command -v brew > /dev/null; then
+          gum log -sl info 'Installing certifi via Homebrew to avoid brew link errors'
+          brew install certifi
+        else
+          gum log -sl info 'Installing Python 3 certifi package'
+          pip3 install --break-system-packages certifi
+        fi
+      else
+        gum log -sl info 'certifi is available to python3'
+      fi
+    else
+      gum log -sl warn 'python3 is not available on the system'
+    fi
+  else
+    gum log -sl warn 'pip3 is not available on the system'
+  fi
+}
+
+# @description
+#     This script removes some of the software deemed to be "bloatware" by cycling through the values defined in
+#     `.removeLinuxPackages` of the `home/.chezmoidata.yaml` file.
+removeLinuxBloatware() {
+  if [ "{{ .host.distro.family }}" = "linux" ]; then
+    {{- $removePackages := join " " .removeLinuxPackages }}
+    ### Remove bloatware packages defined in .chezmoidata.yaml
+    for PKG in {{ $removePackages }}; do
+      if command -v apk > /dev/null; then
+        if apk list "$PKG" | grep "$PKG" > /dev/null; then
+          sudo apk delete "$PKG"
+        fi
+      elif command -v apt-get > /dev/null; then
+        if dpkg -l "$PKG" | grep -E '^ii' > /dev/null; then
+          sudo apt-get remove -y "$PKG"
+          gum log -sl info 'Removed '"$PKG"' via apt-get'
+        fi
+      elif command -v dnf > /dev/null; then
+        if rpm -qa | grep "$PKG" > /dev/null; then
+          sudo dnf remove -y "$PKG"
+          gum log -sl info 'Removed '"$PKG"' via dnf'
+        fi
+      elif command -v yum > /dev/null; then
+        if rpm -qa | grep "$PKG" > /dev/null; then
+          sudo yum remove -y "$PKG"
+          gum log -sl info 'Removed '"$PKG"' via yum'
+        fi
+      elif command -v pacman > /dev/null; then
+        if pacman -Qs "$PKG" > /dev/null; then
+          sudo pacman -R "$PKG"
+          gum log -sl info 'Removed '"$PKG"' via pacman'
+        fi
+      elif command -v zypper > /dev/null; then
+        if rpm -qa | grep "$PKG" > /dev/null; then
+          sudo zypper remove -y "$PKG"
+          gum log -sl info 'Removed '"$PKG"' via zypper'
+        fi
+      fi
+    done
+  fi
+}
+
+# @description Sets the hostname using `scutil` on macOS and using `hostname` and `hostnamectl` on Linux. On macOS, the HostName, LocalHostName, and ComputerName
+#     are set equal to the value stored in `.host.hostname` (in `.chezmoi.yaml.tmpl`) but with the `.host.domain` stripped off. On Linux, the same is done
+#     but only the hostname is set. On Linux, the hostname is set with the `hostname` command and then also with the `hostnamectl` command if it is available.
+#
+#     #### Sources
+#
+#     * [Changing Linux hostname permanently](https://www.tecmint.com/set-hostname-permanently-in-linux/)
+setHostname() {
+  HOSTNAME="{{ (.host.hostname | replace .host.domain "" | replace "." "" | replace " " "") | lower }}.{{ .host.domain | lower }}"
+  LOCAL_HOSTNAME="{{ (.host.hostname | replace .host.domain "" | replace "." "" | replace " " "") | lower }}"
+  COMPUTER_NAME="{{ .host.hostname }}"
+  if [ -d /Applications ] && [ -d /System ]; then
+    # Source: https://apple.stackexchange.com/questions/287760/set-the-hostname-computer-name-for-macos
+    gum log -sl info 'Setting macOS hostname / local hostname / computer name'
+    gum log -sl info "Changing HostName to $HOSTNAME" && sudo scutil --set HostName "$HOSTNAME" && gum log -sl info "Changed HostName to $HOSTNAME"
+    gum log -sl info "Changing LocalHostName to $LOCAL_HOSTNAME" && sudo scutil --set LocalHostName "$LOCAL_HOSTNAME" && gum log -sl info "Changed LocalHostName to $LOCAL_HOSTNAME"
+    gum log -sl info "Changing ComputerName to $COMPUTER_NAME" && sudo scutil --set ComputerName "$COMPUTER_NAME" && gum log -sl info "Changed ComputerName to $COMPUTER_NAME"
+    gum log -sl info 'Flushing DNS cache'
+    sudo dscacheutil -flushcache
+  elif [ -f /etc/passwd ]; then
+    gum log -sl info 'Setting Linux hostname'
+    sudo hostname "$HOSTNAME" && gum log -sl info "Changed hostname to $HOSTNAME"
+    if command -v hostnamectl > /dev/null; then
+      gum log -sl info 'Ensuring hostname persists after reboot'
+      sudo hostnamectl set-hostname "$HOSTNAME" && gum log -sl info "Permanently changed hostname to $HOSTNAME"
+    else
+      gum log -sl warn 'hostnamectl was not available in the PATH - this operating system type might be unsupported'
+    fi
+  else
+    gum log -sl warn 'Could not configure hostname because system type was not detectable'
+  fi
+}
+
+# @description Sets the NTP server using `m` on macOS
+#
+#     `2>/dev/null 1>&2` was added after `sudo systemsetup -setusingnetworktime` calls because the command was outputting the following
+#     useless error:
+#
+#     ```shell
+#     ### Error:-99 File:/AppleInternal/Library/BuildRoots/0032d1ee-80fd-11ee-8227-6aecfccc70fe/Library/Caches/com.apple.xbs/Sources/Admin/InternetServices.m Line:379
+#     ```
+setNtpServer() {
+  if [ -d /Applications ] && [ -d /System ]; then
+    if command -v m > /dev/null; then
+      ### macOS
+      gum log -sl info 'Turning off setusingnetworktime for 2 seconds' && sudo systemsetup -setusingnetworktime off 2>/dev/null 1>&2
+      sleep 2
+      gum log -sl info 'Re-enabling setusingnetworktime' && sudo systemsetup -setusingnetworktime on 2>/dev/null 1>&2
+    else
+      gum log -sl warn 'Skipped setting the NTP server'
+    fi
+  fi
+}
+
+# @description Sets the system timezone using `timedatectl` on Linux and `m` on macOS. If neither commands are available
+#     then a warning message is printed.
+setTimezone() {
+  if command -v timedatectl > /dev/null; then
+    ### Linux
+    gum log -sl info 'Setting timezone to {{ .user.timezone }}'
+    sudo timedatectl set-timezone {{ .user.timezone }}
+  elif command -v systemsetup > /dev/null && [ -d /Applications ] && [ -d /System ]; then
+    ### macOS
+    gum log -sl info 'Setting timezone to {{ .user.timezone }}' && sudo systemsetup -settimezone "{{ .user.timezone }}" 2>/dev/null 1>&2
+  else
+    gum log -sl warn 'Neither timedatectl (Linux) or systemsetup (macOS) were found on the system'
+  fi
+}
+
+# @description Configures macOS to enable the notification center. `&> /dev/null` was added to the command
+#     because the following useless error was being reported:
+#
+#     ```shell
+#     Load failed: 5: Input/output error
+#     Try running `launchctl bootstrap` as root for richer errors.
+#     Restart your computer for this to take effect
+#     ```
+showNotificationCenter() {
+  if command -v m > /dev/null; then
+    gum log -sl info 'Configuring macOS to show notification center' && m notification showcenter YES &> /dev/null
+  fi
+}
+
+installShellGPT() {
+  if command -v pipx > /dev/null; then
+    if command -v sgpt > /dev/null; then
+      gum log -sl info "sgpt is already installed"
+    else
+      gum log -sl info "Installing sgpt via pipx" && pipx install shell-gpt
+    fi
+  else
+    gum log -sl warn "Unable to install sgpt because pipx is unavailable"
+  fi
+}
+
+installAnsible() {
+  if command -v pipx > /dev/null; then
+    if [ ! -f "${XDG_CACHE_HOME:-$HOME/.cache}/install.doctor/ansible-installed" ]; then
+      gum log -sl info 'Running pipx install ansible' && pipx install ansible
+      if [ -d /Applications ] && [ -d /System ]; then
+        gum log -sl info 'Injecting ansible pipx with ansible PyObjC PyObjC-core because system is macOS' && pipx inject ansible PyObjC PyObjC-core
+      fi
+      gum log -sl info 'Running pipx inject ansible docker lxml netaddr pexpect python-vagrant pywinrm requests-credssp watchdog' && pipx inject ansible docker lxml netaddr pexpect python-vagrant pywinrm requests-credssp watchdog
+      mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/install.doctor"
+      touch "${XDG_CACHE_HOME:-$HOME/.cache}/install.doctor/ansible-installed"
+    else
+      gum log -sl info 'Ansible installation routine appears to have already been run'
+    fi
+  else
+    gum log -sl warn 'pipx is unavailable to use for installing Ansible'
+  fi
+}
+
+installBrewPackages() {
+  ensureNodeInstalled
+  ensureDeltaInstalled
+  ensureBrewPackageInstalled "volta"
+  volta install node@latest &
+  volta install yarn@latest &
+  npm install --no-progress -g npm@latest &
+  ensureBrewPackageInstalled "pipx"
+  pipx ensurepath &
+  ensureBrewPackageInstalled "gh"
+  ensureBrewPackageInstalled "go"
+  ensureBrewPackageInstalled "ruby"
+  ensureBrewPackageInstalled "rustup"
+  ensureBrewPackageInstalled "zx"
+  ensureBrewPackageInstalled "whalebrew"
+  wait
+  gum log -sl info 'Finished installing auxilary Homebrew packages'
+  gum log -sl info 'Ensuring Ansible is installed (with plugins)' && installAnsible
+}
+
+ensureMacportsInstalled() {
+  if [ -d /Applications ] && [ -d /System ]; then
+    if ! command -v port > /dev/null; then
+      gum log -sl info 'Ensuring /opt/mports/macports-base is removed' && sudo rm -rf /opt/mports/macports-base
+      gum log -sl info 'Cloning source for macports to /opt/mports/macports-base' && sudo git clone --branch v2.8.0 --depth 1 https://github.com/macports/macports-base.git /opt/mports/macports-base
+      cd /opt/mports/macports-base
+      gum log -sl info 'Building macports' && sudo bash --noprofile --norc -c './configure --enable-readline && make && make install && make distclean'
+      gum log -sl info 'Adding /opt/local/bin to PATH because port is installed there'
+      export PATH="/opt/local/bin:$PATH"
+      gum log -sl info 'Running sudo port selfupdate' && sudo port selfupdate
+    fi
+  fi
+}
+
+setupSnap() {
+  if [ ! -d /Applications ] && [ ! -d /System ] && command -v snap > /dev/null; then
+    gum log -sl info 'Enabling snapd' && sudo systemctl enable snapd
+    gum log -sl info 'Starting snapd' && sudo systemctl start snapd
+    if [ -d /snap ]; then
+      gum log -sl info 'Linking /var/lib/snapd/snap to /snap' && sudo ln -s /var/lib/snapd/snap /snap
+    fi
+    gum log -sl info 'Running sudo snap info core' && sudo snap info core
+    gum log -sl info 'Running sudo snap wait system seed.loaded' && sudo snap wait system seed.loaded
+    gum log -sl info 'Running sudo snap install core' && sudo snap install core
+  fi
+}
+
+installYay() {
+  if [ -f /etc/arch-release ] && ! command -v yay > /dev/null; then
+    sudo rm -rf /usr/local/src/yay
+    sudo git clone https://aur.archlinux.org/yay.git /usr/local/src/yay
+    cd /usr/local/src/yay
+    sudo makepkg -si
+  fi
+}
+
+installNix() {
+  if ! command -v nix-shell > /dev/null; then
+    if [ -d /Applications ] && [ -d /System ]; then
+      ### macOS
+      gum log -sl info 'Installing nix for macOS' && curl -L https://nixos.org/nix/install | sh -s -- --daemon --yes
+    else
+      ### Linux
+      gum log -sl info 'Installing nix' && curl -L https://nixos.org/nix/install | sh -s -- --daemon --yes
+    fi
+  fi
+}
+
+rustUpInit() {
+  if command -v rustup-init > /dev/null && ! command -v rustc > /dev/null; then
+    gum log -sl info 'Running rustup-init -y' && rustup-init -y
+  fi
+  if command -v rustup > /dev/null; then
+    gum log -sl info 'Running rustup default stable' && rustup default stable
+  fi
+}
+
+zapInstall() {
+  if [ ! -d /Applications ] && [ ! -d /System ]; then
+    if ! command -v zap > /dev/null; then
+      ### Architecture
+      if [ -z ${ARCH+x} ]; then
+	      MACHINE_ARCH="$(uname -m)"
+	      if [ "$MACHINE_ARCH" = "amd64" ]; then
+	  	    ARCH="amd64"
+        elif [ "$MACHINE_ARCH" = "x86_64" ]; then
+          ARCH="amd64"
+	      elif [ "$MACHINE_ARCH" = "i386" ]; then
+	  	    ARCH="386"
+	      elif [ "$MACHINE_ARCH" = "i686" ]; then
+	  	    ARCH="386" # both are 32bit, should be compatible
+	      elif [ "$MACHINE_ARCH" = "aarch64" ]; then
+	  	    ARCH="arm64"
+	      elif [ "$MACHINE_ARCH" = "arm64" ]; then
+	  	    ARCH="arm64"
+	      elif [ "$MACHINE_ARCH" = "arm" ]; then
+	  	    ARCH="arm"
+	      fi
+        export ARCH
+      fi
+      gum log -sl info 'Downloading zap to /usr/local/bin/zap' && sudo curl -sSL --output /usr/local/bin/zap "https://github.com/srevinsaju/zap/releases/download/continuous/zap-${ARCH}"
+      gum log -sl info 'Making /usr/local/bin/zap executable' && sudo chmod +x /usr/local/bin/zap
+    fi
+  fi
+}
+
+# @description Download and run the NixOS installation script.
+# @exitcode 0 If installation succeeded.
+# @exitcode 1 If installation failed.
+installNixOS() {
+    curl -L https://nixos.org/nix/install | sh -s -- --daemon
+    gum log -sl info "NixOS installation script executed."
+}
+
+addFlathub() {
+  if command -v flatpak > /dev/null; then
+    gum log -sl info 'Adding flatpak flathub repository' && sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+  fi
+}
+
+installXcode() {
+  if [ -d /Applications ] && [ -d /System ]; then
+    if [ ! -d /Applications/Xcode.app ]; then
+      gum log -sl info 'Installing Xcode via mas - the installation will timeout after 40 minutes if Apple account is not signed into'
+      timeout 2400 mas install 497799835 || MAS_EXIT_CODE=$?
+      if [ -n "$MAS_EXIT_CODE" ]; then
+        gum log -sl error 'Failed to install Xcode'
+      else
+        if command -v xcodebuild > /dev/null; then
+          logg info 'Accepting licenses and warming up with sudo xcodebuild -runFirstLaunch'
+          logg info 'Running xcodebuild -license accept'
+          sudo xcodebuild -license accept
+          logg info 'Running sudo xcodebuild -runFirstLaunch'
+          sudo xcodebuild -runFirstLaunch
+        else
+          logg warn 'xcodebuild is not available'
+        fi
+      fi
+    else
+      gum log -sl info 'Xcode is already installed'
+    fi
+  fi
+}
+
+rustUpFix() {
+  if command -v rustup > /dev/null; then
+    logg info 'Running rustup default stable because unsure which Rust library are used on some systems'
+    rustup default stable
+  fi
+}
+
+setupLinuxHomebrewFonts() {
+  if [ ! -d /Applications ] && [ ! -d /System ]; then
+    gum log -sl info 'Tapping homebrew/linux-fonts' && brew tap homebrew/linux-fonts
+    # if [ ! -L "/usr/local/share/fonts" ]; then
+    #   gum log -sl info 'Symlinking linuxbrew/share/fonts to /usr/local/share'
+    #   sudo ln -s /home/linuxbrew/.linuxbrew/share/fonts -t /usr/local/share
+    # else
+    #   gum log -sl info '/home/linuxbrew/.linuxbrew/share/fonts already symlinked to /usr/local/share'
+    # fi
+
+    if command -v fc-cache > /dev/null; then
+      gum log -sl info 'Running sudo fc-cache -fv' && sudo fc-cache -fv > /dev/null
+    else
+      gum log -sl warn 'fc-cache binary not available for setting up Linux Homebrew fonts'
+    fi
+  fi
+}
+
+# TODO - Add install on macOS for macports
+if [ -n "$DEBUG" ] || [ -n "$DEBUG_MODE" ]; then
+  gum log -sl info 'The DEBUG or DEBUG_MODE environment variable is set so preliminary system tweaks will be run synchronously'
+  installXcode
+  addFlathub
+  allocateSwap
+  configureGPG
+  disableDStoreFileCreation
+  enableDarkTransparentMode
+  ensureMacportsInstalled
+  ensureUserGroup
+  increaseMapCount
+  installBrewPackages
+  installDocker
+  installJumpCloud
+  installSystemPips
+  installYay
+  removeLinuxBloatware
+  rustUpInit
+  setHostname
+  setNtpServer
+  setTimezone
+  setupSnap
+  showNotificationCenter
+  zapInstall
+  installShellGPT
+  setupLinuxHomebrewFonts
+  rustUpFix
+  installNixOS
+else
+  installBrewPackages
+  installXcode &
+  addFlathub &
+  allocateSwap &
+  configureGPG &
+  disableDStoreFileCreation &
+  enableDarkTransparentMode &
+  ensureMacportsInstalled &
+  ensureUserGroup &
+  increaseMapCount &
+  installDocker &
+  installJumpCloud &
+  installNixOS &
+  installShellGPT &
+  installSystemPips &
+  installYay &
+  removeLinuxBloatware &
+  rustUpInit &
+  setHostname &
+  setNtpServer &
+  setTimezone &
+  setupSnap &
+  showNotificationCenter &
+  zapInstall &
+  setupLinuxHomebrewFonts &
+  rustUpFix &
+  wait
+fi
+
+gum log -sl info 'Successfully applied preliminary system tweaks'

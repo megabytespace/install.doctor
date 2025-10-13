@@ -1,0 +1,165 @@
+{{- if (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) -}}
+#!/usr/bin/env sh
+# @file Secrets
+# @brief Seperate environment variables file that, when manually sourced, includes secret environment variables
+# @description
+#     This script can be invoked by running `. ~/.config/shell/private.sh` to include secret environment variables
+#     that are populated by Install Doctor during the provisioning process (if they are provided).
+
+### Ansible
+export ANSIBLE_GALAXY_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "ANSIBLE_GALAXY_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/ANSIBLE_GALAXY_TOKEN") | decrypt | trim }}{{ else }}{{ env "ANSIBLE_GALAXY_TOKEN" }}{{ end }}"
+export ANSIBLE_VAULT_PASSWORD="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "ANSIBLE_VAULT_PASSWORD")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/ANSIBLE_VAULT_PASSWORD") | decrypt | trim }}{{ else }}{{ env "ANSIBLE_VAULT_PASSWORD" }}{{ end }}"
+export AVP="$ANSIBLE_VAULT_PASSWORD"
+
+### Atuin
+export ATUIN_EMAIL="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "ATUIN_EMAIL")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/ATUIN_EMAIL") | decrypt | trim }}{{ else }}{{ env "ATUIN_EMAIL" }}{{ end }}"
+export ATUIN_PASSWORD="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "ATUIN_PASSWORD")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/ATUIN_PASSWORD") | decrypt | trim }}{{ else }}{{ env "ATUIN_PASSWORD" }}{{ end }}"
+export ATUIN_USERNAME="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "ATUIN_USERNAME")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/ATUIN_USERNAME") | decrypt | trim }}{{ else }}{{ env "ATUIN_USERNAME" }}{{ end }}"
+export ATUIN_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "ATUIN_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/ATUIN_KEY") | decrypt | trim }}{{ else }}{{ env "ATUIN_KEY" }}{{ end }}"
+
+### AWS
+export AWS_ACCESS_KEY_ID="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "AWS_ACCESS_KEY_ID")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/AWS_ACCESS_KEY_ID") | decrypt | trim }}{{ else }}{{ env "AWS_ACCESS_KEY_ID" }}{{ end }}"
+export AWS_SECRET_ACCESS_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "AWS_SECRET_ACCESS_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/AWS_SECRET_ACCESS_KEY") | decrypt | trim }}{{ else }}{{ env "AWS_SECRET_ACCESS_KEY" }}{{ end }}"
+export AWS_DEFAULT_REGION="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "AWS_DEFAULT_REGION")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/AWS_DEFAULT_REGION") | decrypt | trim }}{{ else }}{{ env "AWS_DEFAULT_REGION" }}{{ end }}"
+
+### Google Cloud SDK
+export CLOUDSDK_CORE_PROJECT="{{ .user.gcloud.coreProject }}"
+export GCE_SERVICE_ACCOUNT_EMAIL="{{ .user.gcloud.email }}"
+export GCE_CREDENTIALS_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/gcloud/gcp.json"
+
+### CloudFlare
+# Source: https://github.com/cloudflare/cf-terraforming
+export CLOUDFLARE_API_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_API_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_API_TOKEN") | decrypt | trim }}{{ else }}{{ env "CLOUDFLARE_API_TOKEN" }}{{ end }}"
+# If using API Key
+# export CLOUDFLARE_EMAIL='user@example.com'
+# export CLOUDFLARE_API_KEY='1150bed3f45247b99f7db9696fffa17cbx9'
+# Specify zone ID
+# export CLOUDFLARE_ZONE_ID='81b06ss3228f488fh84e5e993c2dc17'
+export LEXICON_CLOUDFLARE_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_API_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_API_TOKEN") | decrypt | trim }}{{ else }}{{ env "CLOUDFLARE_API_TOKEN" }}{{ end }}"
+export LEXICON_CLOUDFLARE_ZONE="{{ .host.domain }}"
+# For `cfcli`
+export CF_API_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_API_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_API_TOKEN") | decrypt | trim }}{{ else }}{{ env "CLOUDFLARE_API_TOKEN" }}{{ end }}"
+export CF_API_EMAIL="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_EMAIL")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_EMAIL") | decrypt | trim }}{{ else }}{{ env "CLOUDFLARE_EMAIL" }}{{ end }}"
+
+### DockerHub
+export DOCKERHUB_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "DOCKERHUB_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/DOCKERHUB_TOKEN") | decrypt | trim }}{{ else }}{{ env "DOCKERHUB_TOKEN" }}{{ end }}"
+export DOCKERHUB_REGISTRY_PASSWORD="$DOCKERHUB_TOKEN"
+
+### Elevenlabs
+export ELEVENLABS_API_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "ELEVENLABS_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/ELEVENLABS_API_KEY") | decrypt | trim }}{{ else }}{{ env "ELEVENLABS_API_KEY" }}{{ end }}"
+
+### Fig
+export FIG_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "FIG_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/FIG_TOKEN") | decrypt | trim }}{{ else }}{{ env "FIG_TOKEN" }}{{ end }}"
+
+### GitHub
+export GH_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "GITHUB_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/GITHUB_TOKEN") | decrypt | trim }}{{ else }}{{ env "GITHUB_TOKEN" }}{{ end }}"
+export GITHUB_TOKEN="$GH_TOKEN"
+
+### GitLab
+export GL_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "GITLAB_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/GITLAB_TOKEN") | decrypt | trim }}{{ else }}{{ env "GITLAB_TOKEN" }}{{ end }}"
+export GITLAB_TOKEN="$GL_TOKEN"
+export GITLAB_RUNNER_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "GITLAB_RUNNER_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/GITLAB_RUNNER_TOKEN") | decrypt }}{{ else }}{{ env "GITLAB_RUNNER_TOKEN" }}{{ end }}"
+
+### Heroku
+export HEROKU_API_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "HEROKU_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/HEROKU_API_KEY") | decrypt | trim }}{{ else }}{{ env "HEROKU_API_KEY" }}{{ end }}"
+
+### Hishtory
+export HISHTORY_USER_SECRET="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "HISHTORY_USER_SECRET")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/HISHTORY_USER_SECRET") | decrypt | trim }}{{ else }}{{ env "HISHTORY_USER_SECRET" }}{{ end }}"
+
+### Home Assistant
+export HASS_SERVER="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "HASS_SERVER")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/HASS_SERVER") | decrypt | trim }}{{ else }}{{ env "HASS_SERVER" }}{{ end }}"
+export HASS_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "HASS_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/HASS_TOKEN") | decrypt | trim }}{{ else }}{{ env "HASS_TOKEN" }}{{ end }}"
+
+### Ionic
+export IONIC_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "IONIC_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/IONIC_TOKEN") | decrypt | trim }}{{ else }}{{ env "IONIC_TOKEN" }}{{ end }}"
+
+### Install Doctor
+# TODO: Replace HEADLESS_INSTALL with {{ .host.headless }} data source once headless install detection is implemented
+# export HEADLESS_INSTALL={{ .host.headless }}
+export FIREFOX_PUBLIC_PROFILE="{{ .firefoxPublicProfile }}"
+export FULL_NAME="{{ .user.name }}"
+export HEADLESS_INSTALL=true
+export HOST="{{ .host.hostname }}"
+export KEYID="{{ .user.gpg.id }}"
+export PRIMARY_EMAIL="{{ .user.email }}"
+export PUBLIC_SERVICES_DOMAIN="{{ .host.domain }}"
+export RESTRICTED_ENVIRONMENT={{ .host.restricted }}
+export SOFTWARE_GROUP="{{ .host.softwareGroup }}"
+export USER_USERNAME="{{ .user.username }}"
+export WORK_ENVIRONMENT={{ .host.work }}
+
+# Set to work environment if Cisco applications are installed (modify this to your liking)
+if [ -d /Applications/Cisco ]; then
+    export WORK_ENVIRONMENT=true
+fi
+
+### JuiceFS
+export JFS_RSA_PASSPHRASE="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "JFS_RSA_PASSPHRASE")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/JFS_RSA_PASSPHRASE") | decrypt | trim }}{{ else }}{{ env "JFS_RSA_PASSPHRASE" }}{{ end }}"
+
+### Megabyte Labs
+export FULLY_AUTOMATED_TASKS=true
+
+### Minio
+export MINIO_ROOT_USER="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "MINIO_ROOT_USER")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/MINIO_ROOT_USER") | decrypt | trim }}{{ else }}{{ env "MINIO_ROOT_USER" }}{{ end }}"
+export MINIO_ROOT_PASSWORD="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "MINIO_ROOT_PASSWORD")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/MINIO_ROOT_PASSWORD") | decrypt | trim }}{{ else }}{{ env "MINIO_ROOT_PASSWORD" }}{{ end }}"
+
+### NPM
+export NPM_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "NPM_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/NPM_TOKEN") | decrypt | trim }}{{ else }}{{ env "NPM_TOKEN" }}{{ end }}"
+
+### OpenAI
+export OPENAI_API_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "OPENAI_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/OPENAI_API_KEY") | decrypt | trim }}{{ else }}{{ env "OPENAI_API_KEY" }}{{ end }}"
+### OpenCommit
+export OCO_OPENAI_API_KEY="$OPENAI_API_KEY"
+
+### Pexels
+export PEXELS_API_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "PEXELS_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/PEXELS_API_KEY") | decrypt | trim }}{{ else }}{{ env "PEXELS_API_KEY" }}{{ end }}"
+
+### PyPi
+export PYPI_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "PYPI_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/PYPI_TOKEN") | decrypt | trim }}{{ else }}{{ env "PYPI_TOKEN" }}{{ end }}"
+
+### Replicate
+export REPLICATE_API_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "REPLICATE_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/REPLICATE_API_KEY") | decrypt | trim }}{{ else }}{{ env "REPLICATE_API_KEY" }}{{ end }}"
+
+### Search GPT
+# Also relies on `OPENAI_API_KEY`
+export GOOGLE_SEARCH_API_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "GOOGLE_SEARCH_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/GOOGLE_SEARCH_API_KEY") | decrypt | trim }}{{ else }}{{ env "GOOGLE_SEARCH_API_KEY" }}{{ end }}"
+export GOOGLE_SEARCH_ID="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "GOOGLE_SEARCH_ID")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/GOOGLE_SEARCH_ID") | decrypt | trim }}{{ else }}{{ env "GOOGLE_SEARCH_ID" }}{{ end }}"
+
+### SendGrid API Key
+export SENDGRID_API_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SENDGRID_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SENDGRID_API_KEY") | decrypt | trim }}{{ else }}{{ env "SENDGRID_API_KEY" }}{{ end }}"
+
+### Serper.dev
+export SERP_API_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SERP_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SERP_API_KEY") | decrypt | trim }}{{ else }}{{ env "SERP_API_KEY" }}{{ end }}"
+
+### SFTPGo
+export SFTPGO_DEFAULT_ADMIN_PASSWORD="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SFTPGO_DEFAULT_ADMIN_PASSWORD")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SFTPGO_DEFAULT_ADMIN_PASSWORD") | decrypt | trim }}{{ else }}{{ env "SFTPGO_DEFAULT_ADMIN_PASSWORD" }}{{ end }}"
+export SFTPGO_DEFAULT_ADMIN_USERNAME="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SFTPGO_DEFAULT_ADMIN_USERNAME")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SFTPGO_DEFAULT_ADMIN_USERNAME") | decrypt | trim }}{{ else }}{{ env "SFTPGO_DEFAULT_ADMIN_USERNAME" }}{{ end }}"
+
+### Snapcraft
+export SNAPCRAFT_EMAIL="{{ .user.snapcraft.username }}"
+export SNAPCRAFT_MACAROON="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SNAPCRAFT_MACAROON")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SNAPCRAFT_MACAROON") | decrypt | trim }}{{ else }}{{ env "SNAPCRAFT_MACAROON" }}{{ end }}"
+export SNAPCRAFT_UNBOUND_DISCHARGE="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SNAPCRAFT_UNBOUND_DISCHARGE")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SNAPCRAFT_UNBOUND_DISCHARGE") | decrypt | trim }}{{ else }}{{ env "SNAPCRAFT_UNBOUND_DISCHARGE" }}{{ end }}"
+
+### Surge.sh
+export SURGE_LOGIN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SURGE_LOGIN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SURGE_LOGIN") | decrypt | trim }}{{ else }}{{ env "SURGE_LOGIN" }}{{ end }}"
+export SURGE_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SURGE_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SURGE_TOKEN") | decrypt | trim }}{{ else }}{{ env "SURGE_TOKEN" }}{{ end }}"
+
+### Tailscale
+export TAILSCALE_AUTH_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "TAILSCALE_AUTH_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/TAILSCALE_AUTH_KEY") | decrypt | trim }}{{ else }}{{ env "TAILSCALE_AUTH_KEY" }}{{ end }}"
+
+### Vagrant Cloud
+export VAGRANT_CLOUD_TOKEN="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "VAGRANT_CLOUD_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/VAGRANT_CLOUD_TOKEN") | decrypt | trim }}{{ else }}{{ env "VAGRANT_CLOUD_TOKEN" }}{{ end }}"
+
+### VMWare
+export VMWARE_WORKSTATION_LICENSE_KEY="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "VMWARE_WORKSTATION_LICENSE_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/VMWARE_WORKSTATION_LICENSE_KEY") | decrypt | trim }}{{ else }}{{ default "4C21U-2KK9Q-M8130-4V2QH-CF810" (env "VMWARE_WORKSTATION_LICENSE_KEY") }}{{ end }}"
+
+### WebDAV
+export WEBDAV_USER="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "WEBDAV_USER")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/WEBDAV_USER") | decrypt | trim }}{{ else }}{{ env "WEBDAV_USER" }}{{ end }}"
+export WEBDAV_PASSWORD="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "WEBDAV_PASSWORD")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/WEBDAV_PASSWORD") | decrypt | trim }}{{ else }}{{ env "WEBDAV_PASSWORD" }}{{ end }}"
+
+### Xcodes
+# Apple ID username and password
+export XCODES_USERNAME="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "APPLE_USERNAME")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/APPLE_USERNAME") | decrypt | trim }}{{ else }}{{ env "APPLE_USERNAME" }}{{ end }}"
+export XCODES_PASSWORD="{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "APPLE_PASSWORD")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/APPLE_PASSWORD") | decrypt | trim }}{{ else }}{{ env "APPLE_PASSWORD" }}{{ end }}"
+
+{{ end -}}

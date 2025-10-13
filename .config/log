@@ -25,7 +25,6 @@
 #   If the `docker` environment variable is not set, the script / library will ensure both Gum and Glow are installed.
 
 # @description Installs glow (a markdown renderer) from GitHub releases
-# @example installGlow
 installGlow() {
   # TODO: Add support for other architecture types
   if [ -d '/Applications' ] && [ -d '/Library' ] && [ -d '/Users' ]; then
@@ -57,13 +56,20 @@ installGlow() {
 }
 
 # @description Installs gum (a logging CLI) from GitHub releases
-# @example installGum
 installGum() {
   # TODO: Add support for other architecture types
   if [ -d '/Applications' ] && [ -d '/Library' ] && [ -d '/Users' ]; then
-    GUM_DOWNLOAD_URL="https://github.com/charmbracelet/gum/releases/download/v0.4.0/gum_0.4.0_Darwin_x86_64.tar.gz"
+    if [ "$(uname -r)" == "arm64" ]; then
+      GUM_DOWNLOAD_URL="https://github.com/charmbracelet/gum/releases/download/v0.14.5/gum_0.14.5_Darwin_arm64.tar.gz"
+    else
+      GUM_DOWNLOAD_URL="https://github.com/charmbracelet/gum/releases/download/v0.14.5/gum_0.14.5_Darwin_x86_64.tar.gz"
+    fi
   elif [ -f '/etc/ubuntu-release' ] || [ -f '/etc/debian_version' ] || [ -f '/etc/redhat-release' ] || [ -f '/etc/SuSE-release' ] || [ -f '/etc/arch-release' ] || [ -f '/etc/alpine-release' ]; then
-    GUM_DOWNLOAD_URL="https://github.com/charmbracelet/gum/releases/download/v0.4.0/gum_0.4.0_linux_x86_64.tar.gz"
+    if [ "$(uname -r)" == "arm64" ]; then
+      GUM_DOWNLOAD_URL="https://github.com/charmbracelet/gum/releases/download/v0.14.5/gum_0.14.5_Linux_arm64.tar.gz"
+    else
+      GUM_DOWNLOAD_URL="https://github.com/charmbracelet/gum/releases/download/v0.14.5/gum_0.14.5_Linux_x86_64.tar.gz"
+    fi
   fi
   if type curl &> /dev/null; then
     if { [ -d '/Applications' ] && [ -d '/Library' ] && [ -d '/Users' ]; } || [ -f '/etc/ubuntu-release' ] || [ -f '/etc/debian_version' ] || [ -f '/etc/redhat-release' ] || [ -f '/etc/SuSE-release' ] || [ -f '/etc/arch-release' ] || [ -f '/etc/alpine-release' ]; then
@@ -117,7 +123,6 @@ if [ -n "$SEMANTIC_RELEASE" ]; then
 fi
 
 # @description Logs using Node.js
-# @example logger info "An informative log"
 logger() {
   if [ "$1" == 'error' ]; then
     "$GUM_PATH" style --border="thick" "$("$GUM_PATH" style --foreground="#ff0000" "✖") $("$GUM_PATH" style --bold --background="#ff0000" --foreground="#ffffff"  " ERROR ") $("$GUM_PATH" style --bold "$(format "$2")")"
@@ -171,7 +176,6 @@ format() {
 }
 
 # @description Display prompt that allows you to choose between options
-# @example RESPONSE="$(.config/log choose "file.png" "another-file.jpg")"
 choose() {
   if type gum &> /dev/null; then
     CHOOSE_ARGS="gum choose"
@@ -185,7 +189,6 @@ choose() {
 }
 
 # @description Display a confirmation prompt that returns an exit code if "No" is selected
-# @example RESPONSE="$(.config/log confirm "Are you sure?" "Yeah" "Naa")"
 confirm() {
   if type gum &> /dev/null; then
     GUM_OPTS=""
@@ -211,7 +214,6 @@ confirm() {
 }
 
 # @description Logs an error message
-# @example .config/log error "Something happened!"
 error() {
   if [ -z "$NO_LOGGING" ]; then
     if [ -n "$ENHANCED_LOGGING" ]; then
@@ -223,7 +225,6 @@ error() {
 }
 
 # @description Display a filterable prompt that is populated with options from a text file
-# @example echo Strawberry >> flavors.text && echo Banana >> flavors.text && RESPONSE="$(.config/log filter flavors.txt)"
 filter() {
   if type gum &> /dev/null; then
     TMP="$(mktemp)"
@@ -234,7 +235,6 @@ filter() {
 }
 
 # @description Logs an info message
-# @example .config/log info "Here is some information"
 info() {
   if [ -z "$NO_LOGGING" ]; then
     if [ -n "$ENHANCED_LOGGING" ]; then
@@ -246,7 +246,6 @@ info() {
 }
 
 # @description Displays an input with masked characters
-# @example INPUT="$(.config/log input 'Enter the value..')"
 input() {
   if type gum &> /dev/null; then
     if [ -n "$1" ]; then
@@ -260,8 +259,6 @@ input() {
 }
 
 # @description Logs a message written in markdown
-# @example .config/log md "[styled_link](https://google.com)"
-# @example .config/log md mymarkdown/file.md
 md() {
   if [ ! -f "$1" ]; then
     echo "ERROR: A markdown file must be passed in as the parameter" && exit 1
@@ -272,7 +269,6 @@ md() {
 }
 
 # @description Displays an input with masked characters
-# @example PASSWORD="$(.config/log password 'Enter the Ansible vault password')"
 password() {
   if type gum &> /dev/null; then
     if [ -n "$1" ]; then
@@ -286,7 +282,6 @@ password() {
 }
 
 # @description Logs a message that describes a prompt
-# @example .config/log prompt "Enter text into the following prompt"
 prompt() {
   if [ -z "$NO_LOGGING" ]; then
     if [ -n "$ENHANCED_LOGGING" ]; then
@@ -298,7 +293,6 @@ prompt() {
 }
 
 # @description Display a spinner that stays until a command is completed
-# @example .config/log spin "brew install yq" "Installing yq..")"
 spin() {
   if type gum &> /dev/null; then
     if [ -n "$1" ] && [ -n "$2" ]; then
@@ -314,7 +308,6 @@ spin() {
 }
 
 # @description Logs a message that starts with a star emoji
-# @example .config/log star "Congratulations"
 star() {
   if [ -z "$NO_LOGGING" ]; then
     if [ -n "$ENHANCED_LOGGING" ]; then
@@ -326,7 +319,6 @@ star() {
 }
 
 # @description Logs a message at the beginning of a task
-# @example .config/log start "Starting the process.."
 start() {
   if [ -z "$NO_LOGGING" ]; then
     if [ -n "$ENHANCED_LOGGING" ]; then
@@ -338,7 +330,6 @@ start() {
 }
 
 # @description Logs a success message
-# @example .config/log success "Yay!"
 success() {
   if [ -z "$NO_LOGGING" ]; then
     if [ -n "$ENHANCED_LOGGING" ]; then
@@ -350,7 +341,6 @@ success() {
 }
 
 # @description Logs a warning message
-# @example .config/log warn "Just so you know.."
 warn() {
   if [ -z "$NO_LOGGING" ]; then
     if [ -n "$ENHANCED_LOGGING" ]; then
@@ -362,7 +352,6 @@ warn() {
 }
 
 # @description Displays a multi-line prompt for text input
-# @example .config/log write "Write something..")"
 write() {
   if type gum &> /dev/null; then
     if [ -n "$1" ]; then

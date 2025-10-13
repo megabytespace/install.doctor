@@ -1,0 +1,106 @@
+[global]
+  # Allow connections with hostnames that can be resolved from hostname.local.{{ .user.domain }}
+  allow hosts = .local.{{ .user.domain }}
+  hostname lookups = yes
+  # Allows users without accounts to log in and be assigned to the guest account
+  map to guest = bad user
+  netbios name = {{ .host.samba.netbiosName }}
+  obey pam restrictions = yes
+  proxy = no
+  # Allow using DNS to specify allowed hosts
+  # Source: https://serverfault.com/questions/702455/samba-hosts-allow-example-com
+  dns proxy = yes
+  # Required for macOS JuiceFS Samba
+  ea support = yes
+  passdb backend = tdbsam
+  security = user
+  server role = standalone server
+  server string = Samba on %L
+  workgroup = {{ .host.samba.workgroup }}
+  # Printing - Uncomment these lines to enable Samba printer sharing with CUPSD
+  # Source: https://wiki.archlinux.org/index.php/CUPS/Printer_sharing
+  # load printers = yes
+  # printing = CUPS
+  # Symlinks - Uncomment the following two options to enable symlinking (including symlinks outside of the shared folder)
+  # This feature is disabled by default due to security concerns (i.e. people can create symlinks on the shares and access system files if the share is writable)
+  # unix extension = no
+  # wide links = yes
+
+[default]
+  ### Source: https://gist.github.com/jbfriedrich/49b186473486ac72c4fe194af01288be
+  # Use NTFS streams if supported
+  streams = yes
+  # Soft mount by default
+  soft = yes
+  # Disable signing due to macOS bug
+  signing_required = no
+  # Disable directory caching
+  dir_cache_off = yes
+  # Lock negotiation to SMB2/3 only
+  # 7 == 0111  SMB 1/2/3 should be enabled
+  # 6 == 0110  SMB 2/3 should be enabled
+  # 4 == 0100  SMB 3 should be enabled
+  protocol_vers_map = 6
+  # No SMB1, so we disable NetBIOS
+  port445 = no_netbios
+  # Turn off notifications
+  notify_off = yes
+  # SMB Multichannel behavior
+  # To disable multichannel support completely uncomment the next line
+  # mc_on=no
+  # Some Wi-Fi networks advertise faster speeds than the connected wired network. 
+  mc_prefer_wired = yes
+
+[Private]
+  browsable = yes
+  comment = Authenticated share with read/write capabilities (backed up to S3)
+  follow symlinks = yes
+  guest only = no
+  path = /mnt/private
+  public = no
+  unix extension = yes
+  valid users = @sambausers
+  wide links = yes
+  writable = true
+
+[Public]
+  browsable = yes
+  comment = Public folder provided for file sharing on the LAN (backed up to S3)
+  follow symlinks = no
+  guest only = yes
+  path = /mnt/public
+  public = yes
+  writable = yes
+
+[User]
+  browsable = yes
+  comment = Public user home directory folder for file sharing on the LAN
+  follow symlinks = no
+  guest only = yes
+  path = /home/{{ .user.name }}/Public
+  public = yes
+  writable = yes
+
+# [printers]
+#   browsable = yes
+#   comment = Printers
+#   path = /var/spool/samba/
+#   printable = yes
+#   public = yes
+#   writable = no
+
+# [print]
+#   browsable = yes
+#   comment = Printer drivers
+#   path = /var/lib/samba/printers
+#   public = yes
+#   writable = no
+
+# [HPOfficeJetPro]
+#   comment = HP OfficeJet Pro printer
+#   path = /var/spool/samba/
+#   printable = yes
+#   # Source: https://wiki.samba.org/index.php/Setting_up_Samba_as_a_Print_Server
+#   printer name = HP OfficeJet Pro 6978
+#   public = yes
+#   writable = no

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# @file Sudo Password Helper
+# @brief Integrates sudo password entry with native system dialogs for `SUDO_ASKPASS`
+# @description
+#   Many programs allow you to define the `SUDO_ASKPASS` environment variable to handle passing in
+#   sudo privileges. For more details, check out [this StackOverflow post](https://stackoverflow.com/questions/12608293/how-to-setup-a-sudo-askpass-environment-variable).
+
+if [ -z "$SUDO_PASSWORD" ]; then
+  if [ -d /Applications ] && [ -d /System ]; then
+    ### macOS
+    SUDO_PASSWORD="$(osascript -e 'Tell application "System Events" to display dialog "Administrator Password:" default answer "" with hidden answer' -e 'text returned of result' 2>/dev/null)"
+  else
+    ### Linux
+    SUDO_PASSWORD="TODO"
+  fi
+fi
+echo "$SUDO_PASSWORD"

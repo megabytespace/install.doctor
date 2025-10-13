@@ -1,0 +1,180 @@
+[include]
+  path = ~/.config/git/local.toml
+[advice]
+  detachedHead = false
+[alias]
+  c = commit
+  ca = commit -a
+  cm = commit -m
+  cam = commit -am
+  d = diff
+  dc = diff --cached
+  l = log --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit
+  master = !git add --all && git commit -am 'Quick commit.' -n && git push origin master
+  sub  = submodule update --init --recursive
+  # Find commits by source code.
+  cc = "!f() { \
+    git log --pretty=custom --decorate --date=short -S\"$1\"; \
+  }; f"
+  # Find commits by commit message.
+  cm = "!f() { \
+    git log --pretty=custom --decorate --date=short --grep=\"$1\"; \
+  }; f"
+  # Credit an author on the latest commit.
+  credit = "!f() { \
+    if [ -n \"$1\" ] && [ -n \"$2\" ]; then \
+      git commit --amend --author \"$1 <$2>\" -C HEAD; \
+    fi \
+  }; f"
+[color]
+  diff = auto
+  status = auto
+  branch = auto
+  interactive = auto
+  ui = true
+  pager = true
+[color "branch"]
+  current = yellow reverse
+  local = yellow
+  remote = green
+[color "diff"]
+  meta = yellow bold
+  frag = magenta bold
+  old = red bold
+  new = green bold
+[color "status"]
+  added = yellow
+  changed = green
+  untracked = cyan
+[commit]
+  template = ~/.config/git/commit-template
+[core]
+  editor = vi
+  excludesfile = ~/.config/git/ignore
+  autocrlf = input
+  attributesfile = ~/.config/git/attributes
+  editor = code --wait
+  eol = lf
+  fileMode = false
+  pager = delta -w ${FZF_PREVIEW_COLUMNS:-$COLUMNS}
+  safecrlf = warn
+  whitespace = trailing-space,space-before-tab
+[credential]
+  helper = cache --timeout=3600
+  credentialStore = {{ if eq .host.distro.id "darwin" }}keychain{{ else }}{{ if eq .host.distro.id "windows" }}wincredman{{ else }}secretservice{{ end }}{{ end }}
+{{ if (lookPath "gh") -}}
+[credential "https://github.com"]
+	helper = !{{- output "which" "gh" | trim }} auth git-credential
+[credential "https://gist.github.com"]
+	helper = !{{- output "which" "gh" | trim }} auth git-credential
+{{- end -}}
+[delta]
+  features = Betelgeuse
+[delta "Betelgeuse"]
+  dark = true
+  line-numbers = true
+  side-by-side = true
+  keep-plus-minus-markers = false
+  syntax-theme = Nord
+  file-style = "#434C5E" bold
+  file-decoration-style = "#434C5E" ul
+  file-added-label = [added]
+  file-copied-label = [copied]
+  file-modified-label = [modified]
+  file-removed-label = [removed]
+  file-renamed-label = [renamed]
+  hunk-header-style = omit
+  line-numbers-left-format = " {nm:>3} │"
+  line-numbers-left-style = cyan
+  line-numbers-right-format = " {nm:>3} │"
+  line-numbers-right-style = cyan
+  line-numbers-minus-style = red black
+  line-numbers-plus-style = green black
+  line-numbers-zero-style = "#434C5E" italic
+  minus-style = bold red
+  minus-emph-style = bold "#202020" "#FF5555"
+  minus-non-emph-style = bold
+  plus-style = bold green
+  plus-emph-style = bold "#202020" "#50FA7B"
+  plus-non-emph-style = bold
+  zero-style = syntax
+  blame-code-style = syntax
+  blame-format = "{author:<18} ({commit:>9}) {timestamp:^16}"
+  blame-palette = "#2E3440" "#3B4252" "#434C5E" "#4C566A"
+  merge-conflict-begin-symbol = ~
+  merge-conflict-end-symbol = ~
+  merge-conflict-ours-diff-header-style = "#F1FA8C" bold
+  merge-conflict-ours-diff-header-decoration-style = "#434C5E" box
+  merge-conflict-theirs-diff-header-style = "#F1FA8C" bold
+  merge-conflict-theirs-diff-header-decoration-style = "#434C5E" box
+  keep-plus-minus-markers = true
+[diff]
+  colorMoved = default
+  ignoresubmodules = dirty
+  renamelimit = 0
+  mnemonicprefix = true
+  renames = copies
+[diff "bin"]
+  textconv = hexdump -v -C
+[diff "image"]
+  command = compare $2 $1 png:- | montage -geometry +4+4 $2 - $1 png:- | display -title \"$1\" -
+[difftool]
+  prompt = false
+[fetch]
+  prune = true
+[filter "lfs"]
+  clean = git-lfs clean -- %f
+  smudge = git-lfs smudge -- %f
+  process = git-lfs filter-process
+  required = true
+[help]
+  autocorrect = 20
+[http]
+  postBuffer = 524288000
+{{ if (stat (joinPath "etc" "ssl" "cert.pem")) -}}  sslcainfo = /etc/ssl/cert.pem{{ end -}}
+[init]
+  defaultBranch = master
+  # templatedir = ~/.config/git/template
+[interactive]
+  diffFilter = delta --color-only
+[merge]
+  conflictstyle = diff3
+  renamelimit = 0
+  summary = true
+  stat = true
+  tool = vscode
+[mergetool "vscode"]
+  cmd = code --wait $MERGED
+[pack]
+  threads = 0
+[pretty]
+  custom = "%C(magenta)%h%C(red)%d %C(yellow)%ar %C(green)%s %C(yellow)(%an)"
+[pull]
+  rebase = false
+[push]
+  autoSetupRemote = true
+  default = upstream
+  followTags = true
+[rebase]
+  autosquash = true
+[rerere]
+  enabled = true
+  autoupdate = true
+[sendemail]
+  smtpserver = {{ .host.smtp.host }}
+  smtpuser = apikey
+  smtpencryption = tls
+  smtpserverport = 587
+  smtpPass = {{- if and (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SENDGRID_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SENDGRID_API_KEY") | decrypt | trim }}{{ else }}{{ default "" (env "SENDGRID_API_KEY") }}{{ end }}
+[status]
+  showUntrackedFiles = all
+  submoduleSummary = true
+[transfer]
+  fsckobjects = true
+[url "https://"]
+  insteadOf = git://
+[user]
+  email = {{ .user.email }}
+  name = {{ .user.name }}
+[web]
+  browser = google-chrome

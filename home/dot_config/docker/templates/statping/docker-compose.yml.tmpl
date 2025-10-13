@@ -1,0 +1,79 @@
+---
+version: '3.7'
+
+services:
+  statup:
+    container_name: StatPing
+    image: adamboutcher/statping-ng:latest
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - statping_network
+      - nginx_network
+    ports:
+      - "8072:8072"
+    volumes:
+      - statping_app:/app
+      - services.yml:/app/services.yml
+    environment:
+      ADMIN_PASSWORD_FILE: /run/secrets/statping_admin_password
+      ADMIN_USER: "admin"
+      API_SECRET_FILE: /run/secrets/statping_api_secret
+      DB_CONN: "postgres"
+      DB_DATABASE: "statdb"
+      DB_HOST: "postgres"
+      DB_PASS_FILE: /run/secrets/statping_database_password
+      DB_USER: "statuser"
+      DESCRIPTION: "{{ .docker.statping.description }}"
+      DOMAIN: "status.{{ .host.domain }}"
+      NAME: "{{ .docker.statping.name }}"
+      VIRTUAL_HOST: "localhost"
+      VIRTUAL_PORT: "8072"
+    deploy:
+      mode: replicated
+      replicas: 1
+    secrets:
+     - statping_admin_password
+     - statping_api_secret
+     - statping_database_password
+
+  postgres:
+    container_name: Postgres
+    image: postgres:10
+    restart: unless-stopped
+    volumes:
+      - statping_postgres:/var/lib/postgresql/data
+    networks:
+      - statping_network
+    environment:
+      POSTGRES_DB: "statdb"
+      POSTGRES_PASSWORD_FILE: /run/secrets/statping_database_password
+      POSTGRES_USER: "statuser"
+    deploy:
+      mode: replicated
+      replicas: 1
+    secrets:
+     - statping_database_password
+
+networks:
+  statping_network:
+    driver: overlay
+    attachable: true
+    internal: true
+  nginx_network:
+    external: true
+
+secrets:
+  statping_admin_password:
+    external: true
+  statping_api_secret:
+    external: true
+  statping_database_password:
+    external: true
+
+volumes:
+  statping_app:
+    name: statping_app
+  statping_postgres:
+    name: statping_postgres

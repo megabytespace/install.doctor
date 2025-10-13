@@ -1,0 +1,44 @@
+{{- if (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) -}}
+[Profile6]
+Name=Private
+IsRelative=1
+Path={{ if eq .host.distro.family "darwin" }}Profiles/{{ end }}profile.private
+Default=1
+{{- end }}
+
+[Profile5]
+Name=Automation
+IsRelative=1
+Path={{ if eq .host.distro.family "darwin" }}Profiles/{{ end }}profile.automation
+
+[Profile4]
+Name=Development
+IsRelative=1
+Path={{ if eq .host.distro.family "darwin" }}Profiles/{{ end }}profile.development
+
+[Profile3]
+Name=Miscellaneous
+IsRelative=1
+Path={{ if eq .host.distro.family "darwin" }}Profiles/{{ end }}profile.miscellaneous
+
+[Profile2]
+Name=Standard
+IsRelative=1
+Path={{ if eq .host.distro.family "darwin" }}Profiles/{{ end }}profile.plugins
+{{- if not (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) }}
+Default=1
+{{- end }}
+
+[Profile1]
+Name=Git (Public)
+IsRelative=1
+Path={{ if eq .host.distro.family "darwin" }}Profiles/{{ end }}profile.git
+
+[Profile0]
+Name=Factory
+IsRelative=1
+Path={{ if eq .host.distro.family "darwin" }}Profiles/{{ end }}profile.default
+
+[General]
+StartWithLastProfile=1
+Version=2

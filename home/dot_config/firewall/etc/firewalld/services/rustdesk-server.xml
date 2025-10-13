@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>RustDesk</short>
+  <description>RustDesk remote desktop software (server)</description>
+  <port protocol="udp" port="21116"/>
+  <port protocol="tcp" port="8000"/>
+  <port protocol="tcp" port="21115-21119"/>
+</service>

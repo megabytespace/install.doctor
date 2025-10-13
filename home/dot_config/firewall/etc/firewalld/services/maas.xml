@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>MAAS</short>
+  <description>Ubuntu management software for equipment that is controlled by LPMI</description>
+  <port protocol="tcp" port="5240"/>
+  <port protocol="udp" port="5240"/>
+  <port protocol="tcp" port="5248"/>
+  <port protocol="udp" port="5248"/>
+  <port protocol="tcp" port="5241-5247"/>
+  <port protocol="udp" port="5241-5247"/>
+  <port protocol="tcp" port="5250-5270"/>
+  <port protocol="udp" port="5250-5270"/>
+</service>

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1090,SC1091
 
+### /etc/bashrc
+[ ! -f /etc/bashrc ] || . /etc/bashrc
+
 # Prefer US English
 export LANG="en_US"
 if [[ "$(hostname)" != *'-minimal' ]]; then
@@ -8,48 +11,71 @@ if [[ "$(hostname)" != *'-minimal' ]]; then
 fi
 
 # Detect support for advanced terminal features
-if [ "$0" = 'bash' ] || [ "$0" = '/bin/bash' ]; then
-  export BASH_SUPPORT=true
-fi
+if [ -t 1 ]; then
+  if [ "$0" = 'bash' ] || [ "$0" = '/bin/bash' ]; then
+    export BASH_SUPPORT=true
 
-### Import Common Settings
-if [ -f "$HOME/.config/shell/profile.sh" ]; then
-  . "$HOME/.config/shell/profile.sh"
-fi
-
-### Fig / LC_ALL
-if [ "$BASH_SUPPORT" = 'true' ]; then
-  if [ -f "$HOME/.fig/shell/bashrc.pre.bash" ]; then
-    . "$HOME/.fig/shell/bashrc.pre.bash"
+    ### Pre-exec
+    # Source: https://github.com/rcaloras/bash-preexec
+    if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/bash/pre-exec.bash" ]; then
+      # export __bp_enable_subshells="true"
+      . "${XDG_CONFIG_HOME:-$HOME/.config}/shell/bash/pre-exec.bash"
+      preexec() {
+        true
+      }
+      precmd() {
+        true
+      }
+    fi
   fi
 fi
 
-### Settings
-if command -v shopt > /dev/null; then
-  shopt -s globstar
-  shopt -s histappend
-  shopt -s checkwinsize
+### Import Common Settings
+export SHOW_MOTD=false
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/profile.sh" ] || . "${XDG_CONFIG_HOME:-$HOME/.config}/shell/profile.sh"
+
+### Escape if user is root
+if [ "$USER" = 'root' ]; then
+  return
 fi
+
+### Ble.sh
+# Loaded with bash-it
+# [[ $- == *i* ]] && source "${XDG_DATA_HOME:-$HOME/.local/share}/blesh/ble.sh" --noattach --rcfile "${XDG_CONFIG_HOME:-$HOME/.config}/blesh/bleshrc"
+
+### Escape if shell not interactive
+case $- in
+  *i*) ;;
+    *) return;;
+esac
 
 ### History
 export HISTFILE="$XDG_STATE_HOME/bash/history"
-
-### /etc/bashrc
-if [ -f /etc/bashrc ]; then
-  . /etc/bashrc
+if command -v hstr > /dev/null; then
+  ### Append new history items to .bash_history
+  shopt -s histappend
+  ### Ensure synchronization between bash memory and history file
+  export PROMPT_COMMAND="history -a; history -n; ${PROMPT_COMMAND}"
+  if [[ $- =~ .*i.* ]]; then bind '"\C-r": "\C-a hstr -- \C-j"'; fi
+  ### If this is interactive shell, then bind 'kill last command' to Ctrl-x k
+  if [[ $- =~ .*i.* ]]; then bind '"\C-xk": "\C-a hstr -k \C-j"'; fi
 fi
+### Bash Initialization Hooks
+if [ "$BASH_SUPPORT" = 'true' ] && [ -n "$BASH" ]; then
+  ### Sensible Bash
+  # Source: https://github.com/mrzool/bash-sensible
+  [ ! -f "${XDG_DATA_HOME:-$HOME/.local/share}/shell/sensible.bash" ] || source "${XDG_DATA_HOME:-$HOME/.local/share}/shell/sensible.bash"
 
-# Prompt (on bash only)
-if [ "$BASH_SUPPORT" = 'true' ]; then
+  # Prompt (on bash only)
   if [[ "$(hostname)" != *'-minimal' ]]; then
     ### Styled Terminal
-    export BASH_IT="$HOME/.local/bash_it"
-    export BASH_IT_THEME=modern
-    if [ -f "$BASH_IT/bash_it.sh" ]; then
-      . "$BASH_IT/bash_it.sh"
+    export BASH_IT="${XDG_DATA_HOME:-$HOME/.local/share}/bash_it"
+    export BASH_IT_THEME="powerline"
+    if command -v powerline-daemon > /dev/null && [ -f "$BASH_IT/bash_it.sh" ]; then
+      source "$BASH_IT/bash_it.sh"
     elif command -v oh-my-posh > /dev/null; then
       # Oh My Posh (See: https://ohmyposh.dev/)
-      eval "$(oh-my-posh init bash --config "$XDG_CONFIG_HOME/oh-my-posh/Betelgeuse.omp.json")"
+      eval "$(oh-my-posh init bash --config "${XDG_CONFIG_HOME:-$HOME/.config}/oh-my-posh/Betelgeuse.omp.json")"
     else
       # Basic styled terminal
       case "$TERM" in
@@ -60,41 +86,127 @@ if [ "$BASH_SUPPORT" = 'true' ]; then
     fi
   else
     # Minimal session
-    if command -v oh-my-posh > /dev/null; then
-      eval "$(oh-my-posh init bash --config "$XDG_CONFIG_HOME/oh-my-posh/Betelgeuse-minimal.omp.json")"
+    ! command -v oh-my-posh > /dev/null || eval "$(oh-my-posh init bash --config "${XDG_CONFIG_HOME/.config}/oh-my-posh/Betelgeuse-minimal.omp.json")"
+  fi
+
+  ### Bash Completion (Homebrew)
+  if command -v brew  > /dev/null; then
+    if [[ -r "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh" ]]; then
+      source "${HOMEBREW_PREFIX}/etc/profile.d/bash_completion.sh"
+    else
+      for COMPLETION in "${HOMEBREW_PREFIX}/etc/bash_completion.d/"*; do
+        [[ -r "${COMPLETION}" ]] && source "${COMPLETION}"
+      done
     fi
   fi
-fi
 
-### Bash Initialization Hooks
-if [ "$BASH_SUPPORT" = 'true' ]; then
-  ### Bash Completion
-  if [ -f "/usr/local/etc/profile.d/bash_completion.sh" ]; then
-    . "/usr/local/etc/profile.d/bash_completion.sh"
-  fi
+  ### Atuin
+  ! command -v atuin > /dev/null || eval "$(atuin init bash)"
+
+  ### Carapace
+  ! command -v carapace > /dev/null || source <(carapace _carapace)
+
+  ### Cod
+  ! command -v cod > /dev/null || source <(cod init $$ bash)
+
+  ### Conda
+  # if command -v conda > /dev/null && [ -f "${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom/mambaforge/base/bin/conda" ]; then
+	#   __conda_setup="$("${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom/mambaforge/base/bin/conda" "shell.zsh" "hook" 2> /dev/null)"
+	#   if [ $? -eq 0 ]; then
+	# 	  eval "$__conda_setup"
+	#   else
+	# 	  if [ -f "${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom/mambaforge/base/etc/profile.d/conda.sh" ]; then
+	# 		  . "${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom/mambaforge/base/etc/profile.d/conda.sh"
+	# 	  else
+	# 		  export PATH="${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom/mambaforge/base/bin:$PATH"
+	# 	  fi
+	#   fi
+  # fi
+
+  ### Google Cloud SDK
+  [ ! -f "${HOMEBREW_PREFIX}/share/google-cloud-sdk/path.bash.inc" ] || source "$HOMEBREW_PREFIX/share/google-cloud-sdk/path.bash.inc"
 
   ### direnv
-  if command -v direnv > /dev/null; then
-    eval "$(direnv hook bash)"
+  ! command -v direnv > /dev/null || eval "$(direnv hook bash)"
+
+  ### Emplace
+  ! command -v emplace > /dev/null || source <(emplace init bash)
+
+  ### Goto
+  [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh"
+
+  ### hiSHtory
+  # Hishtory Config:
+  if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/hishtory/config.sh" ]; then
+	  export PATH="$PATH:${XDG_CONFIG_HOME:-$HOME/.config}/hishtory"
+	  source "${XDG_CONFIG_HOME:-$HOME/.config}/hishtory/config.sh"
   fi
 
-  ### Java (asdf)
-  if [ -f "$ASDF_DATA_DIR/plugins/java/set-java-home.bash" ]; then
-    . "$ASDF_DATA_DIR/plugins/java/set-java-home.bash"
+  ### Hoard
+  if command -v hoard > /dev/null && [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/hoard/src/shell/hoard.bash" ]; then
+    source "${XDG_DATA_HOME:-$HOME/.local/share}/hoard/src/shell/hoard.bash"
   fi
+
+  ### iTerm2
+  [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/iterm/iterm2.bash" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/iterm/iterm2.bash"
+
+  ### mise
+  ! command -v mise > /dev/null || eval "$(mise activate bash)"
+
+  ### Navi (Ctrl+G)
+  ! command -v navi > /dev/null || eval "$(navi widget bash)"
+
+  ### ntfy
+  ! command -v ntfy > /dev/null || eval "$(ntfy shell-integration)"
+
+  ### pay-respects
+  ! command -v pay-respects > /dev/null || eval "$(pay-respects bash --alias)"
+
+  ### RTX
+  ! command -v rtx > /dev/null || eval "$(rtx activate bash)"
+
+  ### SDKMan
+  ### Using mise instead for Java handling
+  # if command -v brew > /dev/null && command -v sdkman-cli > /dev/null; then
+  #   export SDKMAN_DIR="$(brew --prefix sdkman-cli)/libexec"
+  #   source "$SDKMAN_DIR/bin/sdkman-init.sh"
+  # elif [ -f "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
+  #   export SDKMAN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sdkman"
+  #   source "$SDKMAN_DIR/bin/sdkman-init.sh"
+  # fi
+
+  ### Sheldon
+  export SHELDON_CONFIG_FILE="${SHELDON_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/sheldon}/plugins.bash.toml"
+  ! command -v sheldon > /dev/null || eval "$(command sheldon source)"
+
+  ### Up
+  [ ! -f "${XDG_DATA_HOME:-$HOME/.local/share}/up/up.sh" ] || source "${XDG_DATA_HOME:-$HOME/.local/share}/up/up.sh"
+
+  ### Vault
+  ! command -v vault > /dev/null || complete -C vault vault
 
   ### zoxide
   if command -v zoxide > /dev/null; then
-    eval "$(zoxide init --cmd cd bash)"
+    eval "$(zoxide init bash)" > /dev/null
+  else
+    alias z='cd'
   fi
 
-  ### Fig
-  if [ -f "$HOME/.fig/shell/bashrc.post.bash" ]; then
-    . "$HOME/.fig/shell/bashrc.post.bash"
-  fi
+  ### Ble.sh
+  # Loaded with bash-it
+  # [[ ${BLE_VERSION-} ]] && ble-attach
+fi
 
-  ### Vault
-  if command -v vault > /dev/null; then
-    complete -C vault vault
-  fi
+# Check if the script exists and source it for command_not_found_handle
+if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/not-found-hook.sh" ]]; then
+  source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/not-found-hook.sh"
+  command_not_found_handle() {
+    # Call the custom hook when a command is not found
+    handle_command_not_found "$1"
+  }
+fi
+
+### Warpify support
+if [ "$TERM_PROGRAM" = 'WarpTerminal' ]; then
+  printf '\eP$f{"hook": "SourcedRcFileForWarp", "value": { "shell": "bash"}}\x9c'
 fi

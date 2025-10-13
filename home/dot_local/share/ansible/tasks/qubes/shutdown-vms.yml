@@ -1,0 +1,3 @@
+---
+- name: Ensure all VMs except sys-* ones are shutdown
+  command: qvm-shutdown --all --wait --exclude=dom0 --exclude=sys-net --exclude=sys-firewall --exclude=sys-usb --exclude=sys-gui --exclude=sys-gui-gpu --exclude=sys-gui-vnc --exclude=sys-g-assist --exclude=provision

@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=org.gnome.DejaDup
+Exec=flatpak run --command=/app/libexec/deja-dup/deja-dup-monitor org.gnome.DejaDup
+X-Flatpak=org.gnome.DejaDup

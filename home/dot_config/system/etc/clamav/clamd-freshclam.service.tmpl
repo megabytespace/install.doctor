@@ -1,0 +1,13 @@
+# Run freshclam as a daemon.
+[Unit]
+Description = ClamAV Freshclam service.
+After = network.target
+
+[Service]
+Type = forking
+ExecStart =  {{ lookPath "freshclam" }} --daemon --checks 2
+Restart = on-failure
+PrivateTmp = true
+
+[Install]
+WantedBy=multi-user.target

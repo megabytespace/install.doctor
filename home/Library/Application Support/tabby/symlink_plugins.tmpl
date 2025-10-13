@@ -1,0 +1,3 @@
+{{- if and (eq .host.distro.family "darwin") (lookPath "tabby") -}}
+{{ .chezmoi.homeDir }}/.config/tabby/plugins
+{{- end -}}

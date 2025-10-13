@@ -1,0 +1,12 @@
+---
+all:
+  children:
+    pfsense:
+      hosts:
+        brock:
+          ansible_host: '{{ domains[inventory_hostname | lower].hostname }}'
+          ansible_password: '{{ admin_password }}'
+          ansible_port: '{{ ssh_port }}'
+          ansible_python_interpreter: /usr/local/bin/python2.7
+          ansible_sudo_pass: '{{ admin_password }}'
+          ansible_user: '{{ admin_username }}'

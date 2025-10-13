@@ -1,0 +1,29 @@
+---
+- name: 'Create {{ service.name }}.socket systemd file'
+  become: true
+  copy:
+    content: |
+      [Unit]
+      Description={{ service.name }}
+      [Socket]
+      ListenStream=127.0.0.1:{{ service.port }}
+      Accept=true
+      [Install]
+      WantedBy=sockets.target
+    dest: '/lib/systemd/system/{{ service.name }}.socket'
+  loop: '{{ systemd_services | default([]) }}'
+  loop_control:
+    loop_var: service
+
+- name: Create service_name@.service systemd file
+  become: true
+  copy:
+    content: |
+      [Unit]
+      Description={{ item.name }}
+      [Service]
+      ExecStart=qrexec-client-vm '' qubes.ConnectTCP+{{ item.port }}
+      StandardInput=socket
+      StandardOutput=inherit
+    dest: /lib/systemd/system/{{ item.name }}@.service
+  loop: '{{ systemd_services | default([]) }}'

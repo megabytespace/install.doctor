@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# @file `compress-image`
+# @brief Compresses images with tinypng
+
+tinypng -k "$(yq '.data.user.tinypngKey' "${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.yaml")" $*

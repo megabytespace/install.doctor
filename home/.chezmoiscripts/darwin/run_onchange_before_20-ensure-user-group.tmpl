@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-{{ includeTemplate "universal/profile" }}
-{{ includeTemplate "universal/logg" }}
-
-### Ensure user has group of same name (required for Macports)
-logg info 'Ensuring user has a group with the same name and that it is a member. Sudo privileges may be required'
-echo y | sudo dseditgroup -o create "$USER" > /dev/null

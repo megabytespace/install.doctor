@@ -1,0 +1,61 @@
+# wego configuration
+#
+# This config has https://github.com/schachmat/ingo syntax.
+# Empty lines or lines starting with # will be ignored.
+# All other lines must look like "KEY=VALUE" (without the quotes).
+# The VALUE must not be enclosed in quotes as well!
+
+# aat-frontend: Show geo coordinates (default false)
+aat-coords=false
+
+# aat-frontend: Monochrome output (default false)
+aat-monochrome=false
+
+# BACKEND to be used (default openweathermap)
+backend=openweathermap
+
+# caiyun backend: the api KEY to use (default )
+caiyun-api-key=
+
+# caiyun backend: print raw requests and responses (default true)
+caiyun-debug=true
+
+# caiyun backend: the LANGUAGE to request from caiyunapp.com/ (default en)
+caiyun-lang=en
+
+# NUMBER of days of weather forecast to be displayed (default 3)
+days=5
+
+# FRONTEND to be used (default ascii-art-table)
+frontend=ascii-art-table
+
+# json frontend: do not indent the output (default false)
+jsn-no-indent=false
+
+# LOCATION to be queried (default 40.748,-73.985)
+location={{ .user.weatherZipCode }}
+
+# md-frontend: Show geo coordinates (default false)
+md-coords=false
+
+# openweathermap backend: the api KEY to use (default )
+owm-api-key={{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "OPENWEATHERMAP_API_KEY")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/OPENWEATHERMAP_API_KEY") | decrypt | trim }}{{ else }}{{ env "OPENWEATHERMAP_API_KEY" }}{{ end }}
+
+# openweathermap backend: print raw requests and responses (default false)
+owm-debug=false
+
+# openweathermap backend: the LANGUAGE to request from openweathermap (default en)
+owm-lang=en
+
+# UNITSYSTEM to use for output.
+# Choices are: metric, imperial, si, metric-ms (default metric)
+units=imperial
+
+# worldweatheronline backend: the api KEY to use (default )
+wwo-api-key=
+
+# worldweatheronline backend: print raw requests and responses (default false)
+wwo-debug=false
+
+# worldweatheronline backend: the LANGUAGE to request from worldweatheronline (default en)
+wwo-lang=en

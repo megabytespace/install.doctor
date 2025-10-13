@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+# @file /usr/local/bin/process-software-services
+# @brief Manages services for software packages based on YAML configuration
+
+set -euo pipefail
+trap 'echo "An error occurred. Exiting." >&2; exit 1' ERR
+
+SOFTWARE_YAML="${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/software.yml"
+
+if ! command -v gum &>/dev/null; then
+  echo "gum is not installed. Please install gum to proceed." >&2
+  exit 1
+fi
+
+if ! command -v yq &>/dev/null; then
+  gum log -sl error "yq is not installed. Please install yq to proceed." >&2
+  exit 1
+fi
+
+# Detect service manager
+SERVICE_MANAGER=""
+if command -v systemctl &>/dev/null; then
+  SERVICE_MANAGER="systemctl"
+elif command -v brew &>/dev/null; then
+  SERVICE_MANAGER="brew"
+else
+  gum log -sl error "No supported service manager found. Please install systemctl or brew."
+  exit 1
+fi
+
+# Check if binary exists in PATH
+isBinaryInPath() {
+  local BIN="$1"
+  command -v "$BIN" &>/dev/null
+}
+
+# Process a single software package's services
+processServiceManagement() {
+  local NAME="$1"
+  local BIN_LIST SERVICES SERVICE_ENABLED
+
+  # Extract values from YAML with safe defaults
+  BIN_LIST=$(yq -r '(.softwarePackages["'"$NAME"'"])._bin // ""' "$SOFTWARE_YAML")
+  SERVICES=$(yq -r '(.softwarePackages["'"$NAME"'"])._service // [] | @json' "$SOFTWARE_YAML")
+  SERVICE_ENABLED=$(yq -r '(.softwarePackages["'"$NAME"'"])._serviceEnabled // "false"' "$SOFTWARE_YAML")
+
+  # Skip packages with no enabled services or missing binaries
+  if [[ "$SERVICE_ENABLED" == "true" && -z "$BIN_LIST" ]]; then
+    gum log -sl warn "$NAME has _serviceEnabled set to true but no _bin is defined. Skipping."
+    return
+  fi
+
+  if [[ -z "$BIN_LIST" || "$SERVICE_ENABLED" != "true" ]]; then
+    return
+  fi
+
+  local BIN_FOUND=false
+
+  # Check if BIN_LIST is an array or a string
+  if [[ -n "${DEBUG:-}" ]]; then
+    gum log -sl info "BIN_LIST"
+    echo "$BIN_LIST"
+  fi
+  if [[ "$(echo "$BIN_LIST" | yq -r 'type')" == "!!seq" ]]; then
+    # Process as an array
+    for BIN in $(echo "$BIN_LIST" | yq -r ".[]? | select(. != null)"); do
+      if isBinaryInPath "$BIN"; then
+        BIN_FOUND=true
+        break
+      fi
+    done
+  else
+    # Process as a single string
+    if isBinaryInPath "$BIN_LIST"; then
+      BIN_FOUND=true
+    fi
+  fi
+
+  [[ -n "${DEBUG:-}" ]] && gum log -sl info "BIN_FOUND $BIN_FOUND"
+  [[ -n "${DEBUG:-}" ]] && gum log -sl info "SERVICES $SERVICES"
+  if [[ "$BIN_FOUND" == "true" ]] && [[ "$SERVICES" != "[]" ]]; then
+    gum log -sl info "Managing services for $NAME."
+    [[ -n "${DEBUG:-}" ]] && gum log -sl info "$SERVICES"
+    echo "$SERVICES" | yq -r '.[] | @json' | while IFS= read -r SERVICE_ENTRY; do
+      if [[ -n "$SERVICE_ENTRY" ]]; then
+        if [[ -n "${DEBUG:-}" ]]; then
+          gum log -sl info "Running manageService: $SERVICE_ENTRY"
+          manageService "$SERVICE_ENTRY"
+        else
+          manageService "$SERVICE_ENTRY" &
+        fi
+      fi
+    done
+  else
+    gum log -sl warn "$NAME binary not found in PATH or no services defined. Skipping."
+  fi
+}
+
+# Manage a single service entry (can be string or object)
+manageService() {
+  local SERVICE_ENTRY="$1"
+  local SERVICE_NAME REQUIRES_SUDO=false PKG=""
+
+  # Debug raw entry
+  if [[ -n "${DEBUG:-}" ]]; then
+    gum log -sl info "Raw SERVICE_ENTRY: $SERVICE_ENTRY"
+  fi
+
+  # Detect if SERVICE_ENTRY is an object or a string
+  if echo "$SERVICE_ENTRY" | grep "{" > /dev/null ; then
+    SERVICE_NAME=$(echo "$SERVICE_ENTRY" | jq -r '.name // '$SERVICE_ENTRY)
+    REQUIRES_SUDO=$(echo "$SERVICE_ENTRY" | jq -r '.sudo // false')
+    PKG=$(echo "$SERVICE_ENTRY" | yq -r ".pkg // \"\"")
+  else
+    SERVICE_NAME="$(echo "$SERVICE_ENTRY" | sed 's/"//g')"
+  fi
+
+  # Debug extracted values
+  if [[ -n "${DEBUG:-}" ]]; then
+    gum log -sl info "Extracted SERVICE_NAME: $SERVICE_NAME"
+    gum log -sl info "Extracted REQUIRES_SUDO: $REQUIRES_SUDO"
+    gum log -sl info "Extracted PKG: $PKG"
+  fi
+
+  # Check if required package exists
+  if [[ -n "$PKG" ]] && ! isBinaryInPath "$PKG"; then
+    if [[ -n "${DEBUG:-}" ]]; then
+      gum log -sl warn "Required package $PKG for service $SERVICE_NAME not found in PATH. Skipping."
+    fi
+    return
+  fi
+
+  # Determine correct service command
+  local CMD=""
+  if [[ "$SERVICE_MANAGER" == "systemctl" ]]; then
+    if brew services list | grep -q "^$SERVICE_NAME"; then
+      gum log -sl info "$SERVICE_NAME is a Homebrew package - starting using brew services"
+      CMD="brew services start $SERVICE_NAME"
+    else
+      CMD="systemctl enable --now $SERVICE_NAME"
+    fi
+  elif [[ "$SERVICE_MANAGER" == "brew" ]]; then
+    CMD="brew services start $SERVICE_NAME"
+  fi
+  [[ "$REQUIRES_SUDO" == "true" ]] && CMD="sudo $CMD"
+
+  gum log -sl info "Executing: $CMD"
+  bash -c "$CMD" || gum log -sl error "Failed to run $CMD"
+}
+
+# Main execution function
+main() {
+  if [[ ! -f "$SOFTWARE_YAML" ]]; then
+    gum log -sl error "Configuration file not found: $SOFTWARE_YAML"
+    exit 1
+  fi
+
+  PACKAGES=$(yq -r ".softwarePackages | with_entries(select(.value._serviceEnabled == true)) | keys[]" "$SOFTWARE_YAML")
+
+  echo "$PACKAGES" | while IFS= read -r PACKAGE; do
+    if [[ -n "${DEBUG:-}" ]]; then
+      processServiceManagement "$PACKAGE"
+    else
+      processServiceManagement "$PACKAGE" &
+    fi
+  done
+
+  wait
+  gum log -sl info "Enabling / starting background processes complete"
+}
+
+main

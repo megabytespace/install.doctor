@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# @file Software Installation
+# @brief Installs the list of software that correlates to the software group that was chosen.
+# @description
+#     This script initializes the installation process that handles the bulk of the software package installations.
+
+{{ includeTemplate "universal/profile" }}
+{{ includeTemplate "universal/logg" }}
+
+# @description Copies system files over to the root file system
+systemFiles() {
+  if [ -f /etc/profile ]; then
+    gum log -sl info 'Ensuring /etc/profile is writable by root user'
+    sudo chmod +w /etc/profile
+  fi
+  gum log -sl info 'Running -artuE --chown=root: --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rwX,Fg=rX,Fo=rX \ --inplace --exclude .git/ "${XDG_CONFIG_HOME:-$HOME/.config}/system/" /'
+  sudo rsync -artuE --chown=root: --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rwX,Fg=rX,Fo=rX --inplace --exclude .git/ "${XDG_CONFIG_HOME:-$HOME/.config}/system/" / > /dev/null
+  gum log -sl info 'Finished applying system configuration files'
+}
+
+systemFiles
+
+if command -v installx > /dev/null; then
+  if command -v zx > /dev/null; then
+    if command -v unbuffer > /dev/null; then
+      gum log -sl info 'Running unbuffer installx'
+      unbuffer installx --all --lazy
+    else
+      gum log -sl info 'Running installx'
+      installx --all --lazy
+    fi
+  else
+    gum log -sl error 'zx is not available'
+    exit 1
+  fi
+else
+  gum log -sl error 'installx is not in the PATH. It should be located in ~/.local/bin.'
+  exit 1
+fi
+
+gum log -sl info "Processing groups and permissions defined in ${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/software.yml" && process-software-groups
+gum log -sl info "Running post scripts" && process-software-post-scripts
+gum log -sl info "Starting enabled services" && process-software-services

@@ -70,14 +70,14 @@ tasks:
       - git init
       - git remote add origin "{{.GITLAB_REPO}}"
       - git add --all
-      - git commit --quiet -m "🧐 refactor(submodule): Adding folder/project to its own git repository."
+      - git commit --quiet -m "🧐 refactor(submodule) Adding folder/project to its own git repository."
       - git push --quiet -u --no-progress origin master
       - cd .. && rm -rf {{.BASENAME}}
       - cd .. && git add {{.BASENAME}}
-      - cd .. && git commit --quiet -m "🧐 refactor(submodule): Removing folder which will now be a submodule."
+      - git commit --quiet -m "🧐 refactor(submodule) Removing folder which will now be a submodule."
       - cd .. && git submodule add -b master "{{.GITLAB_REPO}}" {{.BASENAME}}
       - cd .. && git add {{.BASENAME}}
-      - cd .. && git commit --quiet -m "🧐 refactor(submodule): Adding new submodule which was previously a directory."
+      - cd .. && git commit --quiet -m "🧐 refactor(submodule) Adding new submodule which was previously a directory."
       - cd .. && git push --quiet -u --no-progress origin HEAD
     preconditions:
       - sh: '[[ ! $(git rev-parse --git-dir) =~ ".git/modules" ]]'

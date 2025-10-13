@@ -1,0 +1,49 @@
+[legacy]
+theme-variant='dark'
+
+[legacy/profiles:]
+list=['b1dcc9dd-5262-4d8d-a863-c897e6d979b9', 'af01aa80-7b49-47fe-95e2-26e02037ec72', '38411522-a61b-4c72-8606-52a11fbbf125']
+
+[legacy/profiles:/:38411522-a61b-4c72-8606-52a11fbbf125]
+background-color='rgb(23,20,33)'
+bold-is-bright=true
+custom-command='/bin/zsh'
+default-size-columns=120
+default-size-rows=40
+foreground-color='rgb(208,207,204)'
+login-shell=false
+palette=['rgb(0,0,0)', 'rgb(170,0,0)', 'rgb(0,170,0)', 'rgb(170,85,0)', 'rgb(0,0,170)', 'rgb(170,0,170)', 'rgb(0,170,170)', 'rgb(170,170,170)', 'rgb(85,85,85)', 'rgb(255,85,85)', 'rgb(85,255,85)', 'rgb(255,255,85)', 'rgb(85,85,255)', 'rgb(255,85,255)', 'rgb(85,255,255)', 'rgb(255,255,255)']
+scrollback-lines=140000
+use-custom-command=true
+use-theme-colors=true
+use-theme-transparency=true
+visible-name='ZSH'
+
+[legacy/profiles:/:af01aa80-7b49-47fe-95e2-26e02037ec72]
+background-color='rgb(23,20,33)'
+bold-is-bright=true
+custom-command='/bin/bash'
+default-size-columns=120
+default-size-rows=40
+foreground-color='rgb(208,207,204)'
+login-shell=false
+palette=['rgb(0,0,0)', 'rgb(170,0,0)', 'rgb(0,170,0)', 'rgb(170,85,0)', 'rgb(0,0,170)', 'rgb(170,0,170)', 'rgb(0,170,170)', 'rgb(170,170,170)', 'rgb(85,85,85)', 'rgb(255,85,85)', 'rgb(85,255,85)', 'rgb(255,255,85)', 'rgb(85,85,255)', 'rgb(255,85,255)', 'rgb(85,255,255)', 'rgb(255,255,255)']
+scrollback-lines=140000
+use-custom-command=true
+use-theme-colors=true
+use-theme-transparency=true
+visible-name='Bash'
+
+[legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9]
+background-color='rgb(23,20,33)'
+bold-is-bright=true
+custom-command='/bin/zsh'
+default-size-columns=120
+default-size-rows=40
+foreground-color='rgb(208,207,204)'
+login-shell=false
+palette=['rgb(0,0,0)', 'rgb(170,0,0)', 'rgb(0,170,0)', 'rgb(170,85,0)', 'rgb(0,0,170)', 'rgb(170,0,170)', 'rgb(0,170,170)', 'rgb(170,170,170)', 'rgb(85,85,85)', 'rgb(255,85,85)', 'rgb(85,255,85)', 'rgb(255,255,85)', 'rgb(85,85,255)', 'rgb(255,85,255)', 'rgb(85,255,255)', 'rgb(255,255,255)']
+scrollback-lines=140000
+use-theme-colors=true
+use-theme-transparency=true
+visible-name='Default'

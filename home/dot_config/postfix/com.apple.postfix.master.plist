@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>Label</key>
+        <string>com.apple.postfix.master</string>
+        <key>Program</key>
+        <string>/usr/libexec/postfix/master</string>
+        <key>ProgramArguments</key>
+        <array>
+                <string>master</string>
+        </array>
+        <key>QueueDirectories</key>
+        <array>
+                <string>/var/spool/postfix/maildrop</string>
+        </array>
+        <key>AbandonProcessGroup</key>
+        <true/>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>KeepAlive</key>
+        <true/>
+        <key>StandardErrorPath</key>
+	<string>/var/log/com.apple.postfix.master.plist.error.log</string>
+	<key>StandardOutPath</key>
+	<string>/var/log/ccom.apple.postfix.master.plist.debug.log</string>
+</dict>
+</plist>

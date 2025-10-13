@@ -1,0 +1,6 @@
+.*
+_*
+*.box
+*.db
+node_modules/**
+Network Trash Folder/**

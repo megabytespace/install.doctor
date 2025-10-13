@@ -1,0 +1,29 @@
+#!/bin/sh
+# @file pfSense Setup
+# @brief Configures pfSense
+# @description
+#     This script sets up pfSense with features like:
+#
+#     1. [Netdata Cloud](https://learn.netdata.cloud/docs/installing/pfsense)
+#
+#     ## Considerations
+#
+#     The following items are not included in this script but may be added in the future:
+#
+#     * https://github.com/pfelk/pfelk
+#
+#     ## Useful Links
+#
+#     * [pfSense to OPNSense configuration converter](https://www.pf2opn.com/)
+#     * [pfSense Ansible collection](https://github.com/pfsensible/core)
+#     * [pfSense API](https://github.com/jaredhendrickson13/pfsense-api) (Note: Need CLI or easy way of accessing it)
+
+{{ include "partials" "logg" }}
+{{ include "partials" "pfsense-netdata" -}}
+enableNetdata
+
+{{ include "partials" "pfsense-unifi" -}}
+enableUniFi
+
+{{ include "partials" "pfsense-saml" -}}
+enablePFsenseSAML

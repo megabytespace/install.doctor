@@ -1,0 +1,22 @@
+# System-wide .bashrc file for interactive bash(1) shells.
+if [ -z "$PS1" ]; then
+   return
+fi
+
+### Include Homebrew binaries in PATH
+if [ -d /opt/homebrew/bin ]; then
+  export PATH="$PATH:/opt/homebrew/bin"
+elif [ -d /home/linuxbrew/.linuxbrew/bin ]; then
+  export PATH="$PATH:/home/linuxbrew/.linuxbrew/bin"
+fi
+
+PS1='\h:\W \u\$ '
+# Make bash check its window size after a process completes
+shopt -s checkwinsize
+
+[ -r "/etc/bashrc_$TERM_PROGRAM" ] && . "/etc/bashrc_$TERM_PROGRAM"
+
+### Nix
+if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
+  . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
+fi

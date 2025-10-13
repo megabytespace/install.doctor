@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-### Update TemplateVMs
-logg info 'Updating TemplateVMs via `qubesctl`'
-timeout 900 qubesctl --show-output --skip-dom0 --templates state.sls update.qubes-vm

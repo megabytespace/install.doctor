@@ -1,0 +1,26 @@
+---
+- name: Create a link for opening browser links
+  become: true
+  copy:
+    content: |
+      [Desktop Entry]
+      Encoding=UTF-8
+      Name={{ item.name }}
+      Exec=qvm-open-in-vm {{ item.vm }} %u
+      Terminal=false
+      X-MultipleArgs=false
+      Type=Application
+      MimeType={{ item.mimes }}
+    dest: /usr/share/applications/{{ item.link }}
+
+- name: Check the value of the current xdg-setting
+  command: "xdg-settings get {{ item['xdg-setting'] }}"
+  register: xdg_setting_get
+  changed_when: false
+  when: item['xdg-setting'] is defined
+
+- name: Configure xdg-setting to use the cross-VM link
+  command: "xdg-settings set {{ item['xdg-setting'] }} {{ item.link }}"
+  when:
+    - item['xdg-setting'] is defined
+    - item['xdg-setting'] not in xdg_setting_get.stdout

@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-echo {{ .user.GITHUB_GIST_TOKEN }} > ~/.gist
-gist $@
-rm -f ~/.gist

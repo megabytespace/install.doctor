@@ -1,0 +1,84 @@
+---
+# eslint-disable eslint-comments/disable-enable-pair, max-len, max-lines, no-warning-comments
+#
+# `softwarePackages` is a map of possible package managers to use while installing a program. The installer will
+# look at the `installerPreference` variable and find the first package manager that is in the package's possible
+# installation method and then use that. It is also sensitive to the type of operating system so a package with
+# only `apt` defined will not install on macOS.
+#
+# Everything should be fairly straight forward. Take a look at the `installerPreference` for a list of package managers. If a package
+# has dependencies, the dependencies are defined under the `_deps` key. All of the `_deps` should also be defined in the
+# `softwarePackages` map. The installer will check for the presence of the package's key in the PATH. If the package's key
+# does not match the executable's name, then the `_bin` key can be defined so that the installer will look at that instead.
+#
+# Full example of a softwarePackage:
+# altair:
+#   _appimageName: SwitchHosts.AppImage               # Name of file that the appimage: field downloads to
+#   _bin: ng                                          # Instead of checking if the object key (altair) is in the PATH, check if "ng" is in the PATH and only proceed if it is not available
+#   _deps:                                            # Any piece of data can be a string or array. _deps will take each dep and run that through the installer first. If you need to just install dependencies with apt (for instance), you can also set the _deps equals to [altair:deps] and then define the apt dependencies like that instead of creating a new entry for each apt dependency.
+#     - angular-cli
+#   _docker: docker run --rm bannmann/docker-cheat    # Command that the _bin value should alias to (similar to Whalebrew)
+#   _groups:                                          # Groups that should be created / user added to
+#     - docker
+#   _when: |                                          # Run the script defined with _when and only proceed if it exits with a 0
+#     test -f /usr
+#   _pre: |
+#     echo "_pre allows you to define a script that runs before the installation"
+#   _post:brew:debian: |
+#     echo "_post allows you to define a script that runs after the installation"
+#   _service: smbd                                    # System service to enable, restart, and/or start (can also be an array).
+#   _restricted: true                                 # True if it should be skipped on a restricted machine (i.e. a work machine).
+#   _epel: true                                       # True if https://docs.fedoraproject.org/en-US/epel/ should be enabled
+#   ansible: professormanhattan.docker
+#   apk: altair
+#   appimage: https://developers.yubico.com/yubikey-manager-qt/Releases/yubikey-manager-qt-1.2.4b-linux.AppImage
+#   appinstaller: https://example.com/package.appinstaller # TODO - https://pieces.app has example of this type of file
+#   basher: xwmx/nb
+#   binary:darwin: https://dl.min.io/client/mc/release/darwin/mc     # Any piece of data can have the OS type (darwin, linux, windows) or release ID (arch, debian, ubuntu, centos, fedora) added to the end. The script will try to execute it first before trying to run other items.
+#   binary:linux: https://dl.min.io/client/mc/release/linux-amd64/mc
+#   binary:windows: https://dl.min.io/client/mc/release/windows-amd64/mc.exe
+#   bpkg: xwmx/nb
+#   brew: altair
+#   cargo: tree-sitter-cli
+#   cask: altair-graphql-client
+#   crew: altair
+#   choco: altair-graphql
+#   _rpmFusion: true                                  # Enable the RPM Fusion Free repository if true
+#   dnf: altair
+#   flatpak: com.yubico.yubioath
+#   gem: altair
+#   go: github.com/ProfessorManhattan/blockinfile@latest
+#   krew:
+#     - ctx
+#     - ns
+#   nix: emplace
+#   npm: altair
+#   pacman: altair
+#   pipx: altair
+#   pkg-darwin: https://google.com/macos-pkgfile.pkg
+#   pkg-freebsd: altair
+#   pkg-termux: altair
+#   port: altair
+#   scoop: altair
+#   script >-
+#     curl -sS https://getcomposer.org/installer | php
+#     sudo mv composer.phar /usr/local/bin/composer
+#     sudo chmod +x /usr/local/bin/composer
+#   _snapClassic: true                                # Install the snap in classic mode
+#   snap: altair
+#   whalebrew:
+#   winget: Neovim.Neovim
+#   xbps: altair
+#   yay: altair
+#   zypper: altair
+# angular-cli:
+#   _bin: ng                                          # Only install if "ng" is not available in the PATH
+#   _name: Gitify                                     # Pretty name of the package
+#   _home: https://angular.io/                        # Homepage if there is one
+#   _desc: GitHub notifications on the menu bar       # Short description of the package
+#   _docs: https://docs.angular.io/                   # Link to documentation (if available)
+#   _github: https://github.com/manosim/gitify        # GitHub link to the package
+#   _type: menubar                                    # Type of package (either application, cli, webapp, or menubar)
+#   npm:
+#     - '@angular/cli'
+#     - gulp

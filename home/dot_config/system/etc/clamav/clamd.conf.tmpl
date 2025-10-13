@@ -1,0 +1,93 @@
+DatabaseDirectory /var/lib/clamav
+ExtendedDetectionInfo yes
+FixStaleSocket yes
+LocalSocket /var/run/clamd.socket
+LogFile /var/log/clamav/clamav.log
+LogFileMaxSize 5M
+LogRotate yes
+LogSyslog yes
+LogTime yes
+MaxDirectoryRecursion 15
+MaxThreads 20
+OnAccessExcludeUname clamav
+OnAccessExcludeUname root
+OnAccessIncludePath /{{- if eq .host.distro.id "darwin" -}}Users{{- else -}}home{{- end -}}
+OnAccessMountPath /{{- if eq .host.distro.id "darwin" -}}Users{{- else -}}home{{- end -}}/{{ .user.username }}
+OnAccessPrevention yes
+PidFile /var/run/clamav/clamd.pid
+User clamav
+VirusEvent /etc/clamav/clamav-email
+
+ExcludePath ^/quarantine/
+ExcludePath ^/opt/quarantine/
+
+{{- if eq .host.distro.id "darwin" -}}
+### macOS
+ExcludePath ^/Volumes/([^M]|M([^a]|a([^c]|c([^i]|i([^n]|n([^t]|t([^o]|o([^s]|s([^h]|h([^ ]|[ ]([^H]|H([^D]|D([^/])|$)|$)|$)|$)|$)|$)|$)|$)|$)|$)|$))[^/]{0,240}/
+ExcludePath ^/Network/
+ExcludePath ^/private/var/db/
+ExcludePath ^/private/var/folders/
+ExcludePath ^/dev/
+ExcludePath /.dbfseventsd$
+# macOS SIP https://support.apple.com/en-us/HT204899
+ExcludePath ^/System/
+ExcludePath ^/bin/
+ExcludePath ^/sbin/
+ExcludePath ^/usr/bin/
+ExcludePath ^/usr/lib/
+ExcludePath ^/usr/libexec/
+ExcludePath ^/usr/sbin/
+ExcludePath ^/usr/share/
+ExcludePath ^/usr/standalone/
+ExcludePath ^/Applications/App Store.app/
+ExcludePath ^/Applications/Automator.app/
+ExcludePath ^/Applications/Books.app/
+ExcludePath ^/Applications/Calculator.app/
+ExcludePath ^/Applications/Calendar.app/
+ExcludePath ^/Applications/Chess.app/
+ExcludePath ^/Applications/Contacts.app/
+ExcludePath ^/Applications/Dashboard.app/
+ExcludePath ^/Applications/Dictionary.app/
+ExcludePath ^/Applications/FaceTime.app/
+ExcludePath ^/Applications/Font Book.app/
+ExcludePath ^/Applications/Home.app/
+ExcludePath ^/Applications/Image Capture.app/
+ExcludePath ^/Applications/Launchpad.app/
+ExcludePath ^/Applications/Mail.app/
+ExcludePath ^/Applications/Maps.app/
+ExcludePath ^/Applications/Messages.app/
+ExcludePath ^/Applications/Mission Control.app/
+ExcludePath ^/Applications/News.app/
+ExcludePath ^/Applications/Notes.app/
+ExcludePath ^/Applications/Photo Booth.app/
+ExcludePath ^/Applications/Photos.app/
+ExcludePath ^/Applications/Preview.app/
+ExcludePath ^/Applications/QuickTime Player.app/
+ExcludePath ^/Applications/Reminders.app/
+ExcludePath ^/Applications/Safari.app/
+ExcludePath ^/Applications/Siri.app/
+ExcludePath ^/Applications/Stickies.app/
+ExcludePath ^/Applications/Stocks.app/
+ExcludePath ^/Applications/System Preferences.app/
+ExcludePath ^/Applications/TextEdit.app/
+ExcludePath ^/Applications/Time Machine.app/
+ExcludePath ^/Applications/VoiceMemos.app/
+ExcludePath ^/Applications/iTunes.app/
+ExcludePath ^/Applications/Utilities/Activity Monitor.app/
+ExcludePath ^/Applications/Utilities/AirPort Utility.app/
+ExcludePath ^/Applications/Utilities/Audio MIDI Setup.app/
+ExcludePath ^/Applications/Utilities/Bluetooth File Exchange.app/
+ExcludePath ^/Applications/Utilities/Boot Camp Assistant.app/
+ExcludePath ^/Applications/Utilities/ColorSync Utility.app/
+ExcludePath ^/Applications/Utilities/Console.app/
+ExcludePath ^/Applications/Utilities/Digital Color Meter.app/
+ExcludePath ^/Applications/Utilities/Disk Utility.app/
+ExcludePath ^/Applications/Utilities/Grapher.app/
+ExcludePath ^/Applications/Utilities/Keychain Access.app/
+ExcludePath ^/Applications/Utilities/Migration Assistant.app/
+ExcludePath ^/Applications/Utilities/Screenshot.app/
+ExcludePath ^/Applications/Utilities/Script Editor.app/
+ExcludePath ^/Applications/Utilities/System Information.app/
+ExcludePath ^/Applications/Utilities/Terminal.app/
+ExcludePath ^/Applications/Utilities/VoiceOver Utility.app/
+{{- end -}}

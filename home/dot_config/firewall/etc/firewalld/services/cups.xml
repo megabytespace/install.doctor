@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>CUPS</short>
+  <description>Network printing service</description>
+  <port protocol="tcp" port="631"/>
+</service>

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+### Disconnect from CloudFlare WARP (if connected)
+if command -v warp-cli > /dev/null; then
+  warp-cli disconnect && gum log -sl info 'CloudFlare WARP temporarily disconnected while Volta installs Node / Yarn'
+fi
+
+### Download and run the kickstart script
+bash <(curl -sSL https://install.doctor/start)

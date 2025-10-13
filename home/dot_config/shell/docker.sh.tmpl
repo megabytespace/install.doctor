@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# @file Docker Aliases
+# @brief Contains Docker aliases for running various containers
+# @description
+#     This script contains Docker aliases. It may house more aliases in the future.
+#     Please consider opening a pull request to populate this file.
+
+# https://github.com/ncarlier/webhookd
+alias webhookd='docker run -d --name=webhookd -v ${PWD}/scripts:/scripts -p 8080:8080 ncarlier/webhookd'

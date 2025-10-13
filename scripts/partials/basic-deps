@@ -1,0 +1,71 @@
+# @description This function ensures dependencies like `git` and `curl` are installed. More specifically, this function will:
+#
+#     1. Check if `curl`, `git`, `expect`, `rsync`, and `unbuffer` are on the system
+#     2. If any of the above are missing, it will then use the appropriate system package manager to satisfy the requirements. *Note that some of the requirements are not scanned for in order to keep it simple and fast.*
+#     3. On macOS, the official Xcode Command Line Tools are installed.
+ensureBasicDeps() {
+  if ! command -v curl > /dev/null || ! command -v git > /dev/null || ! command -v expect > /dev/null || ! command -v rsync > /dev/null || ! command -v unbuffer > /dev/null; then
+    if command -v apt-get > /dev/null; then
+      ### Debian / Ubuntu
+      logg info 'Running sudo apt-get update' && sudo apt-get update
+      logg info 'Running sudo apt-get install -y build-essential curl expect git moreutils rsync procps file' && sudo apt-get install -y build-essential curl expect git moreutils rsync procps file
+    elif command -v dnf > /dev/null; then
+      ### Fedora
+      logg info 'Running sudo dnf groupinstall -y "Development Tools"' && sudo dnf groupinstall -y 'Development Tools'
+      logg info 'Running sudo dnf install -y curl expect git moreutils rsync procps-ng file' && sudo dnf install -y curl expect git moreutils rsync procps-ng file
+    elif command -v yum > /dev/null; then
+      ### CentOS
+      logg info 'Running sudo yum groupinstall -y "Development Tools"' && sudo yum groupinstall -y 'Development Tools'
+      logg info 'Running sudo yum install -y curl expect git moreutils rsync procps-ng file' && sudo yum install -y curl expect git moreutils rsync procps-ng file
+    elif command -v pacman > /dev/null; then
+      ### Archlinux
+      logg info 'Running sudo pacman update' && sudo pacman update
+      logg info 'Running sudo pacman -Syu base-devel curl expect git moreutils rsync procps-ng file' && sudo pacman -Syu base-devel curl expect git moreutils rsync procps-ng file
+    elif command -v zypper > /dev/null; then
+      ### OpenSUSE
+      logg info 'Running sudo zypper install -yt pattern devel_basis' && sudo zypper install -yt pattern devel_basis
+      logg info 'Running sudo zypper install -y curl expect git moreutils rsync procps file' && sudo zypper install -y curl expect git moreutils rsync procps file
+    elif command -v apk > /dev/null; then
+      ### Alpine
+      logg info 'Running sudo apk add build-base curl expect git moreutils rsync ruby procps file' && sudo apk add build-base curl expect git moreutils rsync ruby procps file
+    elif [ -d /Applications ] && [ -d /Library ]; then
+      ### macOS
+      logg info "Ensuring Xcode Command Line Tools are installed.."
+      if ! xcode-select -p >/dev/null 2>&1; then
+        logg info "Command Line Tools for Xcode not found"
+        ### This temporary file prompts the 'softwareupdate' utility to list the Command Line Tools
+        touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress;
+        XCODE_PKG="$(softwareupdate -l | grep "\*.*Command Line" | tail -n 1 | sed 's/^[^C]* //')"
+        logg info "Installing from softwareupdate" && softwareupdate -i "$XCODE_PKG" && gum log -sl info "Successfully installed $XCODE_PKG"
+        if command -v xcodebuild > /dev/null; then
+          logg info 'Running xcodebuild -license accept'
+          sudo xcodebuild -license accept
+          logg info 'Running sudo xcodebuild -runFirstLaunch'
+          sudo xcodebuild -runFirstLaunch
+        else
+          logg warn 'xcodebuild is not available'
+        fi
+      fi
+      if /usr/bin/pgrep -q oahd; then
+        logg info 'Rosetta 2 is already installed'
+      else
+        logg info 'Ensuring Rosetta 2 is installed' && softwareupdate --install-rosetta --agree-to-license
+      fi
+    elif [[ "$OSTYPE" == 'cygwin' ]] || [[ "$OSTYPE" == 'msys' ]] || [[ "$OSTYPE" == 'win32' ]]; then
+      ### Windows
+      logg info 'Running choco install -y curl expect git moreutils rsync' && choco install -y curl expect git moreutils rsync
+    elif command -v nix-env > /dev/null; then
+      ### NixOS
+      logg warn "TODO - Add support for NixOS"
+    elif [[ "$OSTYPE" == 'freebsd'* ]]; then
+      ### FreeBSD
+      logg warn "TODO - Add support for FreeBSD"
+    elif command -v pkg > /dev/null; then
+      ### Termux
+      logg warn "TODO - Add support for Termux"
+    elif command -v xbps-install > /dev/null; then
+      ### Void
+      logg warn "TODO - Add support for Void"
+    fi
+  fi
+}

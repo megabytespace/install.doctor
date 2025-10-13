@@ -1,0 +1,8 @@
+---
+- name: Configure Qubes VM formation
+  hosts: dom0
+  tasks:
+    - name: Configure Qubes Salt formula and the top file
+      become: true
+      qubesformation:
+        dest: /srv/user_salt/structure.sls

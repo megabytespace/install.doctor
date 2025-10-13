@@ -1,0 +1,49 @@
+x-tcpservice: &tcpservice
+  type: tcp
+  check_interval: 60
+  timeout: 15
+  allow_notifications: true
+  notify_after: 0
+  notify_all_changes: true
+  public: true
+  redirect: true
+
+x-httpservice: &httpservice
+  type: http
+  method: GET
+  check_interval: 45
+  timeout: 10
+  expected_status: 200
+  allow_notifications: true
+  notify_after: 2
+  notify_all_changes: true
+  public: true
+  redirect: true
+
+services:
+  - name: StatPing
+    domain: https://status.{{ .host.domain }}
+    <<: *httpservice
+  - name: Healthchecks
+    domain: https://health.{{ .host.domain }}
+    <<: *httpservice
+  - name: Portainer
+    domain: localhost
+    port: 9000
+    <<: *tcpservice
+  - name: Rundeck
+    domain: localhost
+    port: 4440
+    <<: *tcpservice
+  - name: Megabyte Labs GitHub
+    domain: https://github.com/megabyte-labs
+    <<: *httpservice
+  - name: Megabyte Labs
+    domain: https://megabyte.space
+    <<: *httpservice
+  - name: Install Doctor
+    domain: https://install.doctor
+    <<: *httpservice
+  - name: Music Blobs
+    domain: https://musicblobs.com
+    <<: *httpservice

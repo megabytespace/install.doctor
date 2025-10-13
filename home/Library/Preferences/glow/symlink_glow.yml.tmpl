@@ -1,0 +1,3 @@
+{{- if and (eq .host.distro.family "darwin") (lookPath "glow") -}}
+{{ .chezmoi.homeDir }}/.config/glow/glow.yml
+{{- end -}}

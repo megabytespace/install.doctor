@@ -1,0 +1,12 @@
+[list-view]
+use-tree-view=true
+
+[preferences]
+default-folder-viewer='list-view'
+search-filter-time-type='last_modified'
+show-create-link=true
+show-delete-permanently=true
+
+[window-state]
+maximized=false
+sidebar-width=200

@@ -1,0 +1,3 @@
+{{- if eq .host.distro.family "windows" -}}
+{{ .chezmoi.homeDir }}/.config/Code/User/keybindings.json
+{{- end -}}

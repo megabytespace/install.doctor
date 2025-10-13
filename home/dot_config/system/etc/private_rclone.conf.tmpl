@@ -1,0 +1,37 @@
+{{- if and (or (and (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_R2_ID"))) (env "CLOUDFLARE_R2_ID")) (or (and (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_R2_SECRET"))) (env "CLOUDFLARE_R2_SECRET")) (ne .user.cloudflare.r2 "") -}}
+[docker]
+access_key_id = {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_R2_ID")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_R2_ID") | decrypt | trim -}}{{ else }}{{- env "CLOUDFLARE_R2_ID" -}}{{ end }}
+acl = private
+endpoint = {{ .user.cloudflare.r2 }}.r2.cloudflarestorage.com
+env_auth = false
+provider = Cloudflare
+secret_access_key = {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_R2_SECRET")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_R2_SECRET") | decrypt | trim -}}{{ else }}{{- env "CLOUDFLARE_R2_SECRET" -}}{{ end }}
+type = s3
+
+[Private]
+access_key_id = {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_R2_ID")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_R2_ID") | decrypt | trim -}}{{ else }}{{- env "CLOUDFLARE_R2_ID" -}}{{ end }}
+acl = private
+endpoint = {{ .user.cloudflare.r2 }}.r2.cloudflarestorage.com
+env_auth = false
+provider = Cloudflare
+secret_access_key = {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_R2_SECRET")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_R2_SECRET") | decrypt | trim -}}{{ else }}{{- env "CLOUDFLARE_R2_SECRET" -}}{{ end }}
+type = s3
+
+[Public]
+access_key_id = {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_R2_ID")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_R2_ID") | decrypt | trim -}}{{ else }}{{- env "CLOUDFLARE_R2_ID" -}}{{ end }}
+acl = public-read
+endpoint = {{ .user.cloudflare.r2 }}.r2.cloudflarestorage.com
+env_auth = false
+provider = Cloudflare
+secret_access_key = {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_R2_SECRET")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_R2_SECRET") | decrypt | trim -}}{{ else }}{{- env "CLOUDFLARE_R2_SECRET" -}}{{ end }}
+type = s3
+
+[system]
+access_key_id = {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_R2_ID")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_R2_ID") | decrypt | trim -}}{{ else }}{{- env "CLOUDFLARE_R2_ID" -}}{{ end }}
+acl = private
+endpoint = {{ .user.cloudflare.r2 }}.r2.cloudflarestorage.com
+env_auth = false
+provider = Cloudflare
+secret_access_key = {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "CLOUDFLARE_R2_SECRET")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/CLOUDFLARE_R2_SECRET") | decrypt | trim -}}{{ else }}{{- env "CLOUDFLARE_R2_SECRET" -}}{{ end }}
+type = s3
+{{ end -}}

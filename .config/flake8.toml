@@ -1,4 +1,4 @@
 [flake8]
-exclude = .autodoc, .cache, .common, .config, .git, .modules, .npm, .pnpm-store, .shared, .task, .venv, .vscode, build, dist, node_modules, roles, venv
-ignore = E402
+exclude = ".autodoc, .cache, .common, .config, .git, .modules, .npm, .pnpm-store, .shared, .task, .venv, .vscode, build, dist, node_modules, roles, venv"
+ignore = "E402"
 max-line-length = 120

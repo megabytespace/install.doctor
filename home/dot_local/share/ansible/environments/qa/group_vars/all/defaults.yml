@@ -1,0 +1,45 @@
+---
+default_dconf_settings:
+  - key: /org/gnome/desktop/background/picture-uri
+    value: "'file:///usr/share/backgrounds/brad-huchteman-stone-mountain.jpg'"
+  - key: /org/gnome/shell/favorite-apps
+    value: "['org.gnome.Nautilus.desktop', 'firefox.desktop', 'chromium_chromium.desktop', \
+      'brave-browser.desktop', 'mailspring_mailspring.desktop', 'code_code.desktop', \
+      'hyper.desktop', 'plexmediaserver_pms-web.desktop', 'org.gnome.Lollypop.desktop', \
+      'virt-manager.desktop', 'vmware-workstation.desktop']"
+  - key: /org/gnome/shell/extensions/dash-to-dock/dash-max-icon-size
+    value: '40'
+  - key: /org/gnome/desktop/session/idle-delay
+    value: '600'
+  - key: /org/gnome/desktop/privacy/report-technical-problems
+    value: 'false'
+
+default_gnome_extensions:
+  - url: https://extensions.gnome.org/extension/750/openweather/
+    regex: openweather-extension
+    settings:
+      - "gsettings --schemadir ~/.local/share/gnome-shell/extensions/openweather-extension@jenslody.de\
+        /schemas/ set org.gnome.shell.extensions.openweather city '40.7970384,-74.4809492>Morristown, \
+        Morris County, New Jersey, 07960, United States of America >-1 && 40.7127281,-74.0060152>New \
+        York, United States of America >-1 && 12.9791198,77.5912997>Bengaluru, Bangalore North, \
+        Bangalore Urban, Karnataka, India >-1 && 40.4862174,-74.4518173>New Brunswick, New Jersey, \
+        United States of America >-1'"
+      - gsettings --schemadir ~/.local/share/gnome-shell/extensions/openweather-extension@jenslody.de/schemas/ set org.gnome.shell.extensions.openweather days-forecast 10
+      - gsettings --schemadir ~/.local/share/gnome-shell/extensions/openweather-extension@jenslody.de/schemas/ set org.gnome.shell.extensions.openweather show-text-in-panel true
+      - gsettings --schemadir ~/.local/share/gnome-shell/extensions/openweather-extension@jenslody.de/schemas/ set org.gnome.shell.extensions.openweather actual-city 0
+  - url: https://extensions.gnome.org/extension/771/proxy-switcher/
+    regex: ProxySwitcher
+  - url: https://extensions.gnome.org/extension/1085/simple-net-speed/
+    regex: simplenetspeed
+  - url: https://extensions.gnome.org/extension/906/sound-output-device-chooser/
+    regex: sound-output-device-chooser
+  - url: https://extensions.gnome.org/extension/2983/ip-finder/
+    regex: IP-Finder
+  - url: https://extensions.gnome.org/extension/6/applications-menu/
+    regex: apps-menu
+  - url: https://extensions.gnome.org/extension/3061/vlan-switcher/
+    regex: vlan-switcher
+  - url: https://extensions.gnome.org/extension/1762/lan-ip-address/
+    regex: lan-ip-address
+  - url: https://extensions.gnome.org/extension/2224/easy-docker-containers/
+    regex: easy_docker_containers

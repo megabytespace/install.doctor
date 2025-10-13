@@ -1,0 +1,15 @@
+[ftp]
+host='localhost'
+port=8118
+
+[http]
+host='localhost'
+port=8118
+
+[https]
+host='localhost'
+port=8118
+
+[socks]
+host='localhost'
+port=8118

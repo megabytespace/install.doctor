@@ -1,0 +1,14 @@
+---
+- name: Remove the VMs added by Gas Station
+  hosts: all:sys-vpn-pritunl:sys-vpn-proton:sys-vpn-tailscale:sys-vpn-warp:!system-vms:!primary-templates:!dom0
+  connection: qubes
+  gather_facts: false
+  tasks:
+    - name: 'Remove {{ inventory_hostname }}'
+      delegate_to: dom0
+      shell:
+        cmd: |
+          if qvm-check {{ inventory_hostname }}; then
+            qvm-shutdown --force --wait {{ inventory_hostname }} || EXIT_CODE=$?
+            qvm-remove -f {{ inventory_hostname }}
+          fi

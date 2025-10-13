@@ -1,0 +1,219 @@
+---
+# +-+-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+-+-+-+-+-+
+# |G|E|N|E|R|A|L| |C|O|N|F|I|G|U|R|A|T|I|O|N|
+# +-+-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+# Which provider to clone from (github, gitlab, gitea or bitbucket)
+# default: github
+# flag (--scm, -s) eg: --scm=gitlab
+GHORG_SCM_TYPE: github
+
+# How you'd like to clone the repos (https or ssh)
+# default: https
+# flag (--protocol) eg: --protocol=https
+GHORG_CLONE_PROTOCOL: https
+
+# This is where your ghorg directory will be created, use absolute pathing, shell expansions will not work.
+# The ghorg directory is the home for all ghorg clones
+# See https://github.com/gabrie30/ghorg#changing-clone-directories for example
+# default: YOUR_HOME_DIR/ghorg
+# flag (--path, -p) eg: --path=/tmp/ghorg
+GHORG_ABSOLUTE_PATH_TO_CLONE_TO: {{ .chezmoi.homeDir }}/Projects
+
+# Folder ghorg will clone all repos into. Cloning will result in: GHORG_ABSOLUTE_PATH_TO_CLONE_TO/GHORG_OUTPUT_DIR/repo
+# See https://github.com/gabrie30/ghorg#changing-clone-directories for example
+# default: org/user you are cloning, e.g. 'ghorg clone kubernetes' would create a kubernetes directory inside your ghorg directory
+# flag (--output-dir) eg: --output-dir=testing
+# GHORG_OUTPUT_DIR:
+
+# Type of entity to clone (user or org)
+# flag (--clone-type, -c) eg: --clone-type=user
+GHORG_CLONE_TYPE: org
+
+# Change SCM api base url, this is for on self hosted scm instances only
+# For http gitlab instances see GHORG_INSECURE_GITLAB_CLIENT
+# default: github/gitlab/bitbucket public apis
+# flag (--base-url) eg: --base-url=https://my.self.hosted.scm.instance.com
+GHORG_SCM_BASE_URL:
+
+# Include submodules in all clone and pull operations.
+# flag (--include-submodules)
+GHORG_INCLUDE_SUBMODULES: true
+
+# Allows you to pass arguments to git's filter flag e.g. git clone --filter=<args> this requires git version 2.19 or greater.
+# Useful for filtering out binary objects from repos
+# Few caveats, only works on inital clones, however if done on inital clone all subsequent clones will also honor the settings.
+# More info at https://stackoverflow.com/questions/49917616/what-is-the-git-clone-filter-options-syntax
+# flag (--git-filter) eg: --git-filter=blob:none
+# GHORG_GIT_FILTER:
+
+# Deletes all files/directories found in your local clone directory that are not found on the remote (e.g., after remote deletion).  With GHORG_SKIP_ARCHIVED set, archived repositories will also be pruned from your local clone.
+# Will prompt before deleting any files unless used in combination with --prune-no-confirm
+# flag (--prune)
+GHORG_PRUNE: false
+
+# Skip interactive y/n prompt when pruning clones (can only be used in combination with --prune).
+# flag (--prune-no-confirm)
+GHORG_PRUNE_NO_CONFIRM: true
+
+# Color output (enabled, disabled)
+# flag (--color) eg: --color=disabled
+GHORG_COLOR: disabled
+
+# Skip archived repos, currently github/gitlab/gitea only
+# flag (--skip-archived)
+GHORG_SKIP_ARCHIVED: true
+
+# Skip repos that are forks, currently github/gitlab/gitea only
+# flag (--skip-forks)
+GHORG_SKIP_FORKS: false
+
+# Backup mode, clone as mirror, no working copy (ignores branch parameter)
+# flag (--backup)
+# GHORG_BACKUP: false
+
+# Max goroutines created while cloning
+# flag (--concurrency)
+GHORG_CONCURRENCY: 25
+
+# A comma separated list of topics to filter by, currently github/gitlab/gitea only
+# flag (--topics) eg: --topics=frontend
+# If any topics exist here, ghorg will only clone repos that match at least one of these topics
+# GHORG_TOPICS:
+
+# Only clone repos with matching prefix, can be a comma separated list
+# flag (--match-prefix) eg: --match-prefix=backend
+# GHORG_MATCH_PREFIX:
+
+# Exclude cloning repos with matching prefix, can be a comma separated list
+# flag (--exclude-match-prefix) eg: --exclude-match-prefix=backend
+# GHORG_EXCLUDE_MATCH_PREFIX:
+
+# Only clone repos that match name to regex provided
+# flag (--match-regex) eg: --match-regex=^foo
+# GHORG_MATCH_REGEX:
+
+# Exclude cloning repos that match name to regex provided
+# flag (--exclude-match-regex) eg: --exclude-match-regex=^foo
+# GHORG_EXCLUDE_MATCH_REGEX:
+
+# Only clones new repos and does not perform a git clean on existing repos. Useful if you don't want to lose changes made to repos in the org/user directory.
+# flag (--no-clean)
+GHORG_NO_CLEAN: true
+
+# Additionally clone the wiki page for repo
+# flag (--clone-wiki)
+GHORG_CLONE_WIKI: false
+
+# Fetches all remote branches for each repo by running a git fetch --all
+# flag (--fetch-all)
+GHORG_FETCH_ALL: true
+
+# If you want to set a path other than $HOME/.config/ghorg/ghorgignore for your ghorgignore
+# flag (--ghorgignore-path)
+# GHORG_IGNORE_PATH:
+
+# Only emit critical output.
+# flag (--quiet)
+GHORG_QUIET: true
+
+# Perform a dry run of the clone; fetches repos but does not clone them.
+# flag (--dry-run)
+GHORG_DRY_RUN: false
+
+# Branch ghorg resets and leaves checked out
+# default: default branch
+# NOTE: if no default branch is found on the repo, will fallback to using master
+# flag (--branch, -b) eg: --branch=develop
+# GHORG_BRANCH:
+
+# Allows you to control the exit code when ghorg runs into a problem (info level message) cloning a repo from the remote.
+# Info messages will appear after a clone is complete, similar to success messages
+# flag (--exit-code-on-clone-infos)
+GHORG_EXIT_CODE_ON_CLONE_INFOS: 0
+
+# Allows you to control the exit code when ghorg runs into a problem (issue level message) cloning a repo from the remote.
+# Issue messages will appear after a clone is complete, similar to success messages.
+# flag (--exit-code-on-clone-issues)
+GHORG_EXIT_CODE_ON_CLONE_ISSUES: 1
+
+# Specifies the location of your ghorg conf.yaml, allowing you to have many configuration files, or none at all
+# default: ghorg looks in $HOME/.config/ghorg/conf.yaml, if not set in that location nor as a commandline flag, ghorg will use all default values
+# NOTE: this cannot be set in the configuration file. Its supported through CLI flag and ENV var only.
+# flag (--config)
+# GHORG_CONFIG:
+
+# +-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+
+# |G|I|T|H|U|B| |S|P|E|C|I|F|I|C|
+# +-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+
+
+# Add your GitHub token
+# flag (--token, -t) eg: --token=bGVhdmUgYSBjb21tZW50IG9uIGlzc3VlIDY2
+GHORG_GITHUB_TOKEN: {{ if and (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "GITHUB_READ_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/GITHUB_READ_TOKEN") | decrypt | trim }}{{ else }}{{ env "GITHUB_READ_TOKEN" }}{{ end }}
+
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+# |G|I|T|L|A|B| |S|P|E|C|I|F|I|C|
+# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+# Add your GitLab token
+# flag (--token, -t) eg: --token=bGVhdmUgYSBjb21tZW50IG9uIGlzc3VlIDY2
+GHORG_GITLAB_TOKEN: {{ if and (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "GITLAB_READ_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/GITLAB_READ_TOKEN") | decrypt | trim }}{{ else }}{{ env "GITLAB_READ_TOKEN" }}{{ end }}
+
+# clones repos in a directory structure that matches gitlab namespaces eg company/unit/subunit/app would clone into ghorg/org/unit/subunit/app
+# flag (--preserve-dir)
+GHORG_PRESERVE_DIRECTORY_STRUCTURE: true
+
+# Skip TLS certificate verification for hosted gitlab instances
+# flag (--insecure-gitlab-client)
+GHORG_INSECURE_GITLAB_CLIENT:
+
+# Exclude gitlab groups by regex
+# flag (--gitlab-group-exclude-match-regex)
+GHORG_GITLAB_GROUP_EXCLUDE_MATCH_REGEX:
+
+# +-+-+-+-+-+ +-+-+-+-+-+-+-+-+
+# |G|I|T|E|A| |S|P|E|C|I|F|I|C|
+# +-+-+-+-+-+ +-+-+-+-+-+-+-+-+
+
+# Add your Gitea token
+# Settings -> Applications -> Generate Token
+# flag (--token, -t) eg: --token=bGVhdmUgYSBjb21tZW50IG9uIGlzc3VlIDY2
+GHORG_GITEA_TOKEN:
+
+# +-+-+-+-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+
+# |B|I|T|B|U|C|K|E|T| |S|P|E|C|I|F|I|C|
+# +-+-+-+-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+
+
+# When using this OAuth/PAT token, do not set the bitbucket username flag. Do not set both this value and the GHORG_BITBUCKET_APP_PASSWORD
+# https://confluence.atlassian.com/bitbucketserver/personal-access-tokens-939515499.html
+# flag (--token, -t) eg: --token=bGVhdmUgYSBjb21tZW50IG9uIGlzc3VlIDY2
+GHORG_BITBUCKET_OAUTH_TOKEN:
+
+# Add your Bitbucket app password. Do not set both this value and the GHORG_BITBUCKET_OAUTH_TOKEN
+# https://confluence.atlassian.com/bitbucket/app-passwords-828781300.html
+# flag (--token, -t) eg: --token=bGVhdmUgYSBjb21tZW50IG9uIGlzc3VlIDY2
+GHORG_BITBUCKET_APP_PASSWORD:
+
+# Used with GHORG_BITBUCKET_APP_PASSWORD. Should not be set when using GHORG_BITBUCKET_OAUTH_TOKEN
+# flag (--bitbucket-username) eg: --bitbucket-username=user123
+GHORG_BITBUCKET_USERNAME:
+
+# +-+-+-+-+-+ +-+-+-+-+-+-+-+
+# |G|H|O|R|G| |R|E|C|L|O|N|E|
+# +-+-+-+-+-+ +-+-+-+-+-+-+-+
+
+# Configuration for ghorg reclone command
+# See https://github.com/gabrie30/ghorg#reclone-command for more information on how to setup and use
+
+# If set allows you to specify the location of your reclone.yaml
+# Defaults to $HOME/.config/ghorg/reclone.yaml
+# flag (--reclone-path)
+GHORG_RECLONE_PATH:
+
+# Get more verbose logging with reclone command
+# flag (--verbose)
+GHORG_RECLONE_VERBOSE: false
+
+# Quiet logging output with reclone command
+# flag (--quiet)
+GHORG_RECLONE_QUIET: false

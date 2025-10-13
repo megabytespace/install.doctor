@@ -1,0 +1,70 @@
+
+### This is the configuration file that GCSF uses.
+### It should be placed in $XDG_CONFIG_HOME/gcsf/gcsf.toml, which is usually
+### defined as $HOME/.config/gcsf/gcsf.toml
+
+# Show additional logging info?
+debug = false
+
+# Perform a mount check and fail early if it fails. Disable this if you
+# encounter this error:
+#
+#     fuse: attempt to remount on active mount point: [...]
+#     Could not mount to [...]: Undefined error: 0 (os error 0)
+mount_check = true
+
+# How long to cache the contents of a file after it has been accessed.
+cache_max_seconds = 300
+
+# How how many files to cache.
+cache_max_items = 30
+
+# How long to cache the size and capacity of the file system. These are the
+# values reported by `df`.
+cache_statfs_seconds = 60
+
+# How many seconds to wait before checking for remote changes and updating them
+# locally.
+sync_interval = 15
+
+# Mount options
+mount_options = [
+    "fsname=GCSF",
+    # Allow file system access to root. This only works if `user_allow_other`
+    # is set in /etc/fuse.conf
+    "allow_root",
+]
+
+# If set to true, Google Drive will provide a code after logging in and
+# authorizing GCSF. This code must be copied and pasted into GCSF in order to
+# complete the process. Useful for running GCSF on a remote server.
+#
+# If set to false, Google Drive will attempt to communicate with GCSF directly.
+# This is usually faster and more convenient.
+authorize_using_code = false
+
+# If set to true, all files with identical name will get an increasing number
+# attached to the suffix. This is most likely not necessary.
+rename_identical_files = false
+
+# If set to true, will add an extension to special files (docs, presentations, sheets, drawings, sites), e.g. "\#.ods" for spreadsheets.
+add_extensions_to_special_files = false
+
+# If set to true, deleted files and folder will not be moved to Trash Folder,
+# instead they get deleted permanently.
+skip_trash = false
+
+# The Google OAuth client secret for Google Drive APIs. Create your own
+# credentials at https://console.developers.google.com and paste them here
+client_secret = """
+  {
+  "installed": {
+    "client_id": "{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "GOOGLE_DRIVE_CLIENT_ID")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/GOOGLE_DRIVE_CLIENT_ID") | decrypt | trim -}}{{ else }}{{- env "GOOGLE_DRIVE_CLIENT_ID" -}}{{ end }}",
+    "project_id": "{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "GOOGLE_DRIVE_PROJECT_ID")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/GOOGLE_DRIVE_PROJECT_ID") | decrypt | trim -}}{{ else }}{{- env "GOOGLE_DRIVE_PROJECT_ID" -}}{{ end }}",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_secret": "{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "GOOGLE_DRIVE_CLIENT_SECRET")) }}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/GOOGLE_DRIVE_CLIENT_SECRET") | decrypt | trim -}}{{ else }}{{- env "GOOGLE_DRIVE_CLIENT_SECRET" -}}{{ end }}",
+    "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob", "http://localhost"]
+  }
+}"""

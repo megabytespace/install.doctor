@@ -1,0 +1,15 @@
+[Unit]
+Description=JuiceFS Home Directory Mount
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /usr/local/bin/juicefs_home_mount.sh
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/juicefs_mount.log
+StandardError=append:/var/log/juicefs_mount.log
+
+[Install]
+WantedBy=multi-user.target

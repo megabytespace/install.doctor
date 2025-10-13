@@ -1,0 +1,4 @@
+[MAAS]
+title=MAAS
+description=Ubuntu management software for equipment that is controlled by LPMI
+ports=5240|5248|5241:5247/tcp|5241:5247/udp|5250:5270/tcp|5250:5270/udp

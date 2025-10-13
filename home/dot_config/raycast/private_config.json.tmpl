@@ -1,0 +1,6 @@
+{{- if eq true true -}}
+{
+  "accesstoken" : "{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "RAYCAST_ACCESS_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/RAYCAST_ACCESS_TOKEN") | decrypt | trim }}{{ else }}{{ env "RAYCAST_ACCESS_TOKEN" }}{{ end }}",
+  "token" : "{{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "RAYCAST_TOKEN")) }}{{ includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/RAYCAST_TOKEN") | decrypt | trim }}{{ else }}{{ env "RAYCAST_TOKEN" }}{{ end }}"
+}
+{{- end -}}

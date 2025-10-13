@@ -1,0 +1,3 @@
+# Force exit node to be from the USA
+ExitNodes {us}
+StrictNodes 1

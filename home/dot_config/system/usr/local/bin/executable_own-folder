@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# @file /usr/local/bin/own-folder
+# @brief Folder setup and permissions management script
+# @description
+#     This script sets up a folder, assigns appropriate ownership and permissions,
+#     and ensures all files and directories within it adhere to the specified
+#     user and group ownership rules.
+#
+#     It creates the user and group if they do not exist and logs detailed
+#     feedback for the operations performed.
+
+set -euo pipefail
+trap 'gum log -sl error "An error occurred. Exiting." && exit 1' ERR
+
+# Ensure gum is installed
+if ! command -v gum &>/dev/null; then
+  echo "gum is not installed. Please install gum to proceed." >&2
+  exit 1
+fi
+
+# @description Validates the input arguments to ensure the correct number of arguments is provided.
+validateArguments() {
+  if [ "$#" -ne 3 ]; then
+    gum log -sl error "Incorrect number of arguments provided."
+    gum log -sl info "Usage: $0 <FOLDER_PATH> <USERNAME> <GROUPNAME>"
+    gum log -sl info " - <FOLDER_PATH>: Absolute or relative path to the target folder"
+    gum log -sl info " - <USERNAME>: Name of the user to own the folder and its contents"
+    gum log -sl info " - <GROUPNAME>: Name of the group to own the folder and its contents"
+    exit 1
+  fi
+}
+
+# @description Ensures the specified user and group exist. If they do not, creates them using `add-usergroup`.
+ensureUserGroupExistence() {
+  local USERNAME=$1
+  local GROUPNAME=$2
+
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    local GROUP_CHECK_CMD="dscl . -read /Groups/$GROUPNAME"
+  else
+    local GROUP_CHECK_CMD="getent group $GROUPNAME"
+  fi
+
+  if ! id -u "$USERNAME" &>/dev/null || ! eval "$GROUP_CHECK_CMD" &>/dev/null; then
+    gum log -sl warn "User or group does not exist. Creating them with add-usergroup."
+    sudo add-usergroup "$USERNAME" "$GROUPNAME"
+    if [ $? -ne 0 ]; then
+      gum log -sl error "Failed to create user or group."
+      exit 5
+    fi
+  fi
+}
+
+# @description Creates the specified folder if it does not already exist.
+createFolder() {
+  local FOLDER_PATH=$1
+  sudo mkdir -p "$FOLDER_PATH"
+  if [ $? -ne 0 ]; then
+    gum log -sl error "Failed to create or access the folder at $FOLDER_PATH."
+    exit 2
+  fi
+}
+
+# @description Sets permissions and ownership for the specified folder.
+setFolderPermissions() {
+  local FOLDER_PATH=$1
+  local USERNAME=$2
+  local GROUPNAME=$3
+
+  sudo chown "$USERNAME:$GROUPNAME" "$FOLDER_PATH"
+  sudo chmod 750 "$FOLDER_PATH"
+  gum log -sl info "Updated $FOLDER_PATH to be owned by $USERNAME:$GROUPNAME with 750 permissions"
+}
+
+# @description Updates file permissions within the specified folder to 640, retaining executability.
+updateFilePermissions() {
+  local FOLDER_PATH=$1
+  local FILE_COUNT
+  FILE_COUNT=0
+  while IFS= read -r -d '' FILE; do
+    if [[ -x "$FILE" ]]; then
+      sudo chmod 750 "$FILE"
+    else
+      sudo chmod 640 "$FILE"
+    fi
+    ((FILE_COUNT++))
+  done < <(find "$FOLDER_PATH" -type f -print0)
+  gum log -sl info "$FILE_COUNT files have been updated with appropriate permissions in $FOLDER_PATH"
+}
+
+# @description Updates directory permissions within the specified folder to 750.
+updateDirectoryPermissions() {
+  local FOLDER_PATH=$1
+  local DIR_COUNT
+  DIR_COUNT=$(sudo find "$FOLDER_PATH" -type d \( -path "$FOLDER_PATH/*" -o -path "$FOLDER_PATH" \) -exec chmod 750 {} \; | wc -l)
+  gum log -sl info "$DIR_COUNT directories have been updated with 750 permissions in $FOLDER_PATH"
+}
+
+# @description Recursively sets ownership for all contents within the specified folder.
+setOwnershipRecursively() {
+  local FOLDER_PATH=$1
+  local USERNAME=$2
+  local GROUPNAME=$3
+  sudo find "$FOLDER_PATH" -exec chown "$USERNAME:$GROUPNAME" {} \;
+  gum log -sl info "All the files and directories have been updated to be owned by $USERNAME:$GROUPNAME"
+}
+
+# @description Validates the current platform and ensures compatibility with the script requirements.
+validatePlatform() {
+  if [[ "$OSTYPE" != "linux-gnu"* && "$OSTYPE" != "darwin"* ]]; then
+    gum log -sl error "Unsupported platform: $OSTYPE. This script is designed for Linux and macOS."
+    exit 1
+  fi
+}
+
+# @description Main script execution logic, orchestrates all operations.
+main() {
+  validatePlatform
+  validateArguments "$@"
+  local FOLDER_PATH=$1
+  local USERNAME=$2
+  local GROUPNAME=$3
+
+  ensureUserGroupExistence "$USERNAME" "$GROUPNAME"
+  createFolder "$FOLDER_PATH"
+  setFolderPermissions "$FOLDER_PATH" "$USERNAME" "$GROUPNAME"
+  updateFilePermissions "$FOLDER_PATH"
+  updateDirectoryPermissions "$FOLDER_PATH"
+  setOwnershipRecursively "$FOLDER_PATH" "$USERNAME" "$GROUPNAME"
+
+  gum log -sl info "Permissions and ownership have been successfully updated for $FOLDER_PATH."
+}
+
+main "$@"

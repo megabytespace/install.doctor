@@ -1,0 +1,241 @@
+#!/usr/bin/env bash
+# @file Homebrew / Xcode Tools Installation
+# @brief Ensures Xcode tools are installed on macOS and ensures Homebrew is installed on either Linux or macOS
+# @description
+#     This script ensures macOS has tools like `git` by installing the Xcode command-line developer tools if they are
+#     not already installed. Then, on both Linux and macOS, it ensures Homebrew is installed.
+#
+#     It also tries to perform a system update and there may be some manual work required since it is not possible
+#     to completely automate the system update process for macOS.
+#
+#     ## Environment Variables
+#
+#     * `NO_RESTART` - Set this variable to skip restarts triggered by system updates on macOS
+#
+#     ## Homebrew Requirement
+#
+#     Install Doctor relies on Homebrew for many tools that are currently only available via Homebrew. Removing the dependency
+#     would be a nice-to-have but there are currently no plans for supporting systems without Homebrew installed.
+
+if [ -n "$DEBUG" ] || [ -n "$DEBUG_MODE" ]; then
+  set -x
+fi
+
+# @description This script ensures all the system utilities necessary to install Homebrew are present on the system.
+ensureHomebrewDeps() {
+  if ! command -v curl > /dev/null || ! command -v git > /dev/null || ! command -v expect > /dev/null || ! command -v rsync > /dev/null; then
+    if command -v apt-get > /dev/null; then
+      # @description Ensure `build-essential`, `curl`, `expect`, `git`, `rsync`, `procps`, and `file` are installed on Debian / Ubuntu
+      sudo apt-get update
+      sudo apt-get install -y build-essential curl expect git rsync procps file
+    elif command -v dnf > /dev/null; then
+      # @description Ensure `curl`, `expect`, `git`, `rsync`, `procps-ng`, and `file` are installed on Fedora (as well as the Development Tools package)
+      sudo dnf groupinstall -y 'Development Tools'
+      sudo dnf install -y curl expect git rsync procps-ng file
+    elif command -v yum > /dev/null; then
+      # @description Ensure `curl`, `expect`, `git`, `rsync`, `procps-ng`, and `file` are installed on CentOS (as well as the Development Tools package)
+      sudo yum groupinstall -y 'Development Tools'
+      sudo yum install -y curl expect git rsync procps-ng file
+    elif command -v pacman > /dev/null; then
+      # @description Ensure `base-devel`, `curl`, `expect`, `git`, `rsync`, `procps-ng`, and `file` are installed on Archlinux
+      sudo pacman update
+      sudo pacman -Sy base-devel curl expect git rsync procps-ng file
+    elif command -v zypper > /dev/null; then
+      # @description Ensure `curl`, `expect`, `git`, `rsync`, `procps`, and `file` are installed on OpenSUSE (as well as the devel_basis pattern)
+      sudo zypper install -yt pattern devel_basis
+      sudo zypper install -y curl expect git rsync procps file
+    elif command -v apk > /dev/null; then
+      # @description Ensure `curl`, `expect`, `git`, `rsync`, `procps`, and `file` are installed on Alpine
+      apk add build-base curl expect git rsync procps file
+    elif [ -d /Applications ] && [ -d /Library ]; then
+      # @description Ensure CLI developer tools are available on macOS (via `xcode-select`)
+      sudo xcode-select -p >/dev/null 2>&1 || xcode-select --install
+    elif [[ "$OSTYPE" == 'cygwin' ]] || [[ "$OSTYPE" == 'msys' ]] || [[ "$OSTYPE" == 'win32' ]]; then
+      # @description Ensure `curl`, `expect`, `git`, and `rsync` are installed on Windows
+      choco install -y curl expect git rsync
+    fi
+  fi
+}
+
+# @description This function removes group write permissions from the Homebrew share folder which
+#     is required for the ZSH configuration.
+fixHomebrewPermissions() {
+  if [ -f /usr/local/bin/brew ]; then
+    sudo chmod -R g-w /usr/local/share
+  elif [ -f "${HOMEBREW_PREFIX:-/opt/homebrew}/bin/brew" ]; then
+    sudo chmod -R g-w "${HOMEBREW_PREFIX:-/opt/homebrew}/share"
+  elif [ -d "$HOME/.linuxbrew" ]; then
+    sudo chmod -R g-w "$HOME/.linuxbrew/share"
+  elif [ -d "/home/linuxbrew/.linuxbrew" ]; then
+    sudo chmod -R g-w /home/linuxbrew/.linuxbrew/share
+  fi
+}
+
+# @description This script ensures Homebrew is installed.
+ensurePackageManagerHomebrew() {
+  if ! command -v brew > /dev/null; then
+    if command -v sudo > /dev/null && sudo -n true; then
+      echo | bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      fixHomebrewPermissions
+    else
+      gum log -sl info 'Homebrew is not installed. Password may be required.'
+      bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
+      fixHomebrewPermissions
+      if [ -n "$BREW_EXIT_CODE" ]; then
+        gum log -sl warn 'Homebrew was installed but part of the installation failed to complete successfully.'
+        if command -v brew > /dev/null; then
+          gum log -sl info 'Applying proper permissions on Homebrew folders'
+          sudo chmod -R go-w "$(brew --prefix)/share"
+          BREW_DIRS="share etc/bash_completion.d"
+          for BREW_DIR in $BREW_DIRS; do
+            if [ -d "$(brew --prefix)/$BREW_DIR" ]; then
+              sudo chown -Rf "$(whoami)" "$(brew --prefix)/$BREW_DIR"
+            fi
+          done
+          gum log -sl info 'Running brew update --force --quiet' && brew update --force --quiet
+        fi
+      fi
+    fi
+  fi
+}
+
+# @description Helper function utilized by [[upgradeDarwin]] to ensure the `expect` command is available on macOS
+installExpect() {
+  if ! command -v expect > /dev/null; then
+    gum log -sl info 'Installing expect via Homebrew' && brew install expect
+  fi
+}
+
+# @description Helper function utilized by [[upgradeDarwin]] to ensure the `gsed` command is available on macOS
+installGsed() {
+  if ! command -v gsed > /dev/null; then
+    gum log -sl info 'Installing gnu-sed via Homebrew' && brew install gnu-sed
+  fi
+}
+
+# @description Helper function utilized by [[upgradeDarwin]] to ensure the `gtimeout` command is available on macOS
+installGtimeout() {
+  if ! command -v gtimeout > /dev/null; then
+    gum log -sl info 'Installing coreutils via Homebrew' && brew install coreutils
+  fi
+}
+
+# @description This script ensures `expect` and `gsed` are available. It then either extracts the escalation password by decrypting the
+#     `SUDO_PASSWORD` secret or prompts the user for the sudo password. After that, it automates the process of downloading
+#     system updates, rebooting, and re-starting the provisioning process until the system is fully updated.
+#
+#     It may be important to note that although this script attempts to make the process fully automated, there may be
+#     certain circumstances where additional user input is necessary during the process. This might be true in cases
+#     where the system settings are controlled by MDM profiles for corporate laptops.
+upgradeDarwin() {
+  if [ -d /Applications ] && [ -d /Library ] && [ -z "$NO_RESTART" ]; then
+    ### Ensure dependencies are installed
+    installExpect
+    installGsed
+    installGtimeout
+
+    ### Attempt to populate SUDO_PASSWORD from secrets
+    if [ -z "$SUDO_PASSWORD" ]; then
+      SUDO_PASSWORD="{{- if and (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "SUDO_PASSWORD")) -}}{{- includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/SUDO_PASSWORD") | decrypt | trim -}}{{- end -}}"
+      export SUDO_PASSWORD
+    fi
+
+    ### Prompt for SUDO_PASSWORD
+    if [ -z "$SUDO_PASSWORD" ] || [ "$SUDO_PASSWORD" = "" ]; then
+      gum log -sl info "Enter the current user's login / admin password. Press ENTER to bypass and skip enabling auto-login. If you would like to bypass this prompt next time then pass in the password as an environment variable named SUDO_PASSWORD before running the kickstart script."
+      SUDO_PASSWORD="$(gum input --password --placeholder="Enter password..")"
+      export SUDO_PASSWORD
+    fi
+
+    ### Ensure Rosetta 2 is installed
+    if /usr/bin/pgrep -q oahd; then
+      gum log -sl info 'Rosetta 2 is already installed'
+    else
+      gum log -sl info 'Ensuring Rosetta 2 is installed' && softwareupdate --install-rosetta --agree-to-license
+    fi
+
+    ### Run upgrade process
+    gum log -sl info 'Checking for available OS upgrades'
+    UPDATE_CHECK="$(softwareupdate -l 2>&1)"
+    if ! echo "$UPDATE_CHECK" | grep "No new software available" > /dev/null; then
+      gum log -sl info 'There are available OS upgrades'
+      echo "$UPDATE_CHECK"
+      gum log -sl info 'Applying OS upgrades (if available). This may take awhile..'
+      expect -c "set timeout -1
+      spawn sudo softwareupdate -i -a --agree-to-license
+      expect \"Password:\"
+      send \"${SUDO_PASSWORD}\r\"
+      expect eof" &> /dev/null || EXIT_CODE=$?
+      if [ -n "$EXIT_CODE" ]; then
+        gum log -sl warn 'Error running softwareupdate'
+        unset EXIT_CODE
+      fi
+      # sudo sh -c "sudo softwareupdate -i -a --agree-to-license" || gum log -sl error 'Failed to trigger a system update via sudo softwareupdate -i -a --agree-to-license'
+
+      ### Reboot if necessary
+      # Source: https://community.jamf.com/t5/jamf-pro/determine-if-update-requires-restart/m-p/11682
+      gum log -sl info 'Checking if softwareupdate requires a reboot'
+      if softwareupdate -l | grep restart > /dev/null; then
+        ### Add kickstart script to .zshrc so it triggers automatically
+        if [ ! -f "$HOME/.zshrc" ] || ! cat "$HOME/.zshrc" | grep '# TEMPORARY FOR INSTALL DOCTOR MACOS' > /dev/null; then
+          gum log -sl info 'Adding kickstart script to ~/.zshrc so script continues automatically if reboot is necessary'
+          echo 'bash <(curl -sSL --compressed https://install.doctor/start) # TEMPORARY FOR INSTALL DOCTOR MACOS' >> "$HOME/.zshrc"
+        fi
+
+        if [ -n "$SUDO_PASSWORD" ] && [ "$SUDO_PASSWORD" != "" ]; then
+          ### Install kcpassword
+          if ! command -v enable_autologin > /dev/null; then
+            gum log -sl info 'enable_autologin is not installed and it is a requirement for auto-logging in after reboot' && brew install xfreebird/utils/kcpassword
+          fi
+
+          ### Enable auto-login via kcpassword
+          gum log -sl info "Enabling autologin for $USER with acquired sudo password" && sudo enable_autologin "$USER" "$SUDO_PASSWORD"
+        fi
+
+        ### Reboot
+        gum log -sl warn 'Reboot required'
+      else
+        gum log -sl info 'No reboot required for softwareupdate'
+      fi
+    else
+      gum log -sl info 'There are no available OS upgrades'
+    fi
+
+    if [ -f "$HOME/.zshrc" ]; then
+      gum log -sl info 'Ensuring provision kickstart script is removed from ~/.zshrc'
+      if command -v gsed > /dev/null; then
+        gsed -i '/# TEMPORARY FOR INSTALL DOCTOR MACOS/d' "$HOME/.zshrc" || gum log -sl warn "Failed to remove kickstart script from .zshrc"
+      else
+        if [ -d /Applications ] && [ -d /System ]; then
+          ### macOS
+          sed -i '' '/# TEMPORARY FOR INSTALL DOCTOR MACOS/d' "$HOME/.zshrc" || logg warn "Failed to remove kickstart script from .zshrc"
+        else
+          ### Linux
+          sed -i '/# TEMPORARY FOR INSTALL DOCTOR MACOS/d' "$HOME/.zshrc" || logg warn "Failed to remove kickstart script from .zshrc"
+        fi
+      fi
+    fi
+  fi
+}
+
+# @description This script attempts to load Homebrew by checking in typical locations.
+loadHomebrew() {
+  if ! command -v brew > /dev/null; then
+    if [ -f /usr/local/bin/brew ]; then
+      eval "$(/usr/local/bin/brew shellenv)"
+    elif [ -f "${HOMEBREW_PREFIX:-/opt/homebrew}/bin/brew" ]; then
+      eval "$("${HOMEBREW_PREFIX:-/opt/homebrew}/bin/brew" shellenv)"
+    elif [ -d "$HOME/.linuxbrew" ]; then
+      eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
+    elif [ -d "/home/linuxbrew/.linuxbrew" ]; then
+      eval "(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    fi
+  fi
+}
+
+### Logic sequence
+ensureHomebrewDeps
+loadHomebrew
+ensurePackageManagerHomebrew
+loadHomebrew
+upgradeDarwin

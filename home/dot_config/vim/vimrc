@@ -1,0 +1,483 @@
+set runtimepath=~/.config/vim,~/.config/vim/autoload,~/.config/vim/colors,$VIMRUNTIME,$VIM
+
+" Sets how many lines of history VIM has to remember
+set history=500
+
+" Enable filetype plugins
+filetype plugin on
+filetype indent on
+
+" Set to auto read when a file is changed from the outside
+set autoread
+au FocusGained,BufEnter * checktime
+
+" With a map leader it's possible to do extra key combinations
+" like <leader>w saves the current file
+let mapleader = ","
+
+" Fast saving
+nmap <leader>w :w!<cr>
+
+" :W sudo saves the file
+" (useful for handling the permission-denied error)
+command! W execute 'w !sudo tee % > /dev/null' <bar> edit!
+
+" Set 7 lines to the cursor - when moving vertically using j/k
+set so=7
+
+" Turn on the Wild menu
+set wildmenu
+
+" Ignore compiled files
+set wildignore=*.o,*~,*.pyc
+if has("win16") || has("win32")
+    set wildignore+=.git\*,.hg\*,.svn\*
+else
+    set wildignore+=*/.git/*,*/.hg/*,*/.svn/*,*/.DS_Store
+endif
+
+" Always show current position
+set ruler
+
+" Height of the command bar
+set cmdheight=1
+
+" A buffer becomes hidden when it is abandoned
+set hid
+
+" Configure backspace so it acts as it should act
+set backspace=eol,start,indent
+set whichwrap+=<,>,h,l
+
+" Ignore case when searching
+set ignorecase
+
+" When searching try to be smart about cases
+set smartcase
+
+" Highlight search results
+set hlsearch
+
+" Makes search act like search in modern browsers
+set incsearch
+
+" Don't redraw while executing macros (good performance config)
+set lazyredraw
+
+" For regular expressions turn magic on
+set magic
+
+" Show matching brackets when text indicator is over them
+set showmatch
+
+" How many tenths of a second to blink when matching brackets
+set mat=2
+
+" No annoying sound on errors
+set noerrorbells
+set novisualbell
+set t_vb=
+set tm=500
+
+" No show double status bar for lightline
+" set noshowmode
+
+" Add a bit extra margin to the left
+set foldcolumn=1
+
+" Set regular expression engine automatically
+set regexpengine=0
+
+" Enable 256 colors palette in Gnome Terminal
+if $COLORTERM == 'gnome-terminal'
+    set t_Co=256
+endif
+
+" Set extra options when running in GUI mode
+if has("gui_running")
+    set guioptions-=T
+    set guioptions-=e
+    set t_Co=256
+    set guitablabel=%M\ %t
+endif
+
+" Use Unix as the standard file type
+set ffs=unix,dos,mac
+
+" Use spaces instead of tabs
+set expandtab
+
+" Be smart when using tabs ;)
+set smarttab
+
+" 1 tab == 2 spaces
+set shiftwidth=2
+set tabstop=2
+
+" Linebreak on 500 characters
+set lbr
+set tw=200
+
+set ai "Auto indent
+set si "Smart indent
+set wrap "Wrap lines
+
+" Visual mode pressing * or # searches for the current selection
+" Super useful! From an idea by Michael Naumann
+vnoremap <silent> * :<C-u>call VisualSelection('', '')<CR>/<C-R>=@/<CR><CR>
+vnoremap <silent> # :<C-u>call VisualSelection('', '')<CR>?<C-R>=@/<CR><CR>
+
+" Smart way to move between windows
+map <C-j> <C-W>j
+map <C-k> <C-W>k
+map <C-h> <C-W>h
+map <C-l> <C-W>l
+
+" Close the current buffer
+map <leader>bd :Bclose<cr>:tabclose<cr>gT
+
+" Close all the buffers
+map <leader>ba :bufdo bd<cr>
+
+map <leader>l :bnext<cr>
+map <leader>h :bprevious<cr>
+
+" Useful mappings for managing tabs
+map <leader>tn :tabnew<cr>
+map <leader>to :tabonly<cr>
+map <leader>tc :tabclose<cr>
+map <leader>tm :tabmove
+map <leader>t<leader> :tabnext<cr>
+
+" Always show the status line
+set laststatus=2
+
+" Format the status line
+set statusline=\ %{HasPaste()}%F%m%r%h\ %w\ \ CWD:\ %r%{getcwd()}%h\ \ \ Line:\ %l\ \ Column:\ %c
+
+" Remap VIM 0 to first non-blank character
+map 0 ^
+
+" Move a line of text using ALT+[jk] or Command+[jk] on mac
+nmap <M-j> mz:m+<cr>`z
+nmap <M-k> mz:m-2<cr>`z
+vmap <M-j> :m'>+<cr>`<my`>mzgv`yo`z
+vmap <M-k> :m'<-2<cr>`>my`<mzgv`yo`z
+
+if has("mac") || has("macunix")
+  nmap <D-j> <M-j>
+  nmap <D-k> <M-k>
+  vmap <D-j> <M-j>
+  vmap <D-k> <M-k>
+endif
+
+" Delete trailing white space on save, useful for some filetypes ;)
+fun! CleanExtraSpaces()
+    let save_cursor = getpos(".")
+    let old_query = getreg('/')
+    silent! %s/\s\+$//e
+    call setpos('.', save_cursor)
+    call setreg('/', old_query)
+endfun
+
+if has("autocmd")
+    autocmd BufWritePre *.txt,*.js,*.py,*.wiki,*.sh,*.coffee :call CleanExtraSpaces()
+endif
+
+" Pressing ,ss will toggle and untoggle spell checking
+map <leader>ss :setlocal spell!<cr>
+
+" Shortcuts using <leader>
+map <leader>sn ]s
+map <leader>sp [s
+map <leader>sa zg
+map <leader>s? z=
+
+" Remove the Windows ^M - when the encodings gets messed up
+noremap <Leader>m mmHmt:%s/<C-V><cr>//ge<cr>'tzt'm
+
+" Quickly open a buffer for scribble
+map <leader>q :e ~/buffer<cr>
+
+" Quickly open a markdown buffer for scribble
+map <leader>x :e ~/buffer.md<cr>
+
+" Toggle paste mode on and off
+map <leader>pp :setlocal paste!<cr>
+
+" Helper Functions
+" Returns true if paste mode is enabled
+function! HasPaste()
+    if &paste
+        return 'PASTE MODE  '
+    endif
+    return ''
+endfunction
+
+" Don't close window, when deleting a buffer
+command! Bclose call <SID>BufcloseCloseIt()
+function! <SID>BufcloseCloseIt()
+    let l:currentBufNum = bufnr("%")
+    let l:alternateBufNum = bufnr("#")
+
+    if buflisted(l:alternateBufNum)
+        buffer #
+    else
+        bnext
+    endif
+
+    if bufnr("%") == l:currentBufNum
+        new
+    endif
+
+    if buflisted(l:currentBufNum)
+        execute("bdelete! ".l:currentBufNum)
+    endif
+endfunction
+
+function! CmdLine(str)
+    call feedkeys(":" . a:str)
+endfunction
+
+function! VisualSelection(direction, extra_filter) range
+    let l:saved_reg = @"
+    execute "normal! vgvy"
+
+    let l:pattern = escape(@", "\\/.*'$^~[]")
+    let l:pattern = substitute(l:pattern, "\n$", "", "")
+
+    if a:direction == 'gv'
+        call CmdLine("Ack '" . l:pattern . "' " )
+    elseif a:direction == 'replace'
+        call CmdLine("%s" . '/'. l:pattern . '/')
+    endif
+
+    let @/ = l:pattern
+    let @" = l:saved_reg
+endfunction
+
+" Fast editing and reloading of vimrc configs
+map <leader>e :e! ~/.vim_runtime/my_configs.vim<cr>
+autocmd! bufwritepost ~/.vim_runtime/my_configs.vim source ~/.vim_runtime/my_configs.vim
+
+
+" Turn persistent undo on means that you can undo even when you close a buffer/VIM
+try
+    set undodir=~/.config/.vim/temp_dirs/undodir
+    set undofile
+catch
+endtry
+
+" Parenthesis/bracket
+vnoremap $1 <esc>`>a)<esc>`<i(<esc>
+vnoremap $2 <esc>`>a]<esc>`<i[<esc>
+vnoremap $3 <esc>`>a}<esc>`<i{<esc>
+vnoremap $$ <esc>`>a"<esc>`<i"<esc>
+vnoremap $q <esc>`>a'<esc>`<i'<esc>
+vnoremap $e <esc>`>a`<esc>`<i`<esc>
+
+" Map auto complete of (, ", ', [
+inoremap $1 ()<esc>i
+inoremap $2 []<esc>i
+inoremap $3 {}<esc>i
+inoremap $4 {<esc>o}<esc>O
+inoremap $q ''<esc>i
+inoremap $e ""<esc>i
+
+" Python section
+let python_highlight_all = 1
+au FileType python syn keyword pythonDecorator True None False self
+
+au BufNewFile,BufRead *.jinja set syntax=htmljinja
+au BufNewFile,BufRead *.mako set ft=mako
+
+au FileType python map <buffer> F :set foldmethod=indent<cr>
+
+au FileType python inoremap <buffer> $r return
+au FileType python inoremap <buffer> $i import
+au FileType python inoremap <buffer> $p print
+au FileType python inoremap <buffer> $f # --- <esc>a
+au FileType python map <buffer> <leader>1 /class
+au FileType python map <buffer> <leader>2 /def
+au FileType python map <buffer> <leader>C ?class
+au FileType python map <buffer> <leader>D ?def
+
+" JavaScript section
+au FileType javascript call JavaScriptFold()
+au FileType javascript setl fen
+au FileType javascript setl nocindent
+
+au FileType javascript,typescript imap <C-t> console.log();<esc>hi
+au FileType javascript,typescript imap <C-a> alert();<esc>hi
+
+au FileType javascript,typescript inoremap <buffer> $r return
+au FileType javascript,typescript inoremap <buffer> $f // --- PH<esc>FP2xi
+
+function! JavaScriptFold()
+    setl foldmethod=syntax
+    setl foldlevelstart=1
+    syn region foldBraces start=/{/ end=/}/ transparent fold keepend extend
+
+    function! FoldText()
+        return substitute(getline(v:foldstart), '{.*', '{...}', '')
+    endfunction
+    setl foldtext=FoldText()
+endfunction
+
+" Shell section
+if exists('$TMUX')
+    if has('nvim')
+        set termguicolors
+    else
+        set term=screen-256color
+    endif
+endif
+
+" Markdown
+let vim_markdown_folding_disabled = 1
+
+" YAML
+autocmd FileType yaml setlocal ts=2 sts=2 sw=2 expandtab
+
+" Install Coc extensions
+" TODO: Add https://github.com/tpope/vim-fugitive
+let g:coc_config_home='~/.config/coc'
+let g:coc_global_extensions = [
+  \'@yaegassy/coc-ansible',
+  \'@yaegassy/coc-nginx',
+  \'coc-angular',
+  \'coc-blade',
+  \'coc-calc',
+  \'coc-clangd',
+  \'coc-copilot',
+  \'coc-css',
+  \'coc-cssmodules',
+  \'coc-deno',
+  \'coc-diagnostic',
+  \'coc-docker',
+  \'coc-emmet',
+  \'coc-eslint',
+  \'coc-explorer',
+  \'coc-flutter',
+  \'coc-fzf-preview',
+  \'coc-git',
+  \'coc-go',
+  \'coc-highlight',
+  \'coc-html-css-support',
+  \'coc-html',
+  \'coc-htmlhint',
+  \'coc-java',
+  \'coc-jedi',
+  \'coc-json',
+  \'coc-ltex',
+  \'coc-lua',
+  \'coc-markdown-preview-enhanced',
+  \'coc-markdownlint',
+  \'coc-markmap',
+  \'coc-phpls',
+  \'coc-powershell',
+  \'coc-prettier',
+  \'coc-prisma',
+  \'coc-pyright',
+  \'coc-rls',
+  \'coc-rust-analyzer',
+  \'coc-sh',
+  \'coc-solargraph',
+  \'coc-solidity',
+  \'coc-stylelint',
+  \'coc-sql',
+  \'coc-sqlfluff',
+  \'coc-svelte',
+  \'coc-svg',
+  \'coc-swagger',
+  \'coc-toml',
+  \'coc-tsserver',
+  \'coc-xml',
+  \'coc-yaml',
+  \'coc-yank'
+\]
+
+" Carbon Now settings
+let g:carbon_now_sh_options = {
+    \'ln': 'true',
+    \'fm': 'Source Code Pro'
+\}
+
+" JavaScript options
+let g:javascript_plugin_jsdoc = 1
+
+" Settings for coc-css extension
+autocmd FileType scss setl iskeyword+=@-@
+
+" Settings for coc-go extension, to add missing imports on save
+autocmd BufWritePre *.go :silent call CocAction('runCommand', 'editor.action.organizeImport')
+
+syntax enable
+set background=dark
+colorscheme Betelgeuse
+" let g:lightline = { 'colorscheme': 'Betelgeuse' }
+let g:lightline = {
+    \ 'colorscheme': 'Betelgeuse',
+    \ 'active': {
+    \   'left': [ [ 'mode', 'paste' ],
+    \             [ 'gitbranch', 'readonly', 'filename', 'modified' ] ]
+    \ },
+    \ 'component_function': {
+    \   'gitbranch': 'FugitiveHead'
+    \ },
+    \ }
+
+" Settings for plugin https://github.com/neoclide/coc.nvim.git
+autocmd FileType json syntax match Comment +\/\/.\+$+
+
+" Settings for plugin https://github.com/vim-syntastic/syntastic.git
+set statusline+=%#warningmsg#
+set statusline+=%{SyntasticStatuslineFlag()}
+set statusline+=%*
+let g:syntastic_always_populate_loc_list = 1
+let g:syntastic_auto_loc_list = 1
+let g:syntastic_check_on_open = 1
+let g:syntastic_check_on_wq = 0
+
+" Settings for plugin https://github.com/ryanoasis/vim-devicons.git
+set encoding=UTF-8
+
+" Set location of viminfo file
+if !has('nvim')
+  set viminfo+=n~/.config/vim/viminfo
+else
+  set viminfo+=n~/.config/vim/nvimshada
+endif
+
+silent! call plug#begin('~/.local/share/vim/plugged')
+Plug '~/.local/share/vim/plugged/ale'
+Plug '~/.local/share/vim/plugged/coc.nvim', {'branch': 'release'}
+Plug '~/.local/share/vim/plugged/copilot.vim'
+Plug '~/.local/share/vim/plugged/dockerfile.vim'
+Plug '~/.local/share/vim/plugged/editorconfig-vim'
+Plug '~/.local/share/vim/plugged/indentLine'
+Plug '~/.local/share/vim/plugged/fzf.vim'
+Plug '~/.local/share/vim/plugged/fzf', { 'do': { -> fzf#install() } }
+Plug '~/.local/share/vim/plugged/fzf-preview.vim', { 'branch': 'release/rpc', 'do': ':UpdateRemotePlugins' }
+Plug '~/.local/share/vim/plugged/nerdtree'
+Plug '~/.local/share/vim/plugged/php.vim'
+Plug '~/.local/share/vim/plugged/python-syntax'
+Plug '~/.local/share/vim/plugged/syntastic'
+Plug '~/.local/share/vim/plugged/typescript-vim'
+Plug '~/.local/share/vim/plugged/vim-airline'
+Plug '~/.local/share/vim/plugged/vim-carbon-now-sh'
+Plug '~/.local/share/vim/plugged/vim-devicons'
+Plug '~/.local/share/vim/plugged/vim-go', { 'do': ':GoUpdateBinaries' }
+Plug '~/.local/share/vim/plugged/vim-javascript'
+Plug '~/.local/share/vim/plugged/vim-jsx'
+Plug '~/.local/share/vim/plugged/vim-markdown'
+Plug '~/.local/share/vim/plugged/vim-multiple-cursors'
+Plug '~/.local/share/vim/plugged/vim-polyglot'
+Plug '~/.local/share/vim/plugged/vim-prettier', { 'do': 'npm ci' }
+Plug '~/.local/share/vim/plugged/vim-sensible'
+Plug '~/.local/share/vim/plugged/vim-surround'
+Plug '~/.local/share/vim/plugged/vim-sneak'
+Plug '~/.local/share/vim/plugged/vim-gitgutter'
+Plug '~/.local/share/vim/plugged/zoxide.vim'
+Plug '~/.local/share/vim/plugged/ansible-vim', {'do': './UltiSnips/generate.sh'}
+call plug#end()

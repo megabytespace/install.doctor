@@ -1,0 +1,3 @@
+{{- if and (eq .host.distro.family "darwin") (lookPath "ntfy") -}}
+{{ .chezmoi.homeDir }}/.config/ntfy/ntfy.yml
+{{- end -}}

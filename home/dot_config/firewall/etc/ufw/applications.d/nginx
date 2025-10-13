@@ -1,0 +1,19 @@
+[Nginx]
+title=Nginx Server
+description=Nginx server
+ports=80/tcp
+
+[Nginx Secure]
+title=Nginx Server (HTTPS)
+description=Nginx server (HTTPS)
+ports=443/tcp
+
+[Nginx Full]
+title=Nginx Server (HTTP,HTTPS)
+description=Nginx server (HTTP,HTTPS)
+ports=80,443/tcp
+
+[Nginx Cache]
+title=Nginx Server (8080)
+description=Nginx server (8080)
+ports=8080/tcp

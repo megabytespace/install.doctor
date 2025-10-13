@@ -134,10 +134,10 @@ tasks:
         sh: mktemp
     cmds:
       - |
-        curl -sSL '{{.MODEL_TASKFILE}}' > '{{.MODEL_TMP}}'
-        export ZXXXY="$(yq e '.' {{.MODEL_TMP}})"
+        curl -sSL '{{.MODEL_TASKFILE}}' > '{{.MODEL_TMP}}.yml'
+        export ZXXXY="$(yq e '.' {{.MODEL_TMP}}.yml)"
         yq e -i '. | .vars = (env(ZXXXY) | .vars) | .env = (env(ZXXXY) | .env)' Taskfile.yml
-        yq eval-all -i 'select(fileIndex == 0) * select(fileIndex == 1)' '{{.MODEL_TMP}}' Taskfile.yml
+        yq eval-all -i 'select(fileIndex == 0) * select(fileIndex == 1)' '{{.MODEL_TMP}}.yml' Taskfile.yml
 
   requirements:
     deps:

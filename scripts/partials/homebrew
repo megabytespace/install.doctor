@@ -1,0 +1,93 @@
+### Ensure Homebrew is loaded
+loadHomebrew() {
+  if ! command -v brew > /dev/null; then
+    if [ -f /usr/local/bin/brew ]; then
+      logg info "Using /usr/local/bin/brew" && eval "$(/usr/local/bin/brew shellenv)"
+    elif [ -f "${HOMEBREW_PREFIX:-/opt/homebrew}/bin/brew" ]; then
+      logg info "Using ${HOMEBREW_PREFIX:-/opt/homebrew}/bin/brew" && eval "$("${HOMEBREW_PREFIX:-/opt/homebrew}/bin/brew" shellenv)"
+    elif [ -d "$HOME/.linuxbrew" ]; then
+      logg info "Using $HOME/.linuxbrew/bin/brew" && eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
+    elif [ -d "/home/linuxbrew/.linuxbrew" ]; then
+      logg info 'Using /home/linuxbrew/.linuxbrew/bin/brew' && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    else
+      logg info 'Could not find Homebrew installation'
+    fi
+  fi
+}
+
+### Ensures Homebrew folders have proper owners / permissions
+fixHomebrewPermissions() {
+  if command -v brew > /dev/null; then
+    logg info 'Applying proper permissions on Homebrew folders'
+    sudo chmod -R go-w "$(brew --prefix)/share"
+    BREW_DIRS="share etc/bash_completion.d"
+    for BREW_DIR in $BREW_DIRS; do
+      if [ -d "$(brew --prefix)/$BREW_DIR" ]; then
+        sudo chown -Rf "$(whoami)" "$(brew --prefix)/$BREW_DIR"
+      fi
+    done
+    logg info 'Running brew update --force --quiet' && brew update --force --quiet
+  fi
+}
+
+# @description This function removes group write permissions from the Homebrew share folder which
+#     is required for the ZSH configuration.
+fixHomebrewSharePermissions() {
+  if [ -f /usr/local/bin/brew ]; then
+    sudo chmod -R g-w /usr/local/share
+  elif [ -f "${HOMEBREW_PREFIX:-/opt/homebrew}/bin/brew" ]; then
+    sudo chmod -R g-w "${HOMEBREW_PREFIX:-/opt/homebrew}/share"
+  elif [ -d "$HOME/.linuxbrew" ]; then
+    sudo chmod -R g-w "$HOME/.linuxbrew/share"
+  elif [ -d "/home/linuxbrew/.linuxbrew" ]; then
+    sudo chmod -R g-w /home/linuxbrew/.linuxbrew/share
+  fi
+}
+
+### Installs Homebrew
+ensurePackageManagerHomebrew() {
+  if ! command -v brew > /dev/null; then
+    ### Select install type based off of whether or not sudo privileges are available
+    if command -v sudo > /dev/null && sudo -n true; then
+      logg info 'Installing Homebrew. Sudo privileges available.'
+      echo | bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
+      fixHomebrewSharePermissions
+    else
+      logg info 'Installing Homebrew. Sudo privileges not available. Password may be required.'
+      bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
+      fixHomebrewSharePermissions
+    fi
+
+    ### Attempt to fix problematic installs
+    if [ -n "$BREW_EXIT_CODE" ]; then
+        logg warn 'Homebrew was installed but part of the installation failed to complete successfully.'
+        fixHomebrewPermissions
+      fi
+  fi
+}
+
+### Ensures gcc is installed
+ensureGcc() {
+  if command -v brew > /dev/null; then
+    if ! brew list | grep gcc > /dev/null; then
+      logg info 'Installing Homebrew gcc' && brew install --quiet gcc
+    else
+      logg info 'Homebrew gcc is available'
+    fi
+  else
+    logg error 'Failed to initialize Homebrew' && exit 1
+  fi
+}
+
+# @description This function ensures Homebrew is installed and available in the `PATH`. It handles the installation of Homebrew on both **Linux and macOS**.
+#     It will attempt to bypass sudo password entry if it detects that it can do so. The function also has some error handling in regards to various
+#     directories falling out of the correct ownership and permission states. Finally, it loads Homebrew into the active profile (allowing other parts of the script
+#     to use the `brew` command).
+#
+#     With Homebrew installed and available, the script finishes by installing the `gcc` Homebrew package which is a very common dependency.
+ensureHomebrew() {
+  loadHomebrew
+  ensurePackageManagerHomebrew
+  loadHomebrew
+  ensureGcc
+}

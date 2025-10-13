@@ -1,33 +1,30 @@
-{{- $name := (default "Brian Zalewski" (env "FULL_NAME")) -}}
-{{- $email := (default "brian@megabyte.space" (env "PRIMARY_EMAIL")) -}}
-{{- $restricted := (default false (env "WORK_ENVIRONMENT")) -}}
-{{- $work := (default false (env "WORK_ENVIRONMENT")) -}}
-{{- $gpgKeyId := (default "0xF0A300E4199A1C33" (env "KEYID")) -}}
-{{- $gmailAddress := (default "blzalewski@gmail.com" (env "GMAIL_ADDRESS")) -}}
-{{- $gmailAddressAppPassword := (default "" (env "GMAIL_APP_PASSWORD")) -}}
+{{- $cloudflareR2AccountId := (default "84fa0d1b16ff8086dd958c468ce7fd59" (env "CLOUDFLARE_R2_ID")) -}}
+{{- $cloudflareUsername := (default "blzalewski@gmail.com" (env "CLOUDFLARE_USERNAME")) -}}
+{{- $cloudflareTeamsOrg := (default "manhattan" (env "CLOUDFLARE_TEAMS_ORG")) -}}
+{{- $desktopSession := true -}}
+{{- $dockerHubUser := (default "professormanhattan" (env "DOCKERHUB_USER")) -}}
 {{- $domain := (default "megabyte.space" (env "PUBLIC_SERVICES_DOMAIN")) -}}
-{{- $cloudflareUsername := (default "brian@megabyte.space" (env "CLOUDFLARE_USERNAME")) -}}
-{{- $cloudflareToken := (default "" (env "CLOUDFLARE_API_TOKEN")) -}}
-{{- $cloudflareAccessKeyId := "" -}}
-{{- $cloudflareSecretAccessKey := "" -}}
-{{- $cloudflareR2AccountId := "" -}}
+{{- $email := (default "brian@megabyte.space" (env "PRIMARY_EMAIL")) -}}
+{{- $gcloudCoreProject := (default "megabyte-labs" (env "CLOUDSDK_CORE_PROJECT"))}}
+{{- $gcloudEmail := (default "automation@megabyte-labs.iam.gserviceaccount.com" (env "GCE_SERVICE_ACCOUNT_EMAIL"))}}
 {{- $githubUsername := (default "ProfessorManhattan" (env "GITHUB_USERNAME")) -}}
-{{- $githubGistToken := (default "" (env "GITHUB_GIST_TOKEN")) -}}
-{{- $githubReadToken := (env "GITHUB_READ_TOKEN") -}}
-{{- $gitlabReadToken := (env "GITLAB_READ_TOKEN") -}}
-{{- $locale := (output "echo" "$LANG") }}
-{{- $ngrokAuthToken := (default "" (env "NGROK_AUTH_TOKEN")) -}}
-{{- $slackApiToken := (default "" (env "SLACK_API_TOKEN")) -}}
-{{- $tailscaleAuthKey := (default "" (env "TAILSCALE_AUTH_KEY")) -}}
+{{- $gmailAddress := (default "blzalewski@gmail.com" (env "GMAIL_ADDRESS")) -}}
+{{- $gpgKeyId := (default "0xF0A300E4199A1C33" (env "KEYID")) -}}
+{{- $hostname := (output "hostname" "-s") -}}
+{{- $locale := (default "en_US" (env "LANG")) }}
+{{- $name := (default "Brian Zalewski" (env "FULL_NAME")) -}}
+{{- $restricted := (default false (env "WORK_ENVIRONMENT")) -}}
+{{- $snapcraftEmail := (default "brian@megabyte.space" (env "SNAPCRAFT_EMAIL"))}}
+{{- $surgeshUsername := (default "brian@megabyte.space" (env "SURGESH_USERNAME")) -}}
 {{- $timezone := (default "America/New_York" (env "TIMEZONE")) -}}
 {{- $toolchains := list "CLI-Extras" "Docker" "Go" "Kubernetes" "Web-Development" -}}
-{{- $desktopSession := true -}}
+{{- $work := (default false (env "WORK_ENVIRONMENT")) -}}
 {{- if and (ne .chezmoi.os "darwin") (ne .chezmoi.os "windows") (not (env "DISPLAY")) -}}
 {{-   $desktopSession = false -}}
 {{- end -}}
 {{- $softwareGroup := (default "Standard" (env "SOFTWARE_GROUP")) -}}
 {{- if $desktopSession -}}
-{{-   $softwareGroup = list $softwareGroup "-Desktop" | join "" -}}
+{{-   $softwareGroup = replace "-Desktop-Desktop" "-Desktop" (list $softwareGroup "-Desktop" | join "") -}}
 {{- end -}}
 
 {{- $data := . }}
@@ -93,35 +90,23 @@
 
 {{- if stdinIsATTY -}}
 
-{{- if not (env "WORK_ENVIRONMENT") -}}
-{{-   $work = promptBoolOnce $data.host "work" "Work environment" $work -}}
-{{- end -}}
-{{- if not (env "RESTRICTED_ENVIRONMENT") -}}
-{{-   $restricted = promptBoolOnce $data.host "restricted" "Restricted environment (i.e. no sudo)" $restricted -}}
-{{- end -}}
-{{- if not (env "SOFTWARE_GROUP") -}}
-{{-   $softwareGroup = promptStringOnce $data.host "softwareGroup" "Software group" $softwareGroup -}}
-{{- end -}}
-{{- if not (env "FULL_NAME") -}}
-{{-   $name = promptStringOnce $data.user "name" "Full name" $name -}}
-{{- end -}}
-{{- if not (env "PRIMARY_EMAIL") -}}
-{{-   $email = promptStringOnce $data.user "email" "Primary e-mail address" $email -}}
-{{- end -}}
-{{- if not (env "PUBLIC_SERVICES_DOMAIN") -}}
-{{-   $domain = promptStringOnce $data.user "domain" "Domain name" $domain -}}
-{{- end -}}
-{{- if not (env "TIMEZONE") -}}
-{{-   $timezone = promptStringOnce $data.user "timezone" "Timezone" $timezone -}}
-{{- end -}}
-{{- if not (env "CLOUDFLARE_TOKEN") -}}
-{{-   $cloudflareToken = promptStringOnce $data.user "cloudflareToken" "CloudFlare API Token" $cloudflareToken -}}
+{{- if (eq .chezmoi.os "darwin") -}}
+    {{- if (contains "managed Mac computers" (output "/usr/libexec/ApplicationFirewall/socketfilterfw" "--getglobalstate")) -}}
+      {{- $work = true -}}
+    {{- else }}
+      {{- $work = false -}}
+    {{- end -}}
 {{- end -}}
 
 {{- else -}}
 {{-   $headless = true -}}
 {{-   writeToStdout "Chezmoi is running in headless environment.\n" -}}
 {{- end -}}
+
+{{- $sambaNetBiosName := (default $hostname (env "SAMBA_NETBIOS_NAME")) -}}
+{{- $sambaWorkGroupName := (default "BETELGEUSE" (env "SAMBA_WORKGROUP")) -}}
+
+{{- $wazuhManager := (default (print "wazuh." $domain) (env "WAZUH_MANAGER")) -}}
 
 encryption: "age"
 age:
@@ -132,6 +117,8 @@ gpg:
 data:
   host:
     arch: "{{ .chezmoi.arch }}"
+    cloudflare:
+      teamsOrg: "{{ $cloudflareTeamsOrg }}"
     cpu:
       cores: "{{ $cpuCores }}"
       threads: "{{ $cpuThreads }}"
@@ -139,57 +126,108 @@ data:
     distro:
       family: "{{ .chezmoi.os }}"
       id: "{{ get .chezmoi.osRelease "id" | default .chezmoi.os }}"
+    dns:
+      primary: 10.0.0.1#dns.megabyte.space
+      secondary: 1.1.1.1#cloudflare-dns.com
+    docker:
+      doRegion: nyc1
+    domain: "{{ $domain }}"
+    gitlabRunners:
+      - glurl: "https://gitlab.com/"
+        runnerDescription: "Docker executor"
+        runnerImage: "alpine:latest"
+        runnerTags: "alpine,linux"
+      - glurl: "https://gitlab.com/"
+        baseVM: "debian"
+        runnerDescription: "VirtualBox executor - Debian, OpenJDK 20"
+        runnerTags: "bash,openjdk20,linux"
+    headless: {{ $headless }}
     home: "{{ .chezmoi.homeDir }}"
     homeParentFolder: "{{ if eq .chezmoi.os "linux" }}/home{{ else if eq .chezmoi.os "darwin" }}/Users{{ else }}C:\Users{{ end }}"
-    hostname: "Betelgeuse"
-    qubes: {{ ne (stat (joinPath "usr" "bin" "qubes-session")) false }}
+    hostname: "{{ $hostname | lower | trim -}}"
+    noReplyEmail: no-reply@megabyte.space
+    samba:
+      netbiosName: "{{ $sambaNetBiosName | lower | trim -}}"
+      workgroup: "{{ $sambaWorkGroupName }}"
+    smtp:
+      from: automation@megabyte.space
+      host: smtp.sendgrid.net
+      port: 587
+      user: apikey
+    ssh:
+      allowTCPForwarding: no
+      allowUsers: {{ env "USER" }}
+      endlesshPort: 22
+      port: 8169
+    vpn:
+      excludedSubnets:
+        - 10.0.0.0/24
+        - 10.14.50.0/24
+        - 192.168.1.0/24
+    qubes: {{ if (stat (joinPath "usr" "bin" "qubes-session")) }}true{{ else }}false{{ end }}
+    restricted: {{ $restricted }}
     softwareGroup: "{{ $softwareGroup }}"
     type: "{{ $chassisType }}"
+    wazuhManager: "{{ $wazuhManager }}"
     work: {{ $work }}
-    restricted: {{ $restricted }}
-    headless: {{ $headless }}
   toolchains:
   {{- range $toolchain, $enabled := $toolchainsEnabled }}
     {{ $toolchain}}: {{ $enabled }}
   {{- end }}
   user:
-    email: "{{ $email }}"
-    name: "{{ $name }}"
-    username: "{{ output "echo" "$USER" }}"
+    cloudflare:
+      r2: "{{ $cloudflareR2AccountId }}"
+      username: "{{ $cloudflareUsername }}"
+    defaultBrowser: chrome
+    defaultBrowserDarwin: chrome
+    digitalOceanClusterId: b7fc4e37-ffe7-4ea1-887a-0e19ee077f32
+    docker:
+      username: "{{ $dockerHubUser }}"
+    # `domain` is kept here for backwards compatibility, but the .host.domain is the preferred selector
     domain: "{{ $domain }}"
+    email: "{{ $email }}"
+    gcloud:
+      coreProject: "{{ $gcloudCoreProject }}"
+      email: "{{ $gcloudEmail }}"
+    github:
+      runnerOrg: megabyte-labs
+      username: "{{ $githubUsername }}"
+    gitomatic:
+      - git: "{{ default "git@github.com:megabyte-labs/install.doctor.git" (env "START_REPO") }}"
+        path: "~/.local/share/chezmoi"
+    gmail:
+      username: "{{ $gmailAddress }}"
     gpg:
       id: "{{ $gpgKeyId }}"
-    gmail:
-      email: "{{ $gmailAddress }}"
-      password: "{{ $gmailAddressAppPassword }}"
-    githubUsername: "{{ $githubUsername }}"
-    locale: "{{ $locale }}"
-    timezone: "{{ $timezone }}"
     holdSudoPrivileges: true
-    CLOUDFLARE_USERNAME: "{{ $cloudflareUsername }}"
-    CLOUDFLARE_ACCESS_KEY_ID: "{{ $cloudflareAccessKeyId }}"
-    CLOUDFLARE_SECRET_ACCESS_KEY: "{{ $cloudflareSecretAccessKey }}"
-    CLOUDFLARE_R2_ACCOUNT_ID: "{{ $cloudflareR2AccountId }}"
-    CLOUDSDK_CORE_PROJECT: "megabyte-labs"
-    GCE_CREDENTIALS_FILE: "{{ joinPath .chezmoi.homeDir ".config" "gcp.json" }}"
-    GCE_SERVICE_ACCOUNT_EMAIL: "molecule@megabyte-labs.iam.gserviceaccount.com"
-    GITHUB_GIST_TOKEN: "{{ $githubGistToken }}"
-    GITHUB_READ_TOKEN: "{{ $githubReadToken }}"
-    GITLAB_READ_TOKEN: "{{ $gitlabReadToken }}"
-    NGROK_AUTH_TOKEN: "{{ $ngrokAuthToken }}"
-    SLACK_API_TOKEN: "{{ $slackApiToken }}"
-    SNAPCRAFT_EMAIL: "{{ $email }}"
-    TAILSCALE_AUTH_KEY: "{{ $tailscaleAuthKey }}"
-    TINYPNG_API_KEY: "g355tx7dxG5yJfl0RXJnpQlQqk88dJBv"
+    locale: "{{ $locale }}"
+    name: "{{ $name }}"
+    ntpServer: "time.apple.com"
+    snapcraft:
+      username: "{{ $snapcraftEmail }}"
+    surgesh:
+      username: "{{ $surgeshUsername }}"
+    timezone: "{{ $timezone }}"
+    tinypngKey: "g355tx7dxG5yJfl0RXJnpQlQqk88dJBv"
+    username: "{{ default "user" (env "USER") }}"
+    weatherZipCode: 07960
 diff:
-  format: "git"
-  pager: "delta"
+  pager: delta
+  format: git
+  args:
+    - "--paging"
+    - never
+  exclude:
+    - dirs
+    - externals
+    - scripts
+edit:
+  command: code
+  args:
+    - "--wait"
 git:
   autoCommit: true
   autoPush: true
-scriptEnv:
-  LEXICON_CLOUDFLARE_USERNAME: "{{ $cloudflareUsername }}"
-  LEXICON_CLOUDFLARE_TOKEN: "{{ $cloudflareToken }}"
 textconv:
   - pattern: "**/*.plist"
     command: "plutil"

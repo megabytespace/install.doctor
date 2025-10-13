@@ -1,0 +1,16 @@
+---
+- name: Check if the VM is running
+  command: qvm-check {{ item }}
+  register: qvm_check_vm
+
+- name: Shutdown the {{ item }} VM
+  command: qvm-shutdown --wait {{ item }}
+  when:
+    - not (force_shutdown | default(false))
+    - qvm_check_vm.rc == 0
+
+- name: Force the shutdown of the {{ item }} VM (only to be done after proper shutdown of an HVM)
+  command: qvm-shutdown --wait --force {{ item }}
+  when:
+    - force_shutdown | default(false)
+    - qvm_check_vm.rc == 0

@@ -1,0 +1,24 @@
+---
+- name: Check value of NetVM for {{ item }}
+  command: qvm-prefs --get {{ item }} netvm
+  register: netvm_pref
+  changed_when: false
+  failed_when: false
+
+- name: Configure {{ item }}'s NetVM
+  command: qvm-prefs --set {{ item }} netvm {{ 'sys-whonix' if ('whonix' in item) else netvm }}
+  when:
+    - netvm_pref.rc == 0
+    - not (connect_default_netvm | default(false))
+    - netvm_pref.stdout != netvm
+    - item != netvm
+    - item != 'sys-net'
+
+- name: Set new value of NetVM for {{ item }} if necessary
+  command: qvm-prefs --set {{ item }} netvm {{ 'sys-whonix' if ('whonix' in item) else (hostvars[item]['_netvm'] | default('None')) }}
+  when:
+    - netvm_pref.rc == 0
+    - connect_default_netvm | default(false)
+    - netvm_pref.stdout != hostvars[item]['_netvm']
+    - item != netvm
+    - item != 'sys-net'

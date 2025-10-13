@@ -1,0 +1,22 @@
+display-name = "{{ .user.name }}"
+downloads-dir = "~/Downloads"
+signature = "Regards,\n\n{{ .user.name }}"
+email-listing-page-size = 50
+
+[gmail]
+default = true
+email = "{{ .user.gmail.email }}"
+backend = "imap"
+imap-host = "imap.gmail.com"
+imap-port = 993
+imap-login = "{{ .user.gmail.email }}"
+imap-passwd-cmd = "pass show gmail"
+sender = "smtp"
+smtp-host = "smtp.gmail.com"
+smtp-port = 465
+smtp-login = "{{ .user.gmail.email }}"
+smtp-passwd-cmd = "pass show gmail"
+
+[gmail.folder-aliases]
+sent = "[Gmail]/Sent Mail"
+drafts = "[Gmail]/Drafts"

@@ -1,0 +1,4 @@
+[NetbootXYZ]
+title=NetbootXYZ
+description=Boot over LAN
+ports=69/udp

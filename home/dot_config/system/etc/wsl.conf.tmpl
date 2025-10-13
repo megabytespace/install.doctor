@@ -1,0 +1,7 @@
+{{- if (stat "/proc/sys/fs/binfmt_misc/WSLInterop") -}}
+[wsl2]
+nestedVirtualization=true
+
+[boot]
+command = /bin/bash -c 'chown -v root:kvm /dev/kvm && chmod 660 /dev/kvm'
+{{- end -}}

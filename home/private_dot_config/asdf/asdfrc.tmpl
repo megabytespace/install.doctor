@@ -1,9 +1,0 @@
-# See the docs for explanations: https://asdf-vm.com/manage/configuration.html
-
-# Use plugin fallback to legacy version files (e.g. `.ruby-version`) if available
-legacy_version_file = yes
-# Use release candidate rather than latest semantic version
-use_release_candidates = yes
-{{ if and (eq .chezmoi.os "darwin") (not .host.restricted) -}}
-java_macos_integration_enable = yes
-{{ end -}}

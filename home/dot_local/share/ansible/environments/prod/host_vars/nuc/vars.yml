@@ -1,0 +1,16 @@
+---
+# @var docker_snap_install: false # Force Docker to install via snap. Useful in cases where the regular Docker
+# install method is causing issues.
+docker_snap_install: true
+
+# @var nginx_sites_available: [] # With `nginx_sites_available`, you can specify custom NGINX proxies. It is a
+# legacy feature of our playbook that we are leaving in since it could potentially be useful in cases where
+# you need to have an NGINX instance proxying into a NATed VM, for instance.
+nginx_sites_available: []
+# @example #
+# nginx_sites_available:
+#   - name: authelia
+#     proxy_pass_port: 443
+#     proxy_pass_url: auth.megabyte.space
+#     transport: https
+# @end

@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-
-### Connect to Tailscale network
-if command -v tailscale > /dev/null && [ "{{ .user.TAILSCALE_AUTH_KEY }}" != "" ]; then
-  logg info 'Connecting to Tailscale with user-defined authentication key'
-  tailscale up --authkey={{ .user.TAILSCALE_AUTH_KEY }} && logg success 'Connected to Tailscale network'
-fi

@@ -17,6 +17,7 @@ set -eo pipefail
 DELAYED_CI_SYNC=""
 ENSURED_TASKFILES=""
 export HOMEBREW_NO_INSTALL_CLEANUP=true
+export HOMEBREW_NO_ANALYTICS=1
 
 # @description Ensure permissions in CI environments
 if [ -n "$CI" ]; then
@@ -48,11 +49,6 @@ else
 fi
 
 # @description Caches values from commands
-#
-# @example
-#   cache brew --prefix golang
-#
-# @arg The command to run
 function cache() {
   local DIR="${CACHE_DIR:-.cache}"
   if ! test -d "$DIR"; then
@@ -66,11 +62,6 @@ function cache() {
 }
 
 # @description Formats log statements
-#
-# @example
-#   format 'Message to be formatted'
-#
-# @arg $1 string The message to be formatted
 function format() {
   # shellcheck disable=SC2001,SC2016
   ANSI_STR="$(echo "$1" | sed 's/^\([^`]*\)`\([^`]*\)`/\1\\e[100;1m \2 \\e[0;39m/')"
@@ -81,12 +72,6 @@ function format() {
 }
 
 # @description Proxy function for handling logs in this script
-#
-# @example
-#   logger warn "Warning message"
-#
-# @arg $1 string The type of log message (can be info, warn, success, or error)
-# @arg $2 string The message to log
 function logger() {
   if [ -f .config/log ]; then
     .config/log "$1" "$2"
@@ -155,9 +140,6 @@ function ensureRedHatPackageInstalled() {
 
 # @description Installs package when user is root on Linux
 #
-# @example
-#   ensureRootPackageInstalled "sudo"
-#
 # @arg $1 string The name of the package that must be present
 #
 # @exitcode 0 The package was successfully installed
@@ -184,24 +166,21 @@ function ensureRootPackageInstalled() {
 # can only be invoked by non-root users.
 if [ -z "$NO_INSTALL_HOMEBREW" ] && [ "$USER" == "root" ] && [ -z "$INIT_CWD" ] && type useradd &> /dev/null; then
   # shellcheck disable=SC2016
-  logger info 'Running as root - creating seperate user named `megabyte` to run script with'
+  logger info 'Running as root - creating seperate user named megabyte to run script with'
   echo "megabyte ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
   useradd -m -s "$(which bash)" --gecos "" --disabled-login -c "Megabyte Labs" megabyte > /dev/null || ROOT_EXIT_CODE=$?
   if [ -n "$ROOT_EXIT_CODE" ]; then
     # shellcheck disable=SC2016
-    logger info 'User `megabyte` already exists'
+    logger info 'User megabyte already exists'
   fi
   ensureRootPackageInstalled "sudo"
   # shellcheck disable=SC2016
-  logger info 'Reloading the script with the `megabyte` user'
+  logger info 'Reloading the script with the megabyte user'
   exec su megabyte "$0" -- "$@"
 fi
 
 # @description Ensures ~/.local/bin is in the PATH variable on *nix machines and
 # exits with an error on unsupported OS types
-#
-# @example
-#   ensureLocalPath
 #
 # @set PATH string The updated PATH with a reference to ~/.local/bin
 #
@@ -228,9 +207,6 @@ function ensureLocalPath() {
 }
 
 # @description Ensures given package is installed on a system.
-#
-# @example
-#   ensurePackageInstalled "curl"
 #
 # @arg $1 string The name of the package that must be present
 #
@@ -274,9 +250,6 @@ function ensurePackageInstalled() {
 # @description Ensures the latest version of Task is installed to `/usr/local/bin` (or `~/.local/bin`, as
 # a fallback.
 #
-# @example
-#   ensureTaskInstalled
-#
 # @noarg
 #
 # @exitcode 0 If the package is already present and up-to-date or if it was installed/updated
@@ -295,18 +268,18 @@ function ensureTaskInstalled() {
       logger error "System type not recognized. You must install task manually." && exit 1
     fi
   else
-    mkdir -p "$HOME/.cache/megabyte/start.sh"
-    if [ -f "$HOME/.cache/megabyte/start.sh/bodega-update-check" ]; then
-      TASK_UPDATE_TIME="$(cat "$HOME/.cache/megabyte/start.sh/bodega-update-check")"
+    mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte/start.sh"
+    if [ -f "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte/start.sh/bodega-update-check" ]; then
+      TASK_UPDATE_TIME="$(cat "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte/start.sh/bodega-update-check")"
     else
       TASK_UPDATE_TIME="$(date +%s)"
-      echo "$TASK_UPDATE_TIME" > "$HOME/.cache/megabyte/start.sh/bodega-update-check"
+      echo "$TASK_UPDATE_TIME" > "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte/start.sh/bodega-update-check"
     fi
     # shellcheck disable=SC2004
     TIME_DIFF="$(($(date +%s) - $TASK_UPDATE_TIME))"
     # Only run if it has been at least 15 minutes since last attempt
     if [ "$TIME_DIFF" -gt 900 ] || [ "$TIME_DIFF" -lt 5 ]; then
-      date +%s > "$HOME/.cache/megabyte/start.sh/bodega-update-check"
+      date +%s > "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte/start.sh/bodega-update-check"
       logger info "Checking for latest version of Task"
       CURRENT_VERSION="$(task --version | cut -d' ' -f3 | cut -c 2-)"
       LATEST_VERSION="$(curl -s "$TASK_RELEASE_API" | grep tag_name | cut -c 17- | sed 's/\",//')"
@@ -337,9 +310,6 @@ function ensureTaskInstalled() {
 # @description Helper function for ensureTaskInstalled that performs the installation of Task.
 #
 # @see ensureTaskInstalled
-#
-# @example
-#   installTask
 #
 # @noarg
 #
@@ -390,15 +360,12 @@ function installTask() {
     mkdir -p "$TARGET_BIN_DIR"
     mv "$TMP_DIR/task/task" "$TARGET_DEST"
   fi
-  logger success 'Installed Task to `'"$TARGET_DEST"'`'
+  logger success "Installed Task to $TARGET_DEST"
   rm "$CHECKSUM_DESTINATION"
   rm "$DOWNLOAD_DESTINATION"
 }
 
 # @description Verifies the SHA256 checksum of a file
-#
-# @example
-#   sha256 myfile.tar.gz 5b30f9c042553141791ec753d2f96786c60a4968fd809f75bb0e8db6c6b4529b
 #
 # @arg $1 string Path to the file
 # @arg $2 string The SHA256 signature
@@ -442,19 +409,16 @@ function sha256() {
 }
 
 # @description Ensures the Taskfile.yml is accessible
-#
-# @example
-#   ensureTaskfiles
 function ensureTaskfiles() {
   if [ -z "$ENSURED_TASKFILES" ]; then
     # shellcheck disable=SC2030
     task donothing || BOOTSTRAP_EXIT_CODE=$?
-    mkdir -p "$HOME/.cache/megabyte/start.sh"
-    if [ -f "$HOME/.cache/megabyte/start.sh/ensure-taskfiles" ]; then
-      TASK_UPDATE_TIME="$(cat "$HOME/.cache/megabyte/start.sh/ensure-taskfiles")"
+    mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte/start.sh"
+    if [ -f "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte/start.sh/ensure-taskfiles" ]; then
+      TASK_UPDATE_TIME="$(cat "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte/start.sh/ensure-taskfiles")"
     else
       TASK_UPDATE_TIME="$(date +%s)"
-      echo "$TASK_UPDATE_TIME" > "$HOME/.cache/megabyte/start.sh/ensure-taskfiles"
+      echo "$TASK_UPDATE_TIME" > "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte/start.sh/ensure-taskfiles"
     fi
     # shellcheck disable=SC2004
     TIME_DIFF="$(($(date +%s) - $TASK_UPDATE_TIME))"
@@ -462,7 +426,7 @@ function ensureTaskfiles() {
     if [ -n "$BOOTSTRAP_EXIT_CODE" ] || [ "$TIME_DIFF" -gt 3600 ] || [ "$TIME_DIFF" -lt 5 ] || [ -n "$FORCE_TASKFILE_UPDATE" ]; then
       logger info 'Grabbing latest Taskfiles by downloading shared-master.tar.gz'
       # shellcheck disable=SC2031
-      date +%s > "$HOME/.cache/megabyte/start.sh/ensure-taskfiles"
+      date +%s > "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte/start.sh/ensure-taskfiles"
       ENSURED_TASKFILES="true"
       if [ -d common/.config/taskfiles ]; then
         if [[ "$OSTYPE" == 'darwin'* ]]; then
@@ -485,7 +449,7 @@ function ensureTaskfiles() {
     if [ -n "$BOOTSTRAP_EXIT_CODE" ] && ! task donothing; then
       # task donothing still does not work so issue must be with main Taskfile.yml
       # shellcheck disable=SC2016
-      logger warn 'Something is wrong with the `Taskfile.yml` - grabbing main `Taskfile.yml`'
+      logger warn 'Something is wrong with the Taskfile.yml - grabbing main Taskfile.yml'
       git checkout HEAD~1 -- Taskfile.yml
       if ! task donothing; then
         logger error 'Error appears to be with main Taskfile.yml'
@@ -503,9 +467,6 @@ function ensureTaskfiles() {
 }
 
 # @description Ensures basic files like package.json and Taskfile.yml are present
-#
-# @example
-#   ensureProjectBootstrapped
 function ensureProjectBootstrapped() {
   if [ ! -f start.sh ] || [ ! -f package.json ] || [ ! -f Taskfile.yml ]; then
     if [ ! -f start.sh ]; then
@@ -555,7 +516,7 @@ if [[ "$OSTYPE" == 'darwin'* ]]; then
   fi
   if ! type git &> /dev/null; then
     # shellcheck disable=SC2016
-    logger info 'Git is not present. A password may be required to run `sudo xcode-select --install`'
+    logger info 'Git is not present. A password may be required to run sudo xcode-select --install'
     sudo xcode-select --install
   fi
 elif [[ "$OSTYPE" == 'linux-gnu'* ]] || [[ "$OSTYPE" == 'linux-musl'* ]]; then
@@ -595,7 +556,7 @@ if [ -z "$NO_INSTALL_HOMEBREW" ]; then
       fi
       if ! (grep "/bin/brew shellenv" < "$HOME/.profile" &> /dev/null) && [[ "$OSTYPE" != 'darwin'* ]]; then
         # shellcheck disable=SC2016
-        logger info 'Adding linuxbrew source command to `~/.profile`'
+        logger info 'Adding linuxbrew source command to ~/.profile'
         # shellcheck disable=SC2016
         echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/.profile"
       fi
@@ -605,15 +566,15 @@ if [ -z "$NO_INSTALL_HOMEBREW" ]; then
       fi
       if ! type poetry &> /dev/null; then
         # shellcheck disable=SC2016
-        brew install poetry || logger info 'There may have been an issue installing `poetry` with `brew`'
+        brew install poetry || logger info 'There may have been an issue installing poetry with brew'
       fi
       if ! type jq &> /dev/null; then
         # shellcheck disable=SC2016
-        brew install jq || logger info 'There may have been an issue installiny `jq` with `brew`'
+        brew install jq || logger info 'There may have been an issue installiny jq with brew'
       fi
       if ! type yq &> /dev/null; then
         # shellcheck disable=SC2016
-        brew install yq || logger info 'There may have been an issue installing `yq` with `brew`'
+        brew install yq || logger info 'There may have been an issue installing yq with brew'
       fi
       if ! type volta &> /dev/null || ! type node &> /dev/null; then
         # shellcheck disable=SC2016
@@ -657,7 +618,7 @@ if [ -d .git ] && type git &> /dev/null; then
     date +%s > .cache/start.sh/git-pull-time
     git fetch origin
     GIT_POS="$(git rev-parse --abbrev-ref HEAD)"
-    logger info 'Current branch is `'"$GIT_POS"'`'
+    logger info 'Current branch is '"$GIT_POS"''
     if [ "$GIT_POS" == 'synchronize' ] || [ "$CI_COMMIT_REF_NAME" == 'synchronize' ]; then
       git reset --hard origin/master
       git push --force origin synchronize || FORCE_SYNC_ERR=$?
@@ -692,7 +653,7 @@ if [ -d .git ] && type git &> /dev/null; then
         cd "$ROOT_DIR"
       done
       # shellcheck disable=SC2016
-      logger success 'Ensured submodules in the `.modules` folder are pointing to the master branch'
+      logger success 'Ensured submodules in the .modules folder are pointing to the master branch'
     fi
   fi
 fi
@@ -727,7 +688,7 @@ if [ -z "$CI" ] && [ -z "$START" ] && [ -z "$INIT_CWD" ]; then
       task -vvv start
     else
       # shellcheck disable=SC2016
-      logger warn 'Something appears to be wrong with the main `Taskfile.yml` - resetting to shared common version'
+      logger warn 'Something appears to be wrong with the main Taskfile.yml - resetting to shared common version'
       rm Taskfile.yml
       ensureProjectBootstrapped
     fi

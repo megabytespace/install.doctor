@@ -88,6 +88,9 @@ tasks:
           # remote_ref -> refs/heads/master
           # remote_sha -> 9901a2eb2f34d5744276a80c4b339a88a92a7b53
           REMOTE_BRANCH="$(echo $remote_ref | sed 's/^[^\/]*\/[^\/]*\///')"
+          if [ "$(echo "$HOST" | cut -c1-8)" == 'https://' ]; then
+            HOST="$(echo "$HOST" | cut -c8)"
+          fi
           .config/log star "Repository -----> https://$HOST/$ORG/$PROJECT"
           if [ "$HOST" == 'gitlab.com' ]; then
             if [ "$REMOTE_BRANCH" != 'master' ]; then

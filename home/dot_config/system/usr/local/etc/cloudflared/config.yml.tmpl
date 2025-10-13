@@ -1,0 +1,54 @@
+---
+tunnel: {{ if eq .host.qubes true }}qube{{ else }}host{{ end }}-{{ .host.hostname | lower }}
+credentials-file: /usr/local/etc/cloudflared/credentials.json
+
+warp-routing:
+  enabled: true
+
+access:
+  required: true
+  teamName: {{ .host.cloudflare.teamsOrg }}
+
+ingress:
+  - hostname: test-{{- .host.hostname | lower -}}.{{- .host.domain | lower }}
+    service: hello_world
+  - hostname: ssh-{{- .host.hostname | lower -}}.{{- .host.domain | lower }}
+    service: ssh://localhost:{{- .host.ssh.port }}
+  - hostname: netdata-{{- .host.hostname | lower -}}.{{- .host.domain | lower }}
+    service: http://localhost:19999
+  - service: http_status:404
+  # - hostname: {{ .host.domain }}
+  #   service: https://localhost:8014
+  # - hostname: rdp-{{ .host.hostname }}.{{ .host.domain }}
+  #   service: rdp://localhost:3389
+  # - hostname: samba.{{ .host.domain }}
+  #   service: tcp://localhost:8445
+  # - hostname: sftp.{{ .host.domain }}
+  #   service: tcp://localhost:2022
+  # - hostname: sftpgo.{{ .host.domain }}
+  #   service: tcp://localhost:11101
+  # - hostname: vnc.{{ .host.domain }}
+  #   service: tcp://localhost:5901
+  # - hostname: dagu.{{ .host.domain }}
+  #   service: tcp://localhost:8321
+  # - hostname: rsyslog.{{ .host.domain }}
+  #   service: tcp://localhost:514
+  # - hostname: rundeck.{{ .host.domain }}
+  #   service: https://localhost:4440
+  # - hostname: portainer.{{ .host.domain }}
+  #   service: https://localhost:9439
+{{- if eq .host.softwareGroup "Kubernetes" }}
+  - hostname: k8s.{{ .host.domain }}
+    service: bastion
+{{- end }}
+  # Example of an HTTP request over a Unix socket:
+  # - hostname: {{ .host.domain }}
+  #   service: unix:/home/production/echo.sock
+  # Tunnel the baked-in Hello World test app for testing purposes
+  # Rules can match the request's path to a regular expression:
+  # - hostname: static.example.com
+  #   path: \.(jpg|png|css|js)$
+  #   service: https://localhost:8001
+  # Rules can match the request's hostname to a wildcard character:
+  # - hostname: "*.example.com"
+  #   service: https://localhost:8002

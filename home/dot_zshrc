@@ -8,28 +8,37 @@ export LC_ALL="en_US.UTF-8"
 export BASH_SUPPORT=true
 
 ### Import Common Settings
-export XDG_CONFIG_HOME="$HOME/.config"
-if [ -f "$HOME/.config/shell/profile.sh" ]; then
-  . "$XDG_CONFIG_HOME/shell/profile.sh"
+export SHOW_MOTD=false
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/profile.sh" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/profile.sh"
+
+### Escape if user is root
+if [ "$USER" = 'root' ]; then
+  return
 fi
 
+# If not running interactively, don't do anything
+case $- in
+  *i*) ;;
+    *) return;;
+esac
+
 ### Misc.
-export HISTFILE="$XDG_STATE_HOME/zsh/history"
-export ZLE_RPROMPT_INDENT=0
+[ -d "${XDG_STATE_HOME:-$HOME/.local/state}/zsh" ] || mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/zsh"
+export HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
+export ZLE_RPROMPT_INDENT=1
 export WORDCHARS=${WORDCHARS//\/}
 export PROMPT_EOL_MARK=
 export TIMEFMT=$'\nreal\t%E\nuser\t%U\nsys\t%S\ncpu\t%P'
 
+### .zcompdump
+# Source: https://www.reddit.com/r/zsh/comments/nwxcg4/store_zcompdump_in_specific_directory/
+export ZSH_COMPDUMP="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-$ZSH_VERSION"
+
 ### Antigen
-export ADOTDIR="$HOME/.local/antigen"
+export ADOTDIR="${XDG_DATA_HOME:-$HOME/.local/share}/antigen"
 
 ### Powerline
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
-### Fig
-[[ -f "$HOME/.fig/shell/zshrc.pre.zsh" ]] && . "$HOME/.fig/shell/zshrc.pre.zsh"
+[[ ! -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]] || source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 
 # --------------------------------- SETTINGS ----------------------------------
 setopt AUTO_CD
@@ -53,8 +62,8 @@ setopt PROMPT_SUBST
 setopt SHARE_HISTORY
 
 # ZSH completion system
-autoload -Uz compinit
-compinit -d "$XDG_CACHE_HOME/zsh/zcompdump-$ZSH_VERSION"
+[ -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh" ] || mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+
 zstyle ':completion:*:*:*:*:*' menu select
 zstyle ':completion:*' cache-path "$XDG_CACHE_HOME/zsh/zcompcache"
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
@@ -70,6 +79,12 @@ zstyle ':completion:*' use-compctl false
 zstyle ':completion:*' verbose true
 # shellcheck disable=SC2016
 zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
+zstyle ':completion:*:git-checkout:*' sort false
+zstyle ':completion:*:descriptions' format '[%d]'
+if command -v fzf > /dev/null && command -v eza > /dev/null; then
+  zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
+  zstyle ':fzf-tab:*' switch-group ',' '.'
+fi
 
 # Key bindings
 bindkey -e
@@ -92,7 +107,7 @@ bindkey ' ' magic-space
 # Plugin source helper
 _source_plugin() {
 	local plugin_name="$1"
-	for basedir in "$HOME/.local/antigen/bundles/zsh-users"; do
+	for basedir in "${XDG_DATA_HOME:-$HOME/.local/share}/antigen/bundles/zsh-users"; do
 		plugin="$basedir/$plugin_name/$plugin_name.zsh"
 		[ -f "$plugin" ] && source "$plugin" && return 0
 	done
@@ -153,7 +168,7 @@ unset -f _source_plugin
 
 # POWERLEVEL
 if ! [[ $(tty) = /dev/tty* ]]; then
-	if source "$HOME/.local/antigen/bundles/romkatv/powerlevel10k/powerlevel10k.zsh-theme" 2> /dev/null; then
+	if source "${XDG_DATA_HOME:-$HOME/.local/share}/antigen/bundles/romkatv/powerlevel10k/powerlevel10k.zsh-theme" 2> /dev/null; then
 		s=' ' # fix too wide icons
 		POWERLEVEL9K_MODE=nerdfont-complete
 		POWERLEVEL9K_SHORTEN_STRATEGY=truncate_beginning
@@ -161,7 +176,7 @@ if ! [[ $(tty) = /dev/tty* ]]; then
 		POWERLEVEL9K_PROMPT_ON_NEWLINE=true
 		POWERLEVEL9K_RPROMPT_ON_NEWLINE=true
 		POWERLEVEL9K_SHORTEN_DIR_LENGTH=2
-    # shellcheck disable=SC2016
+    	# shellcheck disable=SC2016
 		POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION='${P9K_CONTENT} $(whoami | grep -v "^root\$")'
 		POWERLEVEL9K_OS_ICON_BACKGROUND=red
 		POWERLEVEL9K_OS_ICON_FOREGROUND=white
@@ -246,59 +261,115 @@ xterm*|rxvt*|Eterm|aterm|kterm|gnome*|alacritty)
 esac
 
 ### Antigen
-if [ -f "$HOME/.local/scripts/antigen.zsh" ]; then
-  source "$HOME/.local/scripts/antigen.zsh"
-fi
-if command -v antigen > /dev/null; then
-  # Fix for oh-my-zsh overriding exa aliases
-  export DISABLE_LS_COLORS=true
-  antigen use oh-my-zsh
-  # antigen bundle adb
-  # antigen bundle colored-man-pages
-  # antigen bundle command-not-found
-  # antigen bundle copyfile
-  # antigen bundle copybuffer
-  # antigen bundle encode64
-  # antigen bundle fd
-  # antigen bundle git-auto-fetch
-  # antigen bundle gnu-utils
-  # antigen bundle heroku
-  # antigen bundle keychain
-  # antigen bundle kubectx
-  # antigen bundle macos
-  # antigen bundle magic-enter
-  # antigen bundle minikube
-  # antigen bundle ng
-  # antigen bundle nomad
-  # antigen bundle npm
-  # antigen bundle redis-cli
-  # antigen bundle ripgrep
-  # antigen bundle rust
-  # antigen bundle safe-paste
-  # antigen bundle salt
-  # antigen bundle shell-proxy
-  # antigen bundle ssh-agent
-  # antigen bundle sudo
-  # antigen bundle ufw
-  # antigen bundle web-search
-  # antigen bundle docker
-  # antigen bundle docker-compose
-  # antigen bundle gem
-  # antigen bundle ionic
-  # antigen bundle microk8s
-  # antigen bundle multipass
-  # antigen bundle pip
-  # antigen bundle pm2
-  # antigen bundle terraform
-  # antigen bundle vagrant
-  # antigen bundle yarn
+[ ! -f "$HOME/.local/scripts/antigen.zsh" ] || source "$HOME/.local/scripts/antigen.zsh"
 
-  # antigen bundle zsh-interactive-cd
-  # antigen bundle zsh-navigation-tools
+if command -v antigen > /dev/null; then
+  # Fix for oh-my-zsh overriding eza aliases
+  export DISABLE_LS_COLORS=true
+  # Official Oh-My-ZSH plugins
+  antigen use oh-my-zsh
+  antigen bundle adb
+  # antigen bundle bazel # Unused
+  # antigen bundle colored-man-pages
+  antigen bundle command-not-found
+  antigen bundle copybuffer
+  # TODO: Add as an alias available to Bash as well
+  antigen bundle encode64
+  # antigen bundle fd # Added by bash completions scriptx``
+  # antigen bundle flutter /Users/bzalewski/.local/antigen/bundles/robbyrussell/oh-my-zsh/plugins/flutter/flutter.plugin.zsh:29: no such file or directory: /Users/bzalewski/.local/antigen/bundles/robbyrussell/oh-my-zsh/cache//completions/_flutter
+  # antigen bundle fzf # Added by bash completions script
+  # antigen bundle gcloud # Added by bash completions script
+  antigen bundle gem
+  # antigen bundle gh # Added by bash completions script
+  antigen bundle git-auto-fetch
+  antigen bundle git-extras
+  antigen bundle git-flow
+  antigen bundle gitfast
+  antigen bundle github
+  # antigen bundle gnu-utils
+  antigen bundle golang
+  # antigen bundle gpg-agent
+  # antigen bundle gradle # Added by bash completions script
+  # antigen bundle helm # Added by bash completions script
+  antigen bundle heroku
+  antigen bundle httpie
+  antigen bundle ionic
+  antigen bundle ipfs
+  antigen bundle isodate
+  # antigen bundle keychain
+  antigen bundle kn
+  # antigen bundle kubectl # Added by bash completions script
+  antigen bundle kubectx
+  antigen bundle last-working-dir
+  antigen bundle lxd
+  antigen bundle macos
+  antigen bundle macports
+  antigen bundle magic-enter
+  antigen bundle marktext
+  antigen bundle microk8s
+  # antigen bundle minikube
+  # Received error so disabling mongo-atlas
+  # /Users/bzalewski/.local/antigen/bundles/robbyrussell/oh-my-zsh/plugins/mongo-atlas/mongo-atlas.plugin.zsh:14: no such file or directory: /Users/bzalewski/.local/antigen/bundles/robbyrussell/oh-my-zsh/cache//completions/atlas
+  # antigen bundle mongo-atlas
+  antigen bundle mongocli
+  antigen bundle mosh
+  antigen bundle multipass
+  antigen bundle ng
+  antigen bundle node-docs
+  antigen bundle nomad
+  antigen bundle oc
+  antigen bundle pass
+  # antigen bundle pep8
+  antigen bundle pip
+  # antigen bundle pipenv
+  antigen bundle pm2
+  antigen bundle qrcode
+  antigen bundle react-native
+  antigen bundle redis-cli
+  antigen bundle ripgrep
+  # Received error so disabling rust
+  # /Users/bzalewski/.local/antigen/bundles/robbyrussell/oh-my-zsh/plugins/rust/rust.plugin.zsh:22: no such file or directory: /Users/bzalewski/.local/antigen/bundles/robbyrussell/oh-my-zsh/cache//completions/_rustup
+  # /Users/bzalewski/.local/antigen/bundles/robbyrussell/oh-my-zsh/plugins/rust/rust.plugin.zsh:23: no such file or directory: /Users/bzalewski/.local/antigen/bundles/robbyrussell/oh-my-zsh/cache//completions/_cargo
+  # antigen bundle rust
+  antigen bundle safe-paste
+  antigen bundle sdk
+  # antigen bundle skaffold
+  antigen bundle spring
+  # antigen bundle shell-proxy
+  # On macOS, parse error 6/13/23 for sprunge
+  # antigen bundle sprunge
+  # antigen bundle ssh-agent
+  antigen bundle sudo
+  antigen bundle terraform
+  antigen bundle timer
+  antigen bundle tmuxinator
+  antigen bundle urltools
+  antigen bundle ufw
+  antigen bundle vagrant
+  # antigen bundle volta # Added by bash completions script
+  antigen bundle web-search
+  # antigen bundle wp-cli # Added by bash completions script
+  antigen bundle yarn
+
+  if [ ! -d /Applications ]; then
+    # Plugins that are troublesome on macOS due to Docker Desktop needing to launch
+    antigen bundle docker
+    antigen bundle docker-compose
+  fi
+
+  # Third-party plugins
+  # antigen bundle jscutlery/nx-completion Installing jscutlery/nx-completion... Error! Activate logging and try again.
+  # antigen bundle lukechilds/zsh-better-npm-completion
+  # antigen bundle wfxr/forgit
+
+  antigen bundle zsh-interactive-cd
+  antigen bundle zsh-navigation-tools
   antigen bundle zsh-users/zsh-completions src
-  antigen bundle zsh-users/zsh-syntax-highlighting
-  antigen bundle zsh-users/zsh-autosuggestions
+  ! command -v fzf > /dev/null || antigen bundle aloxaf/fzf-tab
   antigen bundle marlonrichert/zsh-autocomplete@main
+  antigen bundle zsh-users/zsh-autosuggestions
+  antigen bundle zsh-users/zsh-syntax-highlighting
+  [ ! -d /Applications ] || antigen bundle zsh-apple-touchbar
   antigen theme romkatv/powerlevel10k
   antigen apply
 fi
@@ -307,47 +378,132 @@ fi
 zstyle ':autocomplete:*' list-lines 14
 zstyle ':autocomplete:history-search:*' list-lines 14
 zstyle ':autocomplete:history-incremental-search-*:*' list-lines 14
-if command -v fzf > /dev/null; then
-	zstyle ':autocomplete:*' fzf-completion yes
-fi
-if command -v zoxide > /dev/null; then
-	zstyle ':autocomplete:recent-dirs' backend zoxide
-fi
+! command -v fzf > /dev/null || zstyle ':autocomplete:*' fzf-completion yes
 
-### direnv
-if command -v direnv > /dev/null; then
-	eval "$(direnv hook zsh)"
-fi
+### Homebrew ZSH Completions
+# Must be sourced before compinit / Oh-My-ZSH inclusion
+export FPATH="$HOMEBREW_PREFIX/share/zsh/site-functions:$FPATH"
+[ ! -d "$HOMEBREW_PREFIX/share/zsh-completions" ] || export FPATH="$HOMEBREW_PREFIX/share/zsh-completions:$FPATH"
+[ ! -d "${XDG_DATA_HOME:-$HOME/.local/share}/zsh-completion" ] || export FPATH="${XDG_DATA_HOME:-$HOME/.local/share}/zsh-completion:$FPATH"
 
-### Java (asdf)
-if [ -f "$ASDF_DATA_DIR/plugins/java/set-java-home.zsh" ]; then
-  # . "$ASDF_DATA_DIR/plugins/java/set-java-home.zsh"
-fi
-
-### mcfly
-if command -v mcfly > /dev/null; then
-	eval "$(mcfly init zsh)"
-fi
-
-### zoxide
-if command -v zoxide > /dev/null; then
-	eval "$(zoxide init --cmd cd zsh)"
-fi
-
-### Fig
-if [ -f "$HOME/.fig/shell/zshrc.post.zsh" ]; then
-	source "$HOME/.fig/shell/zshrc.post.zsh"
-fi
-
-### Powerline
-if [ -f "$HOME/.local/scripts/p10k.zsh" ]; then
-	source "$HOME/.local/scripts/p10k.zsh"
-fi
+### ZSH compinit
+autoload -Uz +X compinit && compinit -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-$ZSH_VERSION"
 
 ### Bash Completions
 autoload -U +X bashcompinit && bashcompinit
+[ ! -f "/usr/local/etc/profile.d/bash_completion.sh" ] || source "/usr/local/etc/profile.d/bash_completion.sh"
+
+### Atuin
+! command -v atuin > /dev/null || eval "$(atuin init zsh)"
+
+### Carapace
+if command -v carapace > /dev/null; then
+	zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
+	zstyle ':completion:*:git:*' group-order 'main commands' 'alias commands' 'external commands'
+	source <(carapace _carapace)
+fi
+
+### Cod
+! command -v cod > /dev/null || source <(cod init $$ zsh)
+
+### Conda
+# if command -v conda > /dev/null && [ -f "${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom/mambaforge/base/bin/conda" ]; then
+# 	__conda_setup="$("${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom/mambaforge/base/bin/conda" "shell.zsh" "hook" 2> /dev/null)"
+# 	if [ $? -eq 0 ]; then
+# 		eval "$__conda_setup"
+# 	else
+# 		if [ -f "${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom/mambaforge/base/etc/profile.d/conda.sh" ]; then
+# 			. "${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom/mambaforge/base/etc/profile.d/conda.sh"
+# 		else
+# 			export PATH="${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom/mambaforge/base/bin:$PATH"
+# 		fi
+# 	fi
+# fi
+
+### direnv
+! command -v direnv > /dev/null || eval "$(direnv hook zsh)"
+
+### Emplace
+# Error tracking: https://github.com/tversteeg/emplace/issues/375
+# ! command -v emplace > /dev/null || eval "$(emplace init zsh)"
+
+### Google Cloud SDK
+[ ! -f "$HOMEBREW_PREFIX/share/google-cloud-sdk/path.zsh.inc" ] || source "$HOMEBREW_PREFIX/share/google-cloud-sdk/path.zsh.inc"
+[ ! -f "$HOMEBREW_PREFIX/share/google-cloud-sdk/completion.zsh.inc" ] || source "$HOMEBREW_PREFIX/share/google-cloud-sdk/completion.zsh.inc"
+
+### Goto
+[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh"
+
+### hiSHtory
+# Hishtory Config:
+export PATH="$PATH:${XDG_CONFIG_HOME:-$HOME/.config}/hishtory"
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/hishtory/config.zsh" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/hishtory/config.zsh"
+
+### Hoard
+if command -v hoard > /dev/null && [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/hoard/src/shell/hoard.zsh" ]; then
+	source "${XDG_DATA_HOME:-$HOME/.local/share}/hoard/src/shell/hoard.zsh"
+fi
+
+### iTerm2
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/iterm/iterm2.zsh" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/iterm/iterm2.zsh"
+
+### mise
+! command -v mise > /dev/null || eval "$(mise activate zsh)"
+
+### Navi (Ctrl+G)
+! command -v navi > /dev/null || eval "$(navi widget zsh)"
+
+### ntfy
+! command -v ntfy > /dev/null || eval "$(ntfy shell-integration)"
+
+### pay-respects
+! command -v pay-respects > /dev/null || eval "$(pay-respects zsh --alias)"
+
+### Powerline
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/p10k.zsh" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/p10k.zsh"
+
+### RTX
+! command -v rtx > /dev/null || eval "$(rtx activate zsh)"
+
+### SDKMan
+### Using mise instead for Java handling
+# if command -v brew > /dev/null && command -v sdkman-cli > /dev/null; then
+#   export SDKMAN_DIR="$(brew --prefix sdkman-cli)/libexec"
+#   . "$SDKMAN_DIR/bin/sdkman-init.sh"
+# elif [ -f "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
+#   export SDKMAN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sdkman"
+#   . "$SDKMAN_DIR/bin/sdkman-init.sh"
+# fi
+
+### Sheldon
+export SHELDON_CONFIG_FILE="${SHELDON_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/sheldon}/plugins.zsh.toml"
+! command -v sheldon > /dev/null || eval "$(command sheldon source)"
+
+### Up
+[ ! -f "${XDG_DATA_HOME:-$HOME/.local/share}/up/up.sh" ] || source "${XDG_DATA_HOME:-$HOME/.local/share}/up/up.sh"
 
 ### HashiCorp Vault
-if command -v vault > /dev/null; then
-	complete -o nospace -C vault vault
+! command -v vault > /dev/null || complete -o nospace -C vault vault
+
+### zoxide
+if command -v zoxide > /dev/null; then
+	zstyle ':autocomplete:recent-dirs' backend zoxide
+	eval "$(zoxide init zsh)"
+else
+	alias z='cd'
 fi
+
+# Check if the script exists and source it for command_not_found_handler
+if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/not-found-hook.sh" ]]; then
+  source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/not-found-hook.sh"
+  command_not_found_handler() {
+    # Call the custom hook when a command is not found
+    handle_command_not_found "$1"
+  }
+fi
+
+### Warpify support
+if [ "$TERM_PROGRAM" = 'WarpTerminal' ]; then
+  printf '\eP$f{"hook": "SourcedRcFileForWarp", "value": { "shell": "zsh"}}\x9c'
+fi
+

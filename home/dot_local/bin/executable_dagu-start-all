@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# @file Dagu Cron-Based Daemon Helper
+# @brief Helper executable used by cron to ensure Dagu is running
+# @description
+#     This script is utilized by the user-level cronjob runner. Every minute this script is called by the cron
+#     scheduler to ensure that the Dagu service is running. Read more about Dagu on their [GitHub page](https://github.com/dagu-dev/dagu).
+
+PROCESS="dagu start-all"
+COMMAND="/usr/bin/dagu --config "$DAGU_HOME/admin.yaml" start-all"
+
+### Ensure dagu is installed
+if command -v dagu > /dev/null; then
+  ### Check if process is already running
+  if ps ax | grep -v grep | grep "$PROCESS" > /dev/null; then
+    exit
+  else
+    $COMMAND &
+  fi
+fi
+exit

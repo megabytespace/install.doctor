@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# @file ~/.local/bin/setup-firewall
+# @brief Setup and enable the firewall
+# @description
+#   This script sets up and configures the firewall. On Linux systems, it prefers `firewall-cmd` and, if that is not available,
+#   it uses `ufw`. By default, it allows outgoing traffic and denies incoming traffic.
+#
+#   ## CloudFlare
+#
+#   The script will allow incoming traffic on port 80 and 443 from any CloudFlare IP address. The logic was adapted from
+#   [cloudflare-ufw](https://github.com/Paul-Reed/cloudflare-ufw).
+
+if command -v firewall-cmd > /dev/null; then
+    echo "firewall-cmd detected - preferring this over UFW"
+elif command -v ufw > /dev/null; then
+    ### Deny incoming and allow outgoing
+    sudo ufw default deny incoming
+    sudo ufw default allow outgoing
+    
+    ### Allow CloudFlare IPs to connect to port 80 and 443
+    ### May be useful if cloudflared is not being used
+    # for CF_IP in `curl -sw '\n' https://www.cloudflare.com/ips-v{4,6}`; do
+    #     sudo ufw allow proto tcp from "$CF_IP" to any port 80,443 comment 'CloudFlare IP'
+    # done
+
+    ### Enable / reload the firewall
+    sudo ufw enable
+    sudo ufw reload
+fi

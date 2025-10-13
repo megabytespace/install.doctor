@@ -1,0 +1,3 @@
+{{- if and (eq .host.distro.family "darwin") (lookPath "vscodium") -}}
+{{ .chezmoi.homeDir }}/.config/Code/User/keybindings.json
+{{- end -}}

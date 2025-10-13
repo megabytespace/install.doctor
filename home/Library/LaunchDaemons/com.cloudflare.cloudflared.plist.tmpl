@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>Label</key>
+		<string>com.cloudflare.cloudflared</string>
+		<key>ProgramArguments</key>
+		<array>
+			<string>{{ lookPath "cloudflared" }}</string>
+      <string>tunnel</string>
+      <string>run</string>
+		</array>
+		<key>RunAtLoad</key>
+		<true/>
+		<key>StandardOutPath</key>
+		<string>/Library/Logs/com.cloudflare.cloudflared.debug.log</string>
+		<key>StandardErrorPath</key>
+		<string>/Library/Logs/com.cloudflare.cloudflared.error.log</string>
+		<key>KeepAlive</key>
+		<dict>
+			<key>SuccessfulExit</key>
+			<false/>
+		</dict>
+		<key>ThrottleInterval</key>
+		<integer>5</integer>
+	</dict>
+</plist>

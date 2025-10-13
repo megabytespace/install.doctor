@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# Include configuration
+if [ -f /usr/local/etc/rkhunter.conf ]; then
+  . /usr/local/etc/rkhunter.conf
+elif [ -f /etc/rkhunter.conf ]; then
+  . /etc/rkhunter.conf
+else
+  echo "Failed to find rkhunter.conf file" && exit 1
+fi
+
+if [ -z "$NICE" ]; then
+    NICE=0
+fi
+
+case "$CRON_DAILY_RUN" in
+     [YyTt]*)
+        OUTFILE="$(mktemp)"
+        nice -n $NICE rkhunter --cronjob --report-warnings-only --update --appendlog > $OUTFILE
+        if [ -s "$OUTFILE" -a -n "$REPORT_EMAIL" ]; then
+          (
+            echo "Subject: [rkhunter] $(hostname) - Daily Report"
+            echo "To: $REPORT_EMAIL"
+            echo ""
+            cat $OUTFILE
+          ) | mailx $REPORT_EMAIL
+        fi
+        rm -f $OUTFILE
+        ;;
+      *)
+       exit 0
+       ;;
+esac

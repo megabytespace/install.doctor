@@ -1,0 +1,280 @@
+#!/usr/bin/env bash
+# @file System Requirements
+# @brief Ensures commonly used system packages that are common dependencies of other packages are installed
+# @description
+#     This script installs required system packages. Each system's required packages are defined in `home/.chezmoitemplates/$DISTRO_ID`,
+#     where `$DISTRO_ID` is equal to the Linux distribution ID found in `/etc/os-release`.
+
+{{ includeTemplate "universal/logg-before" }}
+
+{{- $packages := splitList " " (includeTemplate "universal/common-dependencies" .) -}}
+{{- if ne .host.distro.id "darwin" -}}
+{{- $additionalPackages := splitList " " (includeTemplate (print .host.distro.id "/common-dependencies") .) -}}
+{{- $packages = concat $packages $additionalPackages -}}
+{{- end -}}
+
+### Ensure Ubuntu / Debian run in `noninteractive` mode
+export DEBIAN_FRONTEND=noninteractive
+
+if [ -d /Applications ] && [ -d /System ]; then
+  ### Ensure environment variables are appropriately configured
+  export VOLTA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/volta"
+  export PATH="$VOLTA_HOME/bin:$PATH"
+
+  ### Check for presence of Homebrew
+  if command -v brew > /dev/null; then
+    ### Install base dependencies
+    logg 'Installing base dependencies for macOS using brew bundle'
+    gum log -sl info 'Dependencies: age jq node glow go go-task/tap/go-task gnupg gum m-cli progress volta yq m-cli yq zx'
+    gum log -sl info 'GNU compatibility dependencies: coreutils findutils'
+
+    brew bundle --verbose --file=/dev/stdin <<EOF
+{{ includeTemplate "darwin/Brewfile" . -}}
+EOF
+
+    ### Ensure Python version is 3.11 or higher
+    PYTHON_VERSION="$(python3 --version | sed 's/Python //')"
+    MIN_PYTHON_VERSION="3.11.0"
+    if [ "$(printf '%s\n' "$MIN_PYTHON_VERSION" "$PYTHON_VERSION" | sort -V | head -n1)" = "$MIN_PYTHON_VERSION" ]; then
+      gum log -sl info "Minimum Python version satisfied (minimum: $MIN_PYTHON_VERSION, current: $PYTHON_VERSION)"
+    else
+      gum log -sl info 'Updating Python 3 version with brew link --overwrite python@3.11'
+      brew link --overwrite python@3.11
+    fi
+  else
+    gum log -sl error 'brew was not found in the PATH'
+  fi
+else
+  if [ '{{ .host.distro.id }}' = 'archlinux' ]; then
+    ### Print dependency list
+    logg 'Installing common dependencies using pacman'
+    gum log -sl info 'Dependencies: {{ $packages | sortAlpha | uniq | join " " -}}'
+
+    ### Install packages if they are not already present
+    for PACKAGE in {{ $packages | sortAlpha | uniq | join " " -}}; do
+      gum log -sl info 'Checking for presence of '"$PACKAGE"''
+      if pacman -Qs "$PACKAGE" > /dev/null; then
+        gum log -sl info 'The '"$PACKAGE"' package is already installed'
+      else
+        gum log -sl info 'Installing '"$PACKAGE"''
+        sudo pacman -Sy --noconfirm --needed "$PACKAGE" || EXIT_CODE=$?
+        if [ -n "$EXIT_CODE" ]; then
+          gum log -sl error 'Error installing '"$PACKAGE"' via pacman'
+          gum log -sl info 'Proceeding with installation..'
+          unset EXIT_CODE
+        fi
+      fi
+    done
+
+    ### Install yay
+    if ! command -v yay > /dev/null; then
+      gum log -sl info 'Cloning yay from https://aur.archlinux.org/yay.git to /usr/local/src/yay'
+      sudo git clone https://aur.archlinux.org/yay.git /usr/local/src/yay
+      cd /usr/local/src/yay
+      gum log -sl info 'Installing yay via sudo makepkg -si'
+      sudo makepkg -si
+    fi
+  elif [ '{{ .host.distro.id }}' = 'centos' ]; then
+    ### Upgrade system
+    gum log -sl info 'Upgrade system'
+    sudo dnf upgrade --refresh -y
+
+    ### Enable CRB
+    gum log -sl info 'Ensure the CRB repository is activated'
+    sudo dnf config-manager --set-enabled crb
+
+    ### Add EPEL
+    if ! dnf repolist | grep 'epel ' > /dev/null; then
+      gum log -sl info 'Adding the EPEL repository'
+      sudo dnf install -y "https://dl.fedoraproject.org/pub/epel/epel-release-latest-${VERSION}.noarch.rpm"
+    fi
+
+    ### Add EPEL Next
+    if ! dnf repolist | grep 'epel-next' > /dev/null; then
+      gum log -sl info 'Adding the EPEL Next repository'
+      sudo dnf install -y "https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-${VERSION}.noarch.rpm"
+    else
+      gum log -sl info 'EPEL Next repository already enabled (EPEL compatibility for CentOS)'
+    fi
+    ### Detect package manager
+    if command -v dnf > /dev/null; then
+      PKG_MANAGER='dnf'
+    else
+      PKG_MANAGER='yum'
+    fi
+
+    ### Print dependency list
+    logg 'Installing common dependencies using '"$PKG_MANAGER"''
+    gum log -sl info 'Dependencies: {{ $packages | sortAlpha | uniq | join " " -}}'
+
+    ### Install packages if they are not already present
+    for PACKAGE in {{ $packages | sortAlpha | uniq | join " " -}}; do
+      gum log -sl info 'Checking for presence of '"$PACKAGE"''
+      if rpm -qa | grep "^$PACKAGE-" > /dev/null; then
+        gum log -sl info 'The '"$PACKAGE"' package is already installed'
+      else
+        gum log -sl info 'Installing '"$PACKAGE"''
+        sudo "$PKG_MANAGER" install -y "$PACKAGE" || EXIT_CODE=$?
+        if [ -n "$EXIT_CODE" ]; then
+          gum log -sl error 'Error installing '"$PACKAGE"' via '"$PKG_MANAGER"''
+          gum log -sl info 'Proceeding with installation..'
+          unset EXIT_CODE
+        fi
+      fi
+    done
+  elif [ '{{ .host.distro.id }}' = 'debian' ]; then
+    if command -v apt-get > /dev/null && [ -f /etc/apt/preferences.d/nosnap.pref ]; then
+      gum log -sl info 'Moving /etc/apt/preferences.d/nosnap.pref to /etc/apt/nosnap.pref.bak' && sudo mv -f /etc/apt/preferences.d/nosnap.pref /etc/apt/nosnap.pref.bak
+    fi
+
+    ### Print dependency list
+    logg 'Installing common dependencies using apt-get'
+    gum log -sl info 'Dependencies: {{ $packages | sortAlpha | uniq | join " " -}}'
+
+    ### Update apt-get cache
+    gum log -sl info 'Running sudo apt-get update'
+    sudo apt-get update
+
+    ### Update debconf for non-interactive installation
+    if command -v dpkg-reconfigure > /dev/null; then
+      gum log -sl info 'Running sudo dpkg-reconfigure debconf -f noninteractive -p critical'
+      sudo dpkg-reconfigure debconf -f noninteractive -p critical
+    fi
+
+    ### Install packages if they are not already present
+    for PACKAGE in {{ $packages | sortAlpha | uniq | join " " -}}; do
+      gum log -sl info 'Checking for presence of '"$PACKAGE"''
+      if dpkg -l "$PACKAGE" | grep -E '^ii' > /dev/null; then
+        gum log -sl info 'The '"$PACKAGE"' package is already installed'
+      else
+        gum log -sl info 'Installing '"$PACKAGE"''
+        sudo apt-get install -y --no-install-recommends "$PACKAGE" || EXIT_CODE=$?
+        if [ -n "$EXIT_CODE" ]; then
+          gum log -sl error 'Error installing '"$PACKAGE"' via apt-get'
+          gum log -sl info 'Proceeding with installation..'
+          unset EXIT_CODE
+        fi
+      fi
+    done
+  elif [ '{{ .host.distro.id }}' = 'fedora' ]; then
+    ### Upgrade system
+    gum log -sl info 'Upgrade system'
+    sudo dnf upgrade --refresh -y
+
+    # https://docs.fedoraproject.org/en-US/quick-docs/dnf-system-upgrade/
+    # TODO - Optional: Look into using Fedora's upgrade system described in the link above
+    # sudo dnf install dnf-plugin-system-upgrade
+
+    ### Add RPM Fusion Free repository
+    if ! dnf repolist | grep 'rpmfusion-free' > /dev/null; then
+      gum log -sl info 'Adding RPM-Fusion Free repository for Fedora'
+      sudo dnf install -y "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
+    fi
+
+    ### Add RPM Fusion Non-Free repository
+    if ! dnf repolist | grep 'rpmfusion-nonfree' > /dev/null; then
+      gum log -sl info 'Adding RPM-Fusion Non-Free repository for Fedora'
+      sudo dnf install -y "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
+    fi
+
+    ### Add Appstream data from the RPM Fusion repositories
+    if command -v gnome-shell > /dev/null; then
+      gum log -sl info 'Adding Appstream data from the RPM-Fusion repositories'
+      sudo dnf group update -y core
+    else
+      gum log -sl warn 'Skipping installation of Appstream data because GNOME is not installed'
+    fi
+    ### Print dependency list
+    logg 'Installing common dependencies using dnf'
+    gum log -sl info 'Dependencies: {{ $packages | sortAlpha | uniq | join " " -}}'
+
+    ### Install packages if they are not already present
+    for PACKAGE in {{ $packages | sortAlpha | uniq | join " " -}}; do
+      gum log -sl info 'Checking for presence of '"$PACKAGE"''
+      if rpm -qa | grep "^$PACKAGE-" > /dev/null; then
+        gum log -sl info 'The '"$PACKAGE"' package is already installed'
+      else
+        gum log -sl info 'Installing '"$PACKAGE"''
+        sudo dnf install -y "$PACKAGE" || EXIT_CODE=$?
+        if [ -n "$EXIT_CODE" ]; then
+          gum log -sl error 'Error installing '"$PACKAGE"' via dnf'
+          gum log -sl info 'Proceeding with installation..'
+          unset EXIT_CODE
+        fi
+      fi
+    done
+  elif [ '{{ .host.distro.id }}' = 'freebsd' ]; then
+    ### Print dependency list
+    logg 'Installing common dependencies using pkg'
+    gum log -sl info 'Dependencies: {{ $packages | sortAlpha | uniq | join " " -}}'
+
+    ### Install base dependencies
+    for PACKAGE in {{ $packages | sortAlpha | uniq | join " " -}}; do
+      gum log -sl info 'Installing '"$PACKAGE"''
+      sudo pkg install -y "$PACKAGE" || EXIT_CODE=$?
+      if [ -n "$EXIT_CODE" ]; then
+        gum log -sl error 'Error installing '"$PACKAGE"' via zypper'
+        gum log -sl info 'Proceeding with installation..'
+        unset EXIT_CODE
+      fi
+    done
+  elif [ '{{ .host.distro.id }}' = 'opensuse' ]; then
+    ### Print dependency list
+    logg 'Installing common dependencies using zypper'
+    gum log -sl info 'Dependencies: {{ $packages | sortAlpha | uniq | join " " -}}'
+
+    ### Install base_devel
+    gum log -sl info 'Installing base_devel pattern with sudo zypper install -t pattern devel_basis'
+    sudo zypper install -t pattern devel_basis
+
+    ### Install packages if they are not already present
+    for PACKAGE in {{ $packages | sortAlpha | uniq | join " " -}}; do
+      gum log -sl info 'Checking for presence of '"$PACKAGE"''
+      if rpm -qa | grep "$PACKAGE" > /dev/null; then
+        gum log -sl info 'The '"$PACKAGE"' package is already installed'
+      else
+        gum log -sl info 'Installing '"$PACKAGE"''
+        sudo zypper install -y "$PACKAGE" || EXIT_CODE=$?
+        if [ -n "$EXIT_CODE" ]; then
+          gum log -sl error 'Error installing '"$PACKAGE"' via zypper'
+          gum log -sl info 'Proceeding with installation..'
+          unset EXIT_CODE
+        fi
+      fi
+    done
+  elif [ '{{ .host.distro.id }}' = 'ubuntu' ]; then
+    if command -v apt-get > /dev/null && [ -f /etc/apt/preferences.d/nosnap.pref ]; then
+      gum log -sl info 'Moving /etc/apt/preferences.d/nosnap.pref to /etc/apt/nosnap.pref.bak' && sudo mv -f /etc/apt/preferences.d/nosnap.pref /etc/apt/nosnap.pref.bak
+    fi
+
+    ### Print dependency list
+    logg 'Installing common dependencies using apt-get'
+    gum log -sl info 'Dependencies: {{ $packages | sortAlpha | uniq | join " " -}}'
+
+    ### Update apt-get cache
+    gum log -sl info 'Running sudo apt-get update'
+    sudo apt-get update
+
+    ### Update debconf for non-interactive installation
+    if command -v dpkg-reconfigure > /dev/null; then
+      gum log -sl info 'Running sudo dpkg-reconfigure debconf -f noninteractive -p critical'
+      sudo dpkg-reconfigure debconf -f noninteractive -p critical
+    fi
+
+    ### Install packages if they are not already present
+    for PACKAGE in {{ $packages | sortAlpha | uniq | join " " -}}; do
+      gum log -sl info 'Checking for presence of '"$PACKAGE"''
+      if dpkg -l "$PACKAGE" | grep -E '^ii' > /dev/null; then
+        gum log -sl info 'The '"$PACKAGE"' package is already installed'
+      else
+        gum log -sl info 'Installing '"$PACKAGE"''
+        sudo apt-get install -y --no-install-recommends "$PACKAGE" || EXIT_CODE=$?
+        if [ -n "$EXIT_CODE" ]; then
+          gum log -sl error 'Error installing '"$PACKAGE"' via apt-get'
+          gum log -sl info 'Proceeding with installation..'
+          unset EXIT_CODE
+        fi
+      fi
+    done
+  fi
+fi

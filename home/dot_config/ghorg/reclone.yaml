@@ -1,0 +1,15 @@
+---
+# Fill these values out with your own so that you can clone all your repositories by running `ghorg reclone`
+#
+# Clones organization "megabyte-labs" on GitHub into ~/Projects/Megabyte-Labs
+github:
+  cmd: ghorg clone megabyte-labs -s github --output-dir "Megabyte-Labs"
+  description: "Clones the GitHub megabyte-labs organization repositories"
+# Clones user "ProfessorManhattan" on GitHub into ~/Projects/ProfessorManhattan
+github-user:
+  cmd: ghorg clone ProfessorManhattan -s github --clone-type user --output-dir ProfessorManhattan
+  description: "Clones the GitHub user repositories"
+# Clones organization "megabyte-labs" on GitLab into ~/Projects/GitLab
+gitlab:
+  cmd: ghorg clone megabyte-labs -s gitlab --output-dir GitLab
+  description: "Clones the GitLab megabyte-labs organization repositories"

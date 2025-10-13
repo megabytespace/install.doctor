@@ -1,0 +1,214 @@
+---
+gsetting_configs:
+  # Enables CTRL+Shift+I to inspect Gtk options
+  - setting: org.gtk.Settings.Debug enable-inspector-keybinding
+    value: 'true'
+  - setting: org.gnome.desktop.interface gtk-theme
+    value: Betelgeuse
+  - setting: org.gnome.desktop.wm.preferences theme
+    value: Betelgeuse
+  - setting: org.gnome.desktop.wm.preferences titlebar-font
+    value: '"Montserrat Ultra-Bold 11"'
+  - setting: org.gnome.desktop.interface color-scheme
+    value: prefer-dark
+  - setting: org.gnome.desktop.interface monospace-font-name
+    value: '"Hack Nerd Font 11"'
+  - setting: org.gnome.desktop.interface document-font-name
+    value: '"Zilla Slab 11"'
+  - setting: org.gnome.desktop.interface font-name
+    value: '"Montserrat 11"'
+
+hidden_system_tools:
+  - xfce4-terminal-settings.desktop
+  - xterm.desktop
+  - xfce-wmtweaks-settings.desktop
+  - xfce-workspaces-settings.desktop
+  - xfce4-sensors.desktop
+  - panel-preferences.desktop
+  - org.gnome.PackageUpdater.desktop
+  - exo-file-manager.desktop
+  - thunar-bulk-rename.desktop
+  - thunar-settings.desktop
+  - xfce4-appfinder.desktop
+  - xfce4-about.desktop
+  - xfce4-accessibility-settings.desktop
+  - pavucontrol.desktop
+  - paprefs.desktop
+  - exo-preferred-applications.desktop
+
+kde_system_packages:
+  - kde-plasma-desktop
+  - kdeplasma-addons
+  - kvantum
+  - rofi
+
+xconf_settings:
+  - channel: xfwm4
+    property: /general/theme
+    value: Betelgeuse
+  - channel: xfwm4
+    property: /general/title_font
+    value: Montserrat Ultra-Bold 10
+  - channel: xfwm4
+    property: /general/title_alignment
+    value: left
+  - channel: xsettings
+    property: /Net/ThemeName
+    value: Betelgeuse
+  - channel: xsettings
+    property: /Gtk/MonospaceFontName
+    value: Hack Nerd Font 10
+  - channel: xsettings
+    property: /Gtk/FontName
+    value: Montserrat Bold 10
+  - channel: xsettings
+    property: /Xfce/LastCustomDPI
+    value: 100
+    value_type: int
+  - channel: xsettings
+    property: /Xft/DPI
+    value: 100
+    value_type: int
+  - channel: xfce4-power-manager
+    property: /xfce4-power-manager/blank-on-ac
+    value: 30
+    value_type: int
+  - channel: xfce4-power-manager
+    property: /xfce4-power-manager/dpms-on-ac-off
+    value: 60
+    value_type: int
+  - channel: xfce4-power-manager
+    property: /xfce4-power-manager/hibernate-button-action
+    value: 2
+    value_type: int
+  - channel: xfce4-power-manager
+    property: /xfce4-power-manager/sleep-button-action
+    value: 1
+    value_type: int
+  - channel: xfce4-power-manager
+    property: /xfce4-power-manager/battery-button-action
+    value: 3
+    value_type: int
+  - channel: xfce4-power-manager
+    property: /xfce4-power-manager/power-button-action
+    value: 4
+    value_type: int
+  - channel: xfce4-power-manager
+    property: /xfce4-power-manager/general-notification
+    value: true
+    value_type: bool
+  - channel: xfce4-desktop
+    property: /backdrop/screen0/monitorDP-2/workspace0/last-image
+    value: /usr/share/backgrounds/images/aurora-stars.jpg
+  - channel: xfce4-desktop
+    property: /backdrop/screen0/monitorDP-2/workspace1/last-image
+    value: /usr/share/backgrounds/images/blue-butter-flies.jpg
+  - channel: xfce4-desktop
+    property: /backdrop/screen0/monitorDP-2/workspace2/last-image
+    value: /usr/share/backgrounds/images/underwater-turtle.jpg
+  - channel: xfce4-desktop
+    property: /backdrop/screen0/monitorDP-2/workspace3/last-image
+    value: /usr/share/backgrounds/images/colorful-jellyfish.jpg
+  - channel: xfce4-desktop
+    property: /backdrop/screen0/monitor0/workspace0/last-image
+    value: /usr/share/backgrounds/images/aurora-stars.jpg
+  - channel: xfce4-desktop
+    property: /backdrop/screen0/monitor0/workspace1/last-image
+    value: /usr/share/backgrounds/images/blue-butter-flies.jpg
+  - channel: xfce4-desktop
+    property: /backdrop/screen0/monitor0/workspace2/last-image
+    value: /usr/share/backgrounds/images/underwater-turtle.jpg
+  - channel: xfce4-desktop
+    property: /backdrop/screen0/monitor0/workspace3/last-image
+    value: /usr/share/backgrounds/images/colorful-jellyfish.jpg
+  - channel: xfce4-session
+    property: /compat/LaunchGNOME
+    value: true
+    value_type: bool
+  - channel: xfce4-session
+    property: /compat/LaunchKDE
+    value: true
+    value_type: bool
+  - channel: xfce4-panel
+    property: /panels/panel-1/icon-size
+    value: 28
+    value_type: int
+  - channel: xfce4-panel
+    property: /panels/panel-1/leave-opacity
+    value: 92
+    value_type: int
+  - channel: xfce4-panel
+    property: /panels/panel-1/enter-opacity
+    value: 100
+    value_type: int
+  - channel: xfce4-panel
+    property: /panels/panel-1/size
+    value: 37
+    value_type: int
+  - channel: xfce4-panel
+    property: /plugins/plugin-5/mode
+    value: 5
+    value_type: int
+  - channel: xfce4-panel
+    property: /plugins/plugin-5/show-military
+    value: true
+    value_type: bool
+  - channel: xfce4-panel
+    property: /plugins/plugin-5/show-seconds
+    value: true
+    value_type: bool
+  - channel: xfce4-panel
+    property: /plugins/plugin-5/timezone
+    value: America/New_York
+  - channel: xfce4-panel
+    property: /panels/panel-2/size
+    value: 67
+    value_type: int
+  - channel: xfce4-panel
+    property: /panels/panel-2/position-locked
+    value: true
+    value_type: bool
+  - channel: xfce4-panel
+    property: /panels/panel-2/position
+    value: p=12;x=1783;y=1406
+  - channel: xfce4-panel
+    property: /panels/panel-2/autohide-behavior
+    value: 2
+    value_type: int
+  - channel: xfce4-panel
+    property: /plugins/plugin-6/size-max
+    value: 32
+    value_type: int
+  - channel: xfce4-panel
+    property: /plugins/plugin-6/square-icons
+    value: true
+    value_type: bool
+  - channel: xfce4-panel
+    property: /plugins/plugin-6/names-hidden
+    value:
+      - xfce4-power-manager
+      - qui-disk-space
+  - channel: xfce4-panel
+    property: /plugins/plugin-1/button-icon
+    value: appvm-blue
+  - channel: xfce4-panel
+    property: /plugins/plugin-1/custom-menu
+    value: true
+    value_type: bool
+  - channel: xfce4-panel
+    property: /plugins/plugin-3/include-all-workspaces
+    value: true
+    value_type: bool
+  - channel: xfce4-panel
+    property: /plugins/plugin-3/grouping
+    value: 1
+    value_type: int
+  - channel: xsettings
+    property: /Gtk/CursorThemeName
+    value: Sweet-cursors
+  - channel: xsettings
+    property: /Net/SoundThemeName
+    value: MIUI
+  - channel: xsettings
+    property: /Net/IconThemeName
+    value: Betelgeuse

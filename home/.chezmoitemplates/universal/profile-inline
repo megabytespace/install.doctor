@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+### Source .bashrc if it is present
+if [ -f "$HOME/.bashrc" ]; then
+  . "$HOME/.bashrc"
+elif [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/exports.sh" ]; then
+  . "${XDG_CONFIG_HOME:-$HOME/.config}/shell/exports.sh"
+fi
+
+### XDG
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+
+### Ensure Homebrew PATHs
+if [ -d "/home/linuxbrew/.linuxbrew/bin" ]; then
+  export HOMEBREW_PREFIX="/home/linuxbrew/.linuxbrew"
+  export HOMEBREW_CELLAR="/home/linuxbrew/.linuxbrew/Cellar"
+  export HOMEBREW_REPOSITORY="/home/linuxbrew/.linuxbrew/Homebrew"
+  export PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin${PATH+:$PATH}"
+  export MANPATH="/home/linuxbrew/.linuxbrew/share/man${MANPATH+:$MANPATH}:"
+  export INFOPATH="/home/linuxbrew/.linuxbrew/share/info:${INFOPATH:-}"
+  export WHALEBREW_INSTALL_PATH="/home/linuxbrew/.linuxbrew/whalebrew"
+elif [ -d "$HOME/.linuxbrew/bin" ]; then
+  export HOMEBREW_PREFIX="$HOME/.linuxbrew"
+  export HOMEBREW_CELLAR="$HOME/.linuxbrew/Cellar"
+  export HOMEBREW_REPOSITORY="$HOME/.linuxbrew/Homebrew"
+  export PATH="$HOME/.linuxbrew/bin:$HOME/.linuxbrew/sbin${PATH+:$PATH}"
+  export MANPATH="$HOME/.linuxbrew/share/man${MANPATH+:$MANPATH}:"
+  export INFOPATH="$HOME/.linuxbrew/share/info:${INFOPATH:-}"
+  export WHALEBREW_INSTALL_PATH="$HOME/.linuxbrew/whalebrew"
+  eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
+elif [ -f "/usr/local/bin/brew" ]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+elif [ -f "${HOMEBREW_PREFIX:-/opt/homebrew}/bin/brew" ]; then
+  eval "$("${HOMEBREW_PREFIX:-/opt/homebrew}/bin/brew" shellenv)"
+fi
+export HOMEBREW_NO_ANALYTICS=1
+
+### SDKMan
+export SDKMAN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sdkman"
+
+### Volta
+export VOLTA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/volta"
+export PATH="$VOLTA_HOME/bin:$PATH"
+
+### Ensure ~/.local/bin in PATH
+export PATH="$HOME/.local/bin:$PATH"
+
+### Remove ~/.bash_sessions
+export HISTFILE="$XDG_STATE_HOME/bash/history"

@@ -1,0 +1,1091 @@
+#!/usr/bin/env bash
+# @file Pre-Install Routine
+# @brief Runs various scripts that can be safely run early in the bootstrapping process
+
+{{ includeTemplate "universal/profile" }}
+{{ includeTemplate "universal/logg" }}
+
+# @description Copies the `~/.config/shell/exports.sh` file to `/etc/zshenv` so that non-interactive ZSH sessions have all of the same
+#     environment PATH variables as interactive sessions. This was initially required to make Cakebrew work on macOS.
+addZshEnv() {
+  ### Ensure /etc/zshenv is populated
+  # No equivalent type of file for Bash
+  gum log -sl info "Copying ${XDG_CONFIG_HOME:-$HOME/.config}/shell/exports.sh to /etc/zshenv" && sudo cp -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/exports.sh" /etc/zshenv
+}
+
+# @description Ensures fonts are available at the system level and, on Linux, it configures the system font settings.
+applyFontsToSystem() {
+  ### Sync user fonts with system fonts
+  if [ -d /Applications ] && [ -d /System ]; then
+    ### macOS
+    gum log -sl info 'Copying fonts from ~/Library/Fonts and ~/.local/share/fonts to /Library/Fonts to make them available globally'
+    FONT_DIR='/Library/Fonts'
+    ### ~/Library/Fonts
+    if [ -d "$HOME/Library/Fonts" ]; then
+      gum log -sl info "Syncing $HOME/Library/Fonts to $FONT_DIR" && sudo rsync -artuE --chown=root: --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r --inplace --exclude .git/ "$HOME/Library/Fonts/" "$FONT_DIR" > /dev/null
+    fi
+    ### ~/.local/share/fonts
+    if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" ]; then
+      gum log -sl info "Syncing ${XDG_DATA_HOME:-$HOME/.local/share}/fonts to $FONT_DIR" && sudo rsync -artuE --chown=root: --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r --inplace --exclude .git/ "${XDG_DATA_HOME:-$HOME/.local/share}/fonts/" "$FONT_DIR" > /dev/null
+    fi
+  else
+    ### Linux
+    ### Copy fonts
+    gum log -sl info 'Copying fonts from ~/.local/share/fonts to /usr/local/share/fonts to make them available globally'
+    FONT_DIR='/usr/local/share/fonts'
+    sudo rsync -artuE --chown=root: --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rwX,Fg=rX,Fo=rX --inplace --exclude .git/ "${XDG_DATA_HOME:-$HOME/.local/share}/fonts/" "$FONT_DIR" > /dev/null
+
+    ### Configure system font properties
+    if [ -d /etc/fonts ]; then
+      gum log -sl info 'Copying ~/.config/fontconfig/fonts.conf to /etc/fonts/local.conf'
+      sudo cp -f "${XDG_CONFIG_HOME:-$HOME/.config}/fontconfig/fonts.conf" /etc/fonts/local.conf
+    else
+      gum log -sl warn 'The /etc/fonts directory is missing'
+    fi
+  fi
+}
+
+# @description Applies various `dconf`, `xconf`, etc. settings to Linux systems
+applyLinuxConfSettings() {
+  if [ "{{ .host.distro.family }}" = "linux" ] && command -v apply-linux-conf-settings > /dev/null; then
+    apply-linux-conf-settings
+  fi
+}
+
+# @description
+#     This script applies various themes to Linux systems that use GNOME or KDE.
+applyLinuxThemeFiles() {
+  if [ "{{ .host.distro.family }}" = "linux" ]; then
+    ### Ensure /usr/local/bin/squash-symlink is present
+    if [ ! -f /usr/local/bin/squash-symlink ] && [ -f "$HOME/.local/bin/squash-symlink" ]; then
+      gum log -sl info 'Copying ~/.local/bin/squash-symlink to /usr/local/bin/squash-symlink'
+      sudo cp -f "$HOME/.local/bin/squash-symlink" /usr/local/bin/squash-symlink
+      sudo chmod +x /usr/local/bin/squash-symlink
+    fi
+
+    ### Clean up system theme settings
+    for ITEM_TO_BE_REMOVED in "/usr/share/backgrounds/images" "/usr/share/backgrounds/f32" "/usr/share/backgrounds/qubes" "/usr/share/wallpapers"; do
+      if [ -d "$ITEM_TO_BE_REMOVED" ] || [ -f "$ITEM_TO_BE_REMOVED" ]; then
+        sudo rm -rf "$ITEM_TO_BE_REMOVED"
+        gum log -sl info "Removed $ITEM_TO_BE_REMOVED"
+      fi
+    done
+
+    ### Ensure /usr/local/share exists
+    if [ ! -d /usr/local/share ]; then
+      sudo mkdir -p /usr/local/share
+      gum log -sl info 'Created /usr/local/share'
+    fi
+
+    ### Copy theme files over to /usr/local/share
+    if [ -d "$HOME/.local/src/{{ .theme | lower }}/share" ]; then
+      gum log -sl info 'Copying ~/.local/src/{{ .theme | lower }}/share to /usr/local/share'
+      sudo rsync --chown=root: --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r -artvu --inplace "${XDG_DATA_HOME:-$HOME/.local/share}/betelgeuse/share/" "/usr/local/share/" > /dev/null
+    else
+      gum log -sl warn '~/.local/share/betelgeuse/share is missing'
+    fi
+
+    ### Flatten GRUB theme files (i.e. convert symlinks to regular files)
+    if command -v squash-symlink > /dev/null; then
+      gum log -sl info 'Converting /usr/local/share/grub symlinks to equivalent regular files'
+      sudo find /usr/local/share/grub -type l -exec squash-symlink {} +
+    else
+      gum log -sl warn 'squash-symlink is not a script in the PATH'
+    fi
+
+    ### Ensure /usr/share/backgrounds/default.png is deleted
+    if [ -f /usr/share/backgrounds/default.png ]; then
+      sudo rm -f /usr/share/backgrounds/default.png
+    fi
+
+    ### Add the default image symlink based on the OS
+    if [ '{{ .host.distro.id }}' == 'archlinux' ]; then
+      sudo ln -s /usr/local/share/wallpapers/Betelgeuse-Archlinux/contents/source.png /usr/share/backgrounds/default.png
+    elif [ '{{ .host.distro.id }}' == 'centos' ]; then
+      sudo ln -s /usr/local/share/wallpapers/Betelgeuse-CentOS/contents/source.png /usr/share/backgrounds/default.png
+    elif [ '{{ .host.distro.id }}' == 'darwin' ]; then
+      sudo ln -s /usr/local/share/wallpapers/Betelgeuse-macOS/contents/source.png /usr/share/backgrounds/default.png
+    elif [ '{{ .host.distro.id }}' == 'debian' ]; then
+      sudo ln -s /usr/local/share/wallpapers/Betelgeuse-Debian/contents/source.png /usr/share/backgrounds/default.png
+    elif [ '{{ .host.distro.id }}' == 'fedora' ]; then
+      sudo ln -s /usr/local/share/wallpapers/Betelgeuse-Fedora/contents/source.png /usr/share/backgrounds/default.png
+    elif [ '{{ .host.distro.id }}' == 'ubuntu' ]; then
+      sudo ln -s /usr/local/share/wallpapers/Betelgeuse-Ubuntu/contents/source.png /usr/share/backgrounds/default.png
+    elif [ '{{ .host.distro.id }}' == 'windows' ]; then
+      sudo ln -s /usr/local/share/wallpapers/Betelgeuse-Windows/contents/source.png /usr/share/backgrounds/default.png
+    else
+      sudo ln -s /usr/local/share/wallpapers/Betelgeuse/contents/source.png /usr/share/backgrounds/default.png
+    fi
+
+    ### Note: ubuntu-default-greyscale-wallpaper.png symlink to whiteish gray background
+
+    ### Set appropriate platform-specific icon in plymouth theme
+    if [ -f '/usr/local/share/plymouth/themes/{{ .theme }}/icons/{{ .host.distro.id }}.png' ]; then
+      sudo cp -f '/usr/local/share/plymouth/themes/{{ .theme }}/icons/{{ .host.distro.id }}.png' '/usr/local/share/plymouth/themes/{{ .theme }}/icon.png'
+      gum log -sl info 'Added platform-specific icon to {{ .theme }} Plymouth theme'
+    else
+      gum log -sl warn 'The {{ .host.distro.id }}.png icon is not available in the icons folder insider the {{ .theme }} Plymouth theme'
+    fi
+  fi
+}
+
+# @description
+#     This script configures the root user's folder so that scripts running as the root user can:
+#
+#     1. Access binaries installed by the provisioning user (by setting the appropriate `~/.bashrc` and `~/.zshrc` symlinks)
+#     2. Use the same shell profile rules that the provisioning user uses (by symlinking the `~/.config/shell`, `~/.bashrc`, and `~/.zshrc` locations)
+applyRootConfig() {
+  ### Detect root folder
+  if [ -d /var/root ]; then
+    ROOT_FOLDER="/var/root"
+  elif [ -d /root ]; then
+    ROOT_FOLDER="/root"
+  else
+    gum log -sl warn 'Unable to find root user folder location'
+  fi
+
+  if [ -n "$ROOT_FOLDER" ]; then
+    ### Copy minimal set of profile configuration files
+    gum log -sl info "Copying ~/.bashrc to $ROOT_FOLDER/.bashrc" && sudo cp -f "$HOME/.bashrc" "$ROOT_FOLDER/.bashrc"
+    gum log -sl info "Copying ~/.zshrc to $ROOT_FOLDER/.zshrc" && sudo cp -f "$HOME/.zshrc" "$ROOT_FOLDER/.zshrc"
+    gum log -sl info "Copying ~/.profile to $ROOT_FOLDER/.profile" && sudo cp -f "$HOME/.profile" "$ROOT_FOLDER/.profile"
+    gum log -sl info "Ensuring ~/.config folder exists" && sudo mkdir -p "$ROOT_FOLDER/.config"
+    gum log -sl info "Copying ~/.config/shell to $ROOT_FOLDER/.config/shell" && sudo mkdir -p "$ROOT_FOLDER/.config" && sudo rm -rf "$ROOT_FOLDER/.config/shell" && sudo cp -rf "$HOME/.config/shell" "$ROOT_FOLDER/.config/shell"
+
+    ### Copy Autorestic configurations
+    gum log -sl info "Copying ${XDG_CONFIG_HOME:-$HOME/.config}/autorestic/autorestic-system.yml file to $ROOT_FOLDER/.autorestic.yml" && sudo cp -f "${XDG_CONFIG_HOME:-$HOME/.config}/autorestic/autorestic-system.yml" "$ROOT_FOLDER/.autorestic.yml"
+    gum log -sl info "Applying proper permissions to $ROOT_FOLDER/.autorestic.yml" && sudo chmod 600 "$ROOT_FOLDER/.autorestic.yml"
+  fi
+}
+
+# @description
+#     This function ensures the macOS desktop wallpaper is set to the macOS Betelgeuse wallpaper. It uses the
+#     `m` CLI to apply the change.
+#
+#     This function ensures the Qubes desktop wallpaper is set to the Qubes Betelgeuse wallpaper on KDE by
+#     using the `ksetwallpaper` script found in `~/.local/bin/ksetwallpaper`.
+applyWallpaper() {
+  {{ if (eq .host.distro.id "qubes") -}}
+  gum log -sl info 'Setting wallpaper to /usr/local/share/wallpapers/Betelgeuse/contents/images/3440x1440.jpg'
+  ksetwallpaper --file /usr/local/share/wallpapers/Betelgeuse/contents/images/3440x1440.jpg
+  {{ else -}}
+  ### Set macOS wallpaper
+  if [ -d /Applications ] && [ -d /System ]; then
+    if command -v m > /dev/null && [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/betelgeuse/share/wallpapers/Betelgeuse-macOS/contents/source.png" ]; then
+      gum log -sl info 'Setting macOS wallpaper with m'
+      m wallpaper "${XDG_DATA_HOME:-$HOME/.local/share}/betelgeuse/share/wallpapers/Betelgeuse-macOS/contents/source.png"
+    else
+      gum log -sl warn 'Either m or the macOS default wallpaper is missing.'
+    fi
+  fi
+  {{ end -}}
+}
+
+### Helper function for configureNetworkManager
+ensureNetworkConfigs() {
+  if [ ! -d /etc/network/if-up.d ]; then
+    gum log -sl info 'Creating /etc/network/if-up.d folder'
+    sudo mkdir -p /etc/network/if-up.d
+  fi
+  if [ ! -d /etc/network/if-post-down.d ]; then
+    gum log -sl info 'Creating /etc/network/if-post.d folder'
+    sudo mkdir -p /etc/network/if-post.d
+  fi
+}
+
+# @description
+#     This script installs OpenVPN and WireGuard VPN profiles. It does a few things to install the profiles and make sure
+#     they are usable by desktop users:
+#
+#     1. It ensures OpenVPN and `NetworkManager-*` plugins are installed (this allows you to see all the different VPN profile types available when you try to import a VPN profile on Linux devices)
+#     2. Imports the OpenVPN profiles stored in `${XDG_CONFIG_HOME:-$HOME/.config}/vpn`
+#     3. Applies the OpenVPN username and password to all the OpenVPN profiles (which can be passed in as `OVPN_USERNAME` and `OVPN_PASSWORD` if you use the environment variable method)
+#     4. Bypasses the OpenVPN connection for all the networks defined in `.host.vpn.excludedSubnets` (in the `home/.chezmoi.yaml.tmpl` file)
+#     5. Repeats the process for WireGuard by looping through all the `*.nmconnection` files stored in `${XDG_CONFIG_HOME:-$HOME/.config}/vpn` (username and password should already be stored in the encrypted files)
+#
+#     #### Creating VPN Profiles
+#
+#     More details on embedding your VPN profiles into your Install Doctor fork can be found by reading the [Secrets documentation](https://install.doctor/docs/customization/secrets#vpn-profiles).
+#
+#     #### Links
+#
+#     * [VPN profile folder](https://github.com/megabyte-labs/install.doctor/blob/master/home/dot_config/vpn)
+#     * [VPN profile documentation](https://install.doctor/docs/customization/secrets#vpn-profiles)
+configureNetworkManagerVPNProfiles() {
+  if [ "{{ .host.distro.family }}" = "linux" ]; then
+    {{ $ovpnUsername := (env "OVPN_USERNAME") }}
+    {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "OVPN_USERNAME")) }}
+    {{   $ovpnUsername := (includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/OVPN_USERNAME") | decrypt | trim) }}
+    {{ end }}
+
+    {{ $ovpnPassword := (env "OVPN_PASSWORD") }}
+    {{ if (stat (joinPath .chezmoi.sourceDir ".chezmoitemplates" (printf "%s%s" "secrets-" .chezmoi.hostname) "OVPN_PASSWORD")) }}
+    {{   $ovpnPassword := (includeTemplate (printf "%s%s" (printf "%s%s" "secrets-" .chezmoi.hostname) "/OVPN_PASSWORD") | decrypt | trim) }}
+    {{ end }}
+
+    RESTART_NM=false
+
+    ### Ensure `NetworkManager` plugins are
+    if command -v apt-get > /dev/null; then
+      sudo apt-get install -y network-manager* openvpn
+    elif command -v dnf > /dev/null; then
+      sudo dnf install -y openvpn NetworkManager*
+    elif command -v pacman > /dev/null; then
+      sudo pacman -Syu openvpn networkmanager*
+    else
+      gum log -sl warn 'Unknown package manager - install OpenVPN / WireGuard / NetworkManager plugins individually'
+    fi
+
+    ### Ensures `nmcli` (the CLI for NetworkManager) is available in the `PATH`
+    if command -v nmcli > /dev/null; then
+      ### Sets up OpenVPN profiles
+      if [ '{{ $ovpnUsername }}' != '' ] && [ '{{ $ovpnPassword }}' != '' ]; then
+        find "${XDG_CONFIG_HOME:-$HOME/.config}/vpn" -type f -name "*.ovpn" | while read OVPN_FILE; do
+          ### Adds the OpenVPN profiles by importing the `*.ovpn` files
+          # TMP_OVPN="$(mktemp)"
+          # cat "$OVPN_FILE" | chezmoi decrypt > "$TMP_OVPN"
+          # cat "$OVPN_FILE" > "$TMP_OVPN"
+          # OVPN_FILE="$TMP_OVPN"
+          gum log -sl info "Adding $OVPN_FILE to NetworkManager OpenVPN profiles"
+          OVPN_NAME="$(basename "$OVPN_FILE" | sed 's/.ovpn$//')"
+          nmcli connection import type openvpn file "$OVPN_FILE"
+          nmcli connection modify "$OVPN_NAME" +vpn.data "username={{ $ovpnUsername }}"
+          nmcli connection modify "$OVPN_NAME" vpn.secrets "password={{ $ovpnPassword }}"
+          nmcli connection modify "$OVPN_NAME" +vpn.data password-flags=0
+
+          ### Register the excluded subnets in the routeadd / routedel files
+          for EXCLUDED_SUBNET in '{{ join "' '" .host.vpn.excludedSubnets }}'; do
+            sudo mkdir -p /etc/network/if-up.d
+            nmcli connection modify "$OVPN_NAME" +ipv4.routes "$EXCLUDED_SUBNET" | sudo tee -a /etc/network/if-up.d/routeadd
+            sudo mkdir -p /etc/network/if-post-down.d
+            nmcli connection modify "$OVPN_NAME" -ipv4.routes "$EXCLUDED_SUBNET" | sudo tee -a /etc/network/if-post-down.d/routedel
+          done
+          RESTART_NM=true
+          rm -f "$TMP_OVPN"
+        done
+      else
+        gum log -sl info 'Either the OpenVPN username or password is undefined.'
+        gum log -sl info 'See the docs/VARIABLES.md file for details.'
+      fi
+
+      {{ if (stat (joinPath .host.home ".config" "age" "chezmoi.txt")) }}
+      ### Setup WireGuard profiles
+      if [ -d /etc/NetworkManager/system-connections ]; then
+        find "${XDG_CONFIG_HOME:-$HOME/.config}/vpn" -type f -name "*.conf" | while read WG_FILE; do
+          ### Ensure the WireGuard NetworkManager plugin is available
+          if ! command -v network-manager-wireguard > /dev/null; then
+            gum log -sl info 'The nm-wireguard-service is not present'
+            gum log -sl info 'Installing the nm-wireguard-service'
+            sudo apt-get install -y network-manager-wireguard
+          fi
+
+          TMP_CONF="$(mktemp -d)"
+
+          ### Add the WireGuard profiles
+          gum log -sl info "Adding $WG_FILE to /etc/NetworkManager/system-connections"
+          WG_FILENAME="$(basename "$WG_FILE")"
+          cat "$WG_FILE" | chezmoi decrypt > "$TMP_CONF/$WG_FILENAME"
+          WG_FILE="$TMP_CONF/$WG_FILENAME"
+          gum log -sl info "Importing wireguard configuration"
+          nmcli connection import type wireguard file "$WG_FILE"
+
+          ### Set permissions and reload NetworkManager
+          gum log -sl info "Applying permissions to file"
+          sudo chmod 600 "/etc/NetworkManager/system-connections/$WG_FILENAME"
+          sudo chown root:root "/etc/NetworkManager/system-connections/$WG_FILENAME"
+          sudo systemctl reload NetworkManager
+
+          ### Extract the connection ID and modify it
+          WG_PROFILE_NAME=$(grep -oP '(?<=^id=).*' "$WG_FILE")
+          for EXCLUDED_SUBNET in '{{ join "' '" .host.vpn.excludedSubnets }}'; do
+            sudo mkdir -p /etc/network/if-up.d
+            nmcli connection modify "$WG_PROFILE_NAME" +ipv4.routes "$EXCLUDED_SUBNET" | sudo tee -a /etc/network/if-up.d/routeadd
+            sudo mkdir -p /etc/network/if-post-down.d
+            nmcli connection modify "$WG_PROFILE_NAME" -ipv4.routes "$EXCLUDED_SUBNET" | sudo tee -a /etc/network/if-post-down.d/routedel
+          done
+          RESTART_NM=true
+          rm -f "$WG_FILE"
+        done
+      else
+        gum log -sl warn '/etc/NetworkManager/system-connections is not a directory!'
+      fi
+      {{ end -}}
+
+      ### Restart NetworkManager if changes were made and environment is not WSL
+      if [ "$RESTART_NM" == 'true' ] && [[ ! "$(grep Microsoft /proc/version 2>/dev/null)" ]]; then
+        gum log -sl info 'Restarting NetworkManager since VPN profiles were updated'
+        sudo systemctl restart NetworkManager
+      fi
+    else
+      gum log -sl warn 'nmcli is unavailable'
+    fi
+  fi
+}
+
+# @description
+#     This script applies the SSH server MOTD banner and `sshd_config` (which are housed in the `home/private_dot_ssh/system` location)
+#     to the system by copying the files to the system location and then restarting / enabling the system SSH server.
+#
+#     #### Links
+#
+#     * [System SSHD configurations](https://github.com/megabyte-labs/install.doctor/tree/master/home/private_dot_ssh/system)
+configureSSHD() {
+  ### Update /etc/ssh/sshd_config if environment is not WSL
+  if [[ ! "$(test -d /proc && grep Microsoft /proc/version > /dev/null)" ]]; then
+    if [ -d /etc/ssh ]; then
+      gum log -sl info 'Copying ~/.ssh/system/banner to /etc/ssh/banner' && sudo cp -f "$HOME/.ssh/system/banner" /etc/ssh/banner
+      gum log -sl info 'Copying ~/.ssh/system/sshd_config to /etc/ssh/sshd_config' && sudo cp -f "$HOME/.ssh/system/sshd_config" /etc/ssh/sshd_config
+
+      if command -v semanage > /dev/null; then
+        gum log -sl info 'Apply SELinux configuration addressing custom SSH port' && sudo semanage port -a -t ssh_port_t -p tcp {{ .host.ssh.port }}
+        gum log -sl info 'Allow NIS SSHD' && sudo setsebool -P nis_enabled 1
+      fi
+
+      ### Ensure keys are created
+      gum log -sl info 'Running sudo ssh-keygen -A' && sudo ssh-keygen -A
+
+      ### Restart SSH server
+      if [ -d /Applications ] && [ -d /System ]; then
+        ### macOS
+        if [ -f /etc/services ]; then
+          gum log -sl info 'Updating SSH configuration in /etc/services to point to port {{ .host.ssh.port }}'
+          sudo sed -i.bak 's/ 22\/udp/ {{ .host.ssh.port }}\/udp/' /etc/services
+          sudo sed -i.bak 's/ 22\/tcp/ {{ .host.ssh.port }}\/tcp/' /etc/services
+          sudo rm -f /etc/services.bak
+        fi
+        gum log -sl info 'Running sudo systemsetup -setremotelogin on' && sudo systemsetup -setremotelogin on > /dev/null
+        if sudo launchctl list | grep 'com.openssh.sshd' > /dev/null; then
+          gum log -sl info 'Unloading previous com.openssh.sshd configuration'
+          sudo launchctl unload /System/Library/LaunchDaemons/ssh.plist
+        fi
+        gum log -sl info 'Running sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist (Latest)' && sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist
+        gum log -sl info 'Running sudo launchctl stop com.openssh.sshd (High Sierra - errors muted)' && sudo launchctl stop com.openssh.sshd 2> /dev/null
+        gum log -sl info 'Running sudo launchctl start com.openssh.sshd (High Sierra - errors muted)' && sudo launchctl start com.openssh.sshd 2> /dev/null && gum log -sl info 'Successfully ran launchctl start com.openssh.sshd'
+      else
+        ### Linux
+        gum log -sl info 'Enabling the sshd service'
+        if [[ -f /etc/os-release ]]; then
+          . /etc/os-release
+          case "$ID" in
+            debian|ubuntu|raspbian|pop|linuxmint)
+              SERVICE_NAME="ssh"
+              ;;
+            rhel|centos|rocky|almalinux|fedora|arch|opensuse|gentoo|alpine)
+              SERVICE_NAME="sshd"
+              ;;
+            *)
+              SERVCE_NAME="unknown"
+              ;;
+          esac
+        else
+          SERVICE_NAME="unknown"
+        fi
+
+        if [ "$SERVICE_NAME" != 'unknown' ]; then
+          sudo systemctl enable "$SERVICE_NAME" --now
+          gum log -sl info 'Restarting the sshd service'
+          sudo systemctl restart "$SERVICE_NAME" && gum log -sl info 'Successfully ran sudo systemctl restart sshd'
+        else
+          gum log -sl error 'Unknown Linux operating system - cannot determine how to configure SSH'
+        fi
+      fi
+    else
+      gum log -sl warn 'The /etc/ssh folder does not exist'
+    fi
+  else
+    gum log -sl info 'Skipping sshd_config application since environment is WSL'
+  fi
+}
+
+# @description
+#     This script allows you to apply `dconf` settings that you can store in your fork of Install Doctor. By default,
+#     it makes a handful of `dconf` settings optimizations.
+dconfSettings() {
+  if command -v dconf > /dev/null; then
+    ### Update background to be OS-specific
+    if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/dconf/settings/org.gnome.desktop.background" ]; then
+      gum log -sl info 'Checking for presence of /usr/local/share/wallpapers/Betelgeuse-{{ title .host.distro.id }}/contents/source.jpg'
+      if [ -f /usr/local/share/wallpapers/Betelgeuse-{{ title .host.distro.id }}/contents/source.jpg ]; then
+        gum log -sl info "Updating ${XDG_CONFIG_HOME:-$HOME/.config}/dconf/settings/org.gnome.desktop.background to point to OS-specific background"
+        TMP="$(mktemp)"
+        sed 's/Betelgeuse/Betelgeuse-{{ title .host.distro.id }}/g' < "${XDG_CONFIG_HOME:-$HOME/.config}/dconf/settings/org.gnome.desktop.background" > "$TMP"
+        mv "$TMP" "${XDG_CONFIG_HOME:-$HOME/.config}/dconf/settings/org.gnome.desktop.background"
+      else
+        gum log -sl info 'OS-specific background not found'
+      fi
+    fi
+
+    ### Backup system settings
+    DCONF_TMP="$(mktemp)"
+    dconf dump / > "$DCONF_TMP"
+    gum log -sl info 'Backed up system dconf settings to '"$DCONF_TMP"
+
+    ### Reset system settings / load saved configurations from ~/.config/dconf/settings
+    if [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/dconf/settings" ]; then
+      find "${XDG_CONFIG_HOME:-$HOME/.config}/dconf/settings" -mindepth 1 -maxdepth 1 -type f | while read DCONF_CONFIG_FILE; do
+        if [ "$DEBUG_MODE" == 'true' ]; then
+          gum log -sl info 'Dconf configuration file:'
+          echo "$DCONF_CONFIG_FILE"
+        fi
+        DCONF_SETTINGS_ID="/$(basename "$DCONF_CONFIG_FILE" | sed 's/\./\//g')/"
+        if [ "$DEBUG_MODE" == 'true' ]; then
+          gum log -sl info 'Dconf settings ID:'
+          echo "$DCONF_SETTINGS_ID"
+        fi
+        ### Reset dconf settings if environment variable RESET_DCONF is set to true
+        if [ "$RESET_DCONF" == 'true' ]; then
+          gum log -sl info 'Resetting dconf settings for '"$DCONF_SETTINGS_ID"''
+          dconf reset -f "$DCONF_SETTINGS_ID"
+        fi
+        gum log -sl info 'Loading versioned dconf settings for '"$DCONF_SETTINGS_ID"''
+        dconf load "$DCONF_SETTINGS_ID" < "$DCONF_CONFIG_FILE"
+        gum log -sl info 'Finished applying dconf settings for '"$DCONF_SETTINGS_ID"''
+      done
+    else
+      gum log -sl warn '~/.config/dconf/settings does not exist!'
+    fi
+  fi
+}
+
+# @description
+#     This script generates a pair of default `id_rsa` and `id_rsa.pub` keys if one is not already present
+#     on the system after the Install Doctor provisioning process completes. It also ensures the private
+#     key is only readable and writable the provisioning user.
+ensureSSHKey() {
+  ### Ensure id_rsa is present and create one if it does not exist
+  if [ ! -f "$HOME/.ssh/id_rsa" ]; then
+    logg 'Generating missing default private key / public key (~/.ssh/id_rsa)'
+    ssh-keygen -b 4096 -t rsa -f "$HOME/.ssh/id_rsa" -q -N ""
+    chmod 600 "$HOME/.ssh/id_rsa"
+  fi
+}
+
+# @description
+#     This script installs and activates the latest version of Emscripten. This script
+#     implements the [instructions outlined on Emscripten's website](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended).
+#
+#     This script will only run when `${XDG_DATA_HOME:-$HOME/.local/share}/emsdk` is present on the system. This folder
+#     is populated via the definition in `home/.chezmoiexternal.toml.tmpl`.
+emscriptenInstall() {
+  if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/emsdk" ]; then
+    gum log -sl info 'Pulling latest changes for Emscripten source code' && cd "${XDG_DATA_HOME:-$HOME/.local/share}/emsdk" && git pull
+    gum log -sl info "Running emsdk install latest" && emsdk install latest > /dev/null
+    gum log -sl info "Running emsdk activate latest" && emsdk activate latest > /dev/null
+    gum log -sl info 'Profile source inclusions are already implemented in Bash / ZSH profile'
+  fi
+}
+
+ensurePipUpdated() {
+  ### python3.10 pip update
+  if command -v python3.10 > /dev/null; then
+    gum log -sl info 'Ensuring python3.10 pip is updated' && python3.10 -m pip install --upgrade pip > /dev/null &
+    gum log -sl info 'Ensuring python3.10 setuptools is updated' && python3.10 -m pip install --upgrade setuptools > /dev/null &
+  fi
+
+  ### python3.11 pip update
+  if command -v python3.11 > /dev/null; then
+    gum log -sl info 'Ensuring python3.11 pip is updated' && python3.11 -m pip install --upgrade pip > /dev/null &
+    gum log -sl info 'Ensuring python3.11 setuptools is updated' && python3.11 -m pip install --upgrade setuptools > /dev/null &
+  fi
+
+  ### python3.12 pip update
+  # if command -v python3.12 > /dev/null; then
+  #   gum log -sl info 'Ensuring python3.12 pip is updated' && python3.12 -m pip install --upgrade pip > /dev/null &
+  # fi
+  wait
+}
+
+# @description
+#     This script modifies the `/etc/environment` file on Linux devices to include:
+#
+#     * `export QT_STYLE_OVERRIDE=kvantum-dark` which is required for the Linux GNOME / KDE themeing that relies on Kvantum.
+ensureQtStyleOverride() {
+  if [ ! -d /Applications ] || [ ! -d /System ]; then
+    ### Linux
+    ### Ensure QT_STYLE_OVERRIDE is set in /etc/environment
+    gum log -sl info 'Ensuring QT_STYLE_OVERRIDE is set in /etc/environment'
+    if cat /etc/environment | grep QT_STYLE_OVERRIDE > /dev/null; then
+      sudo sed -i 's/.*QT_STYLE_OVERRIDE.*/export QT_STYLE_OVERRIDE=kvantum-dark/' /etc/environment
+      gum log -sl info 'Updated QT_STYLE_OVERRIDE in /etc/environment'
+    else
+      echo 'export QT_STYLE_OVERRIDE=kvantum-dark' | sudo tee -a /etc/environment
+      gum log -sl info 'Added QT_STYLE_OVERRIDE to /etc/environment'
+    fi
+  fi
+}
+
+# @description Run `gem update --system` if `gem` is available
+ensureSystemGemUpdated() {
+  ### Ensure gem is updated
+  if command -v gem > /dev/null; then
+    gum log -sl info 'Ensuring system gem is updated' && gem update --system > /dev/null
+  else
+    gum log -sl info 'Could not find gem in PATH so skipping gem system update'
+  fi
+}
+
+# @description
+#     This script ensures ZSH is used as the default shell by ensuring it is added to `/etc/shells`. The script
+#     also ensures ZSH is available at `/usr/local/bin/zsh` on ARM64 systems by symlinking the Homebrew ZSH shell
+#     to `/usr/local/bin/zsh` if it is missing.
+ensureZshShell() {
+  logg 'Ensuring ZSH is set as the default shell'
+  if ! grep -qc "/usr/local/bin/zsh" /etc/shells; then
+    echo "/usr/local/bin/zsh" | sudo tee -a /etc/shells > /dev/null
+  fi
+
+  if [ ! -f /usr/local/bin/zsh ] && [ -f "${HOMEBREW_PREFIX:-/opt/homebrew}/bin/zsh" ]; then
+    sudo ln -sf "${HOMEBREW_PREFIX:-/opt/homebrew}/bin/zsh" /usr/local/bin/zsh
+  fi
+}
+
+# @description
+#     This script ensures your GNOME extensions come pre-configured to your liking. It provides the ability
+#     to automatically install a configurable list of GNOME extensions as well as apply your preferred settings.
+gnomeExtensionSettings() {
+  if command -v gnome-shell > /dev/null; then
+    ### Ensure /tmp/install-gnome-extensions.txt is not present on the system
+    if [ -f /tmp/install-gnome-extensions.txt ]; then
+      rm -f /tmp/install-gnome-extensions.txt
+    fi
+
+    ### Ensure yq installed
+    if ! command -v yq > /dev/null; then
+      gum log -sl info 'Installing yq'
+      brew install yq
+    fi
+
+    ### Register temporary file for gnome.yml JSON
+    if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/desktop/gnome.yml" ]; then
+      TMP_YQ="$(mktemp)"
+      cat "${XDG_CONFIG_HOME:-$HOME/.config}/desktop/gnome.yml" | yq e -o=j '.' > "$TMP_YQ"
+    fi
+
+    ### Populate /tmp/install-gnome-extensions.txt with GNOME extensions that need to be installed
+    if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/desktop/gnome.yml" ]; then
+      cat "$TMP_YQ" | jq -c '.default_gnome_extensions[] | tojson' | while read EXT; do
+        TMP="$(mktemp)"
+        echo "$EXT" | sed 's/^.\(.*\).$/\1/' > "$TMP"
+        EXT_URL="$(cat "$TMP" | jq -r '.url')"
+        EXT_ID="$(cat "$TMP" | jq -r '.regex')"
+        echo "$EXT_URL" >> /tmp/install-gnome-extensions.txt
+        if [ ! -d "${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions" ]; then
+          mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions"
+        fi
+        find "${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions" -mindepth 1 -maxdepth 1 -type d | while read EXT_FOLDER; do
+          if [[ "$EXT_FOLDER" == *"$EXT_ID"* ]] && [ -f /tmp/install-gnome-extensions.txt ]; then
+            TMP_EXT="$(mktemp)"
+            head -n -1 /tmp/install-gnome-extensions.txt > "$TMP_EXT"
+            mv -f "$TMP_EXT" /tmp/install-gnome-extensions.txt > /dev/null
+          fi
+        done
+      done
+    else
+      gum log -sl warn 'The ~/.config/desktop/gnome.yml file is missing so GNOME extension install orders cannot be calculated'
+    fi
+
+    ### Remove /tmp/install-gnome-extensions.txt if it is empty
+    if [ "$(cat /tmp/install-gnome-extensions.txt)" == "" ]; then
+      rm -f /tmp/install-gnome-extensions.txt > /dev/null
+    fi
+
+    ### Install the GNOME extensions using the `install-gnome-extensions` script
+    if command -v install-gnome-extensions > /dev/null; then
+      if [ -f /tmp/install-gnome-extensions.txt ]; then
+        gum log -sl info 'Running the install-gnome-extensions script'
+        cd /tmp
+        install-gnome-extensions --enable --overwrite --file /tmp/install-gnome-extensions.txt
+        rm -f /tmp/install-gnome-extensions.txt
+        gum log -sl info 'Finished installing the GNOME extensions'
+      else
+        gum log -sl info 'No new GNOME extensions to install'
+      fi
+    else
+      gum log -sl warn 'Cannot install GNOME extensions because the install-gnome-extensions script is missing from ~/.local/bin'
+    fi
+
+    ### Apply plugin gsettings
+    if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/desktop/gnome.yml" ]; then
+      cat "$TMP_YQ" | jq -c '.default_gnome_extensions[] | tojson' | while read EXT; do
+        if [ "$DEBUG_MODE" == 'true' ]; then
+          gum log -sl info 'Extension data:'
+          echo "$EXT"
+        fi
+        TMP="$(mktemp)"
+        echo "$EXT" | sed 's/^.\(.*\).$/\1/' > "$TMP"
+        EXT_URL="$(cat "$TMP" | jq -r '.url')"
+        EXT_ID="$(cat "$TMP" | jq -r '.regex')"
+        if [ "$DEBUG_MODE" == 'true' ]; then
+          gum log -sl info 'Extension ID:'
+          echo "$EXT_ID"
+        fi
+        EXT_SETTINGS_TYPE="$(cat "$TMP" | jq -r '.settings | type')"
+        EXT_SETTINGS="$(cat "$TMP" | jq -r '.settings')"
+        if [ "$EXT_SETTINGS" != 'null' ]; then
+          gum log -sl info 'Evaluating extension settings for '"$EXT_ID"''
+          if [ "$EXT_SETTINGS_TYPE" == 'array' ]; then
+            cat "$TMP" | jq -r '.settings[]' | while read EXT_SETTING; do
+              gum log -sl info 'Applying following extension setting:'
+              echo "$EXT_SETTING"
+              eval "$EXT_SETTING"
+            done
+          else
+            gum log -sl info 'Applying following extension setting:'
+            echo "$EXT_SETTINGS"
+            eval "$EXT_SETTINGS"
+          fi
+          gum log -sl info 'Applied gsettings configuration for the '"$EXT_ID"' GNOME extension'
+        fi
+      done
+    fi
+  fi
+}
+
+# @description
+#     This script configures GRUB2 with a custom theme on Linux systems.
+grubSettings() {
+  if [ "{{ .host.distro.family }}" = "linux" ]; then
+    ### Fix Qubes issue
+    if command -v qubesctl > /dev/null && [ -f /boot/grub2/grubenv ] && [ -d /boot/efi/EFI/qubes ]; then
+      sudo cp -f /boot/grub2/grubenv /boot/efi/EFI/qubes/grubenv
+      gum log -sl info 'Copied /boot/grub2/grubenv to /boot/efi/EFI/qubes/grubenv'
+    fi
+
+    ### Ensure /boot/grub2/themes is directory
+    if [ ! -d /boot/grub2/themes ]; then
+      sudo mkdir -p /boot/grub2/themes
+      gum log -sl info 'Created /boot/grub2/themes'
+    fi
+
+    ### Copy GRUB theme to /boot/grub2/themes
+    if [ -d /usr/local/share/grub/themes ]; then
+      sudo cp -rf /usr/local/share/grub/themes /boot/grub2/
+      gum log -sl info 'Copied GRUB themes in /usr/local/share/grub/themes to /boot/grub2/themes'
+    else
+      gum log -sl warn '/usr/local/share/grub/themes is missing'
+    fi
+
+    ### Set default GRUB screen resolution variables
+    SCREEN_RATIO_ULTRAWIDE="2100"
+    GRUB_RESOLUTION_TYPE="1080p"
+
+    ### Determine screen size ratio (used for picking GRUB2 theme resolution)
+    if command -v xrandr > /dev/null && command -v uniq > /dev/null; then
+      SCREEN_WIDTH="$(xrandr --current | grep '*' | uniq | awk '{print $1}' | cut -d 'x' -f1)"
+      SCREEN_HEIGHT="$(xrandr --current | grep '*' | uniq | awk '{print $1}' | cut -d 'x' -f2)"
+      SCREEN_RATIO="$(awk -v height="$SCREEN_HEIGHT" -v width="$SCREEN_WIDTH" 'BEGIN { print ((height / width) * 1000) }')"
+      SCREEN_RATIO="${SCREEN_RATIO%.*}"
+      gum log -sl info "Screen detected as $SCREEN_WIDTH x $SCREEN_HEIGHT (ratio of $SCREEN_RATIO)"
+      if (( $(echo "$SCREEN_RATIO $SCREEN_RATIO_ULTRAWIDE" | awk '{print ($1 > $2)}') )); then
+        GRUB_RESOLUTION_TYPE="ultrawide"
+        gum log -sl info 'GRUB resolution registered as ultrawide'
+      fi
+    else
+      gum log -sl warn 'Missing either xrandr or uniq (required for calculating screen size ratio)'
+    fi
+
+    ### Optimize the GRUB resolution
+    if [ -f /etc/default/grub ]; then
+      ### GRUB_GFXMODE
+      gum log -sl info 'Setting GRUB_GFXMODE=auto in /etc/default/grub'
+      if cat /etc/default/grub | grep GRUB_GFX_MODE > /dev/null; then
+        sudo sed -i 's/.*GRUB_GFXMODE.*/GRUB_GFXMODE=auto/' /etc/default/grub
+      else
+        echo "GRUB_GFXMODE=auto" | sudo tee -a /etc/default/grub > /dev/null
+      fi
+
+      ### GRUB_GFXPAYLOAD_LINUX
+      gum log -sl info 'Setting GRUB_GFXPAYLOAD_LINUX=keep in /etc/default/grub'
+      if cat /etc/default/grub | grep GRUB_GFXPAYLOAD_LINUX > /dev/null; then
+        sudo sed -i 's/.*GRUB_GFXPAYLOAD_LINUX.*/GRUB_GFXPAYLOAD_LINUX="keep"/' /etc/default/grub
+      else
+        echo 'GRUB_GFXPAYLOAD_LINUX="keep"' | sudo tee -a /etc/default/grub > /dev/null
+      fi
+
+      ### GRUB_THEME
+      gum log -sl info 'Setting GRUB_THEME={{ .theme }} in /etc/default/grub'
+      if cat /etc/default/grub | grep GRUB_THEME > /dev/null; then
+        sudo sed -i 's/.*GRUB_THEME.*/GRUB_THEME="{{ .theme }}-'"$GRUB_RESOLUTION_TYPE"'"/' /etc/default/grub
+      else
+        echo 'GRUB_THEME="{{ .theme }}-'"$GRUB_RESOLUTION_TYPE"'"' | sudo tee -a /etc/default/grub > /dev/null
+      fi
+
+      ### GRUB_BACKGROUND
+      # Removed since the background should be flat black which is configurable
+      # Leaving this code here in case we need to add a flat black image background for some reason
+      # gum log -sl info 'Setting GRUB_BACKGROUND=/usr/local/share/grub/{{ .theme }}-blue.png in /etc/default/grub'
+      # if cat /etc/default/grub | grep GRUB_BACKGROUND > /dev/null; then
+      #     sudo sed -i 's/.*GRUB_BACKGROUND.*/GRUB_BACKGROUND="\/usr\/local\/share\/grub\/{{ .theme }}-blue.png"/' /etc/default/grub
+      # else
+      #     echo 'GRUB_BACKGROUND="/usr/local/share/grub/{{ .theme }}-blue.png"' | sudo tee -a /etc/default/grub > /dev/null
+      # fi
+
+      ### GRUB_TIMEOUT
+      gum log -sl info 'Setting GRUB_TIMEOUT={{ .grub.timeout }} in /etc/default/grub'
+      if cat /etc/default/grub | grep GRUB_TIMEOUT > /dev/null; then
+        sudo sed -i 's/.*GRUB_TIMEOUT.*/GRUB_TIMEOUT="{{ .grub.timeout }}"/' /etc/default/grub
+      else
+        echo 'GRUB_TIMEOUT="{{ .grub.timeout }}"' | sudo tee -a /etc/default/grub > /dev/null
+      fi
+
+      ### GRUB_FORCE_HIDDEN_MENU
+      gum log -sl info 'Setting GRUB_FORCE_HIDDEN_MENU={{ .grub.shiftToSee }} in /etc/default/grub'
+      sudo sed -i '/GRUB_FORCE_HIDDEN_MENU/d' /etc/default/grub
+      echo "GRUB_FORCE_HIDDEN_MENU={{ .grub.shiftToSee }}" | sudo tee -a /etc/default/grub > /dev/null
+
+      ### Remove duplicate lines in /etc/default/grub
+      gum log -sl info 'Ensuring there are no duplicate entries in /etc/default/grub'
+      cat /etc/default/grub | uniq | sudo tee /etc/default/grub > /dev/null
+    else
+      gum log -sl warn '/etc/default/grub is missing'
+    fi
+
+    ### Determine platform-specific icon to use
+    if command -v qubesctl > /dev/null; then
+      GRUB_ICON='qubes'
+    elif [ -f "/usr/local/share/grub/themes/{{ .theme }}-$GRUB_RESOLUTION_TYPE/icons/{{ .host.distro.id }}.png" ]; then
+      GRUB_ICON='{{ .host.distro.id }}'
+    elif [ -f "/usr/local/share/grub/themes/{{ .theme }}-$GRUB_RESOLUTION_TYPE/icons/{{ .host.distro.family }}.png" ]; then
+      GRUB_ICON='{{ .host.distro.family }}'
+    else
+      GRUB_ICON='linux'
+    fi
+
+    ### Copy icon to GRUB2 theme folder
+    # Check looks in /usr/local/share/grub because on some systems the /boot folder is behind permissions for non-root users
+    if [ -f "/usr/local/share/grub/themes/{{ .theme }}-$GRUB_RESOLUTION_TYPE/icons/$GRUB_ICON.png" ]; then
+      sudo cp -f /boot/grub2/themes/{{ .theme }}-$GRUB_RESOLUTION_TYPE/icons/$GRUB_ICON.png /boot/grub2/themes/{{ .theme }}-$GRUB_RESOLUTION_TYPE/icon.png
+      gum log -sl info 'Copied platform-specific icon to GRUB2 theme folder'
+    else
+      gum log -sl warn "/boot/grub2/themes/{{ .theme }}-$GRUB_RESOLUTION_TYPE/icons/$GRUB_ICON.png is missing"
+    fi
+
+    ### Hide unnecessary Boot messages and Bliking cursor
+    GRUB_DEFAULT_CMDLINE=$(grep 'GRUB_CMDLINE_LINUX_DEFAULT' /etc/default/grub)
+    if [[ -n $GRUB_DEFAULT_CMDLINE ]]; then
+      KERNEL_PARAMS_QUIET=$(echo "$GRUB_DEFAULT_CMDLINE" | grep 'quiet')
+      gum log -sl info 'Updating GRUB_CMDLINE_LINUX_DEFAULT to hide log messages'
+      if [[ -z $KERNEL_PARAMS_QUIET ]]; then
+        sudo sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="quiet loglevel=3 systemd.show_status=auto rd.udev.log_level=3 vt.global_cursor_default=0 /' /etc/default/grub
+      else
+        NEW_KERNEL_PARAMS=$(echo $KERNEL_PARAMS_QUIET | sed -e "s/quiet/quiet loglevel=3 systemd.show_status=auto rd.udev.log_level=3 vt.global_cursor_default=0/")
+        sudo sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT.*/${NEW_KERNEL_PARAMS}/" /etc/default/grub
+      fi
+    else
+      gum log -sl info 'GRUB_CMDLINE_LINUX_DEFAULT was not present, adding one with parameters to hide log messages'
+      echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet loglevel=3 systemd.show_status=auto rd.udev.log_level=3 vt.global_cursor_default=0"' | sudo tee -a /etc/default/grub > /dev/null
+    fi
+
+
+    ### Ensure grub2-mkconfig is available
+    if ! command -v grub2-mkconfig > /dev/null; then
+      if command -v grub-mkconfig > /dev/null; then
+        sudo ln -s "$(which grub-mkconfig)" /usr/bin/grub2-mkconfig
+      elif sudo which grub-mkconfig > /dev/null; then
+        sudo ln -s "$(sudo which grub-mkconfig)" /usr/bin/grub2-mkconfig
+      else
+        gum log -sl warn 'Neither grub2-mkconfig or grub-mkconfig are available'
+      fi
+    fi
+
+    ### Apply GRUB2 theme
+    # Set export DEBUG_MODE=true to bypass GRUB2 / Plymouth application
+    if [ "$DEBUG_MODE" != 'true' ]; then
+      if command -v grub2-mkconfig > /dev/null; then
+        if [ -d /sys/firmware/efi ]; then
+          gum log -sl info 'Assuming system is UEFI-enabled since /sys/firmware/efi is present'
+          if [ -f /boot/efi/EFI/qubes/grub.cfg ]; then
+            gum log -sl info 'Running sudo grub2-mkconfig -o /boot/efi/EFI/qubes/grub.cfg'
+            sudo grub2-mkconfig -o /boot/efi/EFI/qubes/grub.cfg
+            gum log -sl info 'Applied GRUB2 theme'
+          elif [ -f /boot/efi/EFI/grub.cfg ]; then
+            gum log -sl info 'Running sudo grub2-mkconfig -o /boot/efi/EFI/grub.cfg'
+            sudo grub2-mkconfig -o /boot/efi/EFI/grub.cfg
+            gum log -sl info 'Applied GRUB2 theme'
+          else
+            gum log -sl warn 'Unknown GRUB2 configuration - not applying GRUB2 theme'
+          fi
+        else
+          gum log -sl info 'Assuming system is non-UEFI since /sys/firmware/efi is not present'
+          gum log -sl info 'Running sudo grub2-mkconfig -o /boot/grub2/grub.cfg'
+          sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+          gum log -sl info 'Applied GRUB2 theme'
+        fi
+      elif [ -f /usr/sbin/update-grub ]; then
+        gum log -sl info 'Running sudo update-grub'
+        sudo update-grub
+      else
+        gum log -sl warn 'Unable to find appropriate GRUB mkconfig command'
+      fi
+    else
+      gum log -sl info 'Skipping GRUB2 theme application because DEBUG_MODE is set to true'
+    fi
+  fi
+}
+
+# @description
+#     This script sets the [Docker Rclone plugin](https://rclone.org/docker/) which allows you to mount Rclone mounts as Docker volumes
+#
+#     #### Docker Rclone
+#
+#     The Docker Rclone installation ensures necessary system directories are initialized / created. It also copies the [Docker Rclone configuration](https://github.com/megabyte-labs/install.doctor/blob/master/home/dot_config/rclone/private_docker-rclone.conf.tmpl)
+#     to the proper system location.
+installDockerRclonePlugin() {
+  ### Docker Rclone plugin
+  # Source: https://rclone.org/docker/
+  # First, ensure Docker Rclone configuration exists (which only happens when the Chezmoi Age decryption key is present as well as keys for Rclone)
+  if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/rclone/docker-rclone.conf" ]; then
+    ### Ensure Docker Rclone plugin system folders exist
+    gum log -sl info 'Ensure Docker Rclone plugin system folders exist'
+    gum log -sl info 'Ensuring directory /var/lib/docker-plugins/rclone/config is created' && sudo mkdir -p /var/lib/docker-plugins/rclone/config
+    gum log -sl info 'Ensuring directory /var/lib/docker-plugins/rclone/cache is created' && sudo mkdir -p /var/lib/docker-plugins/rclone/cache
+
+    ### Copy Rclone configuration
+    gum log -sl info "Copy the Rclone configuration from ${XDG_CONFIG_HOME:-$HOME/.config}/rclone/docker-rclone.conf to /var/lib/docker-plugins/rclone/config/rclone.conf"
+    sudo cp -f "${XDG_CONFIG_HOME:-$HOME/.config}/rclone/docker-rclone.conf" /var/lib/docker-plugins/rclone/config/rclone.conf
+
+    ### Install the Rclone Docker plugin (if not already installed)
+    if ! sudo su -c 'docker plugin ls' - "$USER" | grep 'rclone:latest' > /dev/null; then
+      sudo su -c 'docker plugin install rclone/docker-volume-rclone:amd64 args="-v" --alias rclone --grant-all-permissions' - "$USER"
+    fi
+  fi
+}
+
+installLocalBinPackageJson() {
+  if [ -f "$HOME/.local/bin/package.json" ]; then
+    gum log -sl info 'Installing NPM packages in ~/.local/bin/package.json'
+    cd "$HOME/.local/bin" && npm i --force
+    gum log -sl info 'Installed NPM packages in ~/.local/bin'
+  fi
+}
+
+# @description Installs a terminal theme that matches across various terminals by utilizing the `~/.local/bin/install-terminal-theme` script
+installTerminalTheme() {
+  if command -v install-terminal-theme > /dev/null; then
+    install-terminal-theme
+  else
+    gum log -sl warn 'install-terminal-theme is not available'
+  fi
+}
+
+# @description
+#     This script loads crontab jobs that are defined and housed in your Install Doctor fork.
+loadCronjobs() {
+  gum log -sl info 'Installing user crontab jobs'
+  crontab < "${XDG_CONFIG_HOME:-$HOME/.config}/crontab/config-user" || EXIT_CODE=$?
+  if [ -n "$EXIT_CODE" ]; then
+    gum log -sl error 'Failed to load cronjobs for user'
+  fi
+
+  gum log -sl info 'Installing system crontab jobs'
+  sudo crontab < "${XDG_CONFIG_HOME:-$HOME/.config}/crontab/config-system" || EXIT_CODE=$?
+  if [ -n "$EXIT_CODE" ]; then
+    gum log -sl error 'Failed to load cronjobs for system'
+  fi
+}
+
+# @description
+#     This script houses a wide range of macOS system tweaks that are intended to improve the developer experience on macOS,
+#     as well as improve security. Some of the tweaks include modifying default settings for various applications.
+macOSSettings() {
+  if [ -d /System ] && [ -d /Applications ] && [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/macos.sh" ]; then
+    bash "${XDG_CONFIG_HOME:-$HOME/.config}/shell/macos.sh"
+  fi
+}
+
+# @description Ensures all files in `~/.local/bin` are executable
+makeLocalBinExecutable() {
+  gum log -sl info 'Ensuring all files in ~/.local/bin are executable'
+  find "$HOME/.local/bin" -mindepth 1 -maxdepth 2 -type f | while read EXE_FILE; do
+    if [ "$(echo -n "$EXE_FILE" | tail -c 3)" != ".md" ]; then
+      chmod +x "$EXE_FILE"
+    fi
+  done
+}
+
+# @description
+#     Install Doctor was previously called Gas Station. It was also Ansible based. Some of the features that Install Doctor
+#     provides are made available via Ansible roles that Gas Station provides. This script symlinks Gas Station's roles
+#     so that they can be leveraged by Install Doctor.
+#
+#     Some of the roles that Gas Station provides are not available via Ansible Galaxy yet. This script symlinks Gas Station
+#     roles to an Ansible Galaxy / Ansible friendly location.
+#
+#     #### Ansible Installation
+#
+#     If Ansible is not already installed, this script will also install Ansible and all the necessary requirements using `pipx`.
+#     This script must run before the `install-packages` script because some of the Ansible roles might be leveraged by it.
+#
+#     #### TODO
+#
+#     * Move installation logic into the ZX installer so that Ansible and its dependencies are only installed when required
+#     * Remove Ansible dependency completely
+symlinkAnsibleRoles() {
+  gum log -sl info 'Ensuring Gas Station roles are symlinked to ~/.local/share/ansible/roles'
+  mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/ansible/roles"
+  find "${XDG_DATA_HOME:-$HOME/.local/share}/gas-station/roles" -mindepth 2 -maxdepth 2 -type d | while read ROLE_PATH; do
+    ROLE_FOLDER="professormanhattan.$(echo "$ROLE_PATH" | sed 's/.*\/\([^\/]*\)$/\1/')"
+    ALT_ROLE_FOLDER="$(echo "$ROLE_PATH" | sed 's/.*\/\([^\/]*\)$/\1/')"
+    if [ ! -d "${XDG_DATA_HOME:-$HOME/.local/share}/ansible/roles/$ROLE_FOLDER" ] || [ "$(readlink -f "${XDG_DATA_HOME:-$HOME/.local/share}/ansible/roles/$ROLE_FOLDER")" != "$ROLE_PATH" ]; then
+      gum log -sl info 'Symlinking '"$ROLE_FOLDER"''
+      rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/ansible/roles/$ROLE_FOLDER"
+      ln -s "$ROLE_PATH" "${XDG_DATA_HOME:-$HOME/.local/share}/ansible/roles/$ROLE_FOLDER"
+    fi
+    if [ ! -d "${XDG_DATA_HOME:-$HOME/.local/share}/ansible/roles/$ALT_ROLE_FOLDER" ] || [ "$(readlink -f "${XDG_DATA_HOME:-$HOME/.local/share}/ansible/roles/$ALT_ROLE_FOLDER")" != "$ROLE_PATH" ]; then
+      rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/ansible/roles/$ALT_ROLE_FOLDER"
+      ln -s "$ROLE_PATH" "${XDG_DATA_HOME:-$HOME/.local/share}/ansible/roles/$ALT_ROLE_FOLDER"
+    fi
+  done
+
+  if [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/gas-station/requirements.yml" ]; then
+    ### Install Ansible Galaxy and dependencies if missing
+    if ! command -v ansible-galaxy > /dev/null; then
+      if ! command -v pipx > /dev/null; then
+        gum log -sl info 'Installing pipx via Homebrew'
+        brew install --quiet pipx
+        gum log -sl info 'Running pipx ensurepath'
+        pipx ensurepath
+      fi
+      gum log -sl info 'Installing ansible-core via pipx'
+      pipx install ansible
+      if [ -d /Applications ] && [ -d /System ]; then
+        gum log -sl info 'Injecting macOS-specific pipx dependencies via pipx'
+        pipx inject ansible PyObjC PyObjC-core
+      fi
+      gum log -sl info 'Injecting Ansible dependencies via pipx'
+      pipx inject ansible docker lxml netaddr pexpect python-vagrant pywinrm requests-credssp watchdog
+      mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte-labs"
+      touch "${XDG_CACHE_HOME:-$HOME/.cache}/megabyte-labs/ansible-installed"
+    fi
+
+    ### Ensure Ansible Galaxy was successfully loaded and then install the Ansible Galaxy requirements
+    if command -v ansible-galaxy > /dev/null; then
+      gum log -sl info 'Ensuring Ansible Galaxy collections are installed'
+      export ANSIBLE_CONFIG="${XDG_DATA_HOME:-$HOME/.local/share}/ansible/ansible.cfg"
+      ansible-galaxy install -r "${XDG_DATA_HOME:-$HOME/.local/share}/ansible/requirements.yml" > /dev/null || EXIT_CODE=$?
+      if [ -n "$EXIT_CODE" ]; then
+        gum log -sl error 'Failed to install Ansible requirements from Ansible Galaxy'
+        if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/gas-station/collections" ]; then
+          gum log -sl info 'Attempting to use locally stored Ansible requirements'
+          cd "${XDG_DATA_HOME:-$HOME/.local/share}/gas-station/collections"
+          ansible-galaxy install -r requirements.yml || SECOND_EXIT_CODE=$?
+          if [ -n "$SECOND_EXIT_CODE" ]; then
+            gum log -sl error 'Failed to install requirements from both the cloud and the local copy' && exit 1
+          fi
+        else
+          gum log -sl warn "${XDG_DATA_HOME:-$HOME/.local/share}/gas-station/collections is missing"
+        fi
+      fi
+    else
+      gum log -sl warn 'Unable to install the Ansible Galaxy requirements.yml since the ansible-galaxy executable is missing from the PATH'
+    fi
+  else
+    gum log -sl warn '~/.local/share/ansible/requirements.yml is missing'
+  fi
+}
+
+# @description
+#     This script checks if `python3` is available and if `python` is not available. If both are true, then the script
+#     symlinks `python` to `python3` so that the `python` command uses `python3`.
+#
+#     This is useful if you do not want to install Python 2.7 and would like Python 3 to be used in all scenarios where Python is
+#     invoked with the `python` command.
+symlinkPython() {
+  ### Symlink python3 to python if it is unavailable
+  if ! command -v python > /dev/null && command -v python3 > /dev/null; then
+    gum log -sl info 'Symlinking python3 to python since the latter is unavailable'
+    sudo ln -s "$(which python3)" /usr/local/bin/python
+  fi
+}
+
+# @description
+#     This script creates an empty directory with each user's name in `/var/log/user`. It initializes the folder in hopes
+#     that we can eventually store all user logs in a single directory alongside the system logs folder.
+userLogFolders() {
+  find '{{ .host.homeParentFolder }}' -mindepth 1 -maxdepth 1 -type d | while read HOME_DIR; do
+    USER_FOLDER="$(echo "$HOME_DIR" | sed 's/.*\/\([^\/]*\)$/\1/')"
+    if [ -d "$HOME_DIR/.local" ]; then
+      if [ ! -d "/var/log/user/$USER_FOLDER" ]; then
+        gum log -sl info 'Creating /var/log/user/'"$USER_FOLDER"'' && sudo mkdir -p "/var/log/user/$USER_FOLDER"
+      fi
+      gum log -sl info "Applying user permissions to /var/log/user/$USER_FOLDER" && sudo chown -Rf "$USER_FOLDER" "/var/log/user/$USER_FOLDER"
+    fi
+  done
+}
+
+applyBasePlists() {
+  if [ -d /System ] && [ -d /Applications ]; then
+    find "$HOME/Library/Preferences/base" -mindepth 1 -maxdepth 1 -type f | while read BASE_PLIST; do
+      cp -f "$BASE_PLIST" "$HOME/Library/Preferences/$(basename "$BASE_PLIST")"
+    done
+  fi
+}
+
+# @description Applies appropriate permissions to the `~/.ssh` folder
+sshPermissions() {
+  gum log -sl info "Applying permissions to ~/.ssh folder"
+  chmod 700 "${HOME}/.ssh"
+  find "${HOME}/.ssh" -type f -exec chmod 600 {} \;
+}
+
+if [ -n "$DEBUG" ] || [ -n "$DEBUG_MODE" ]; then
+  gum log -sl info 'The DEBUG or DEBUG_MODE environment variable is set so the post-dotfile-application routine tasks will be run synchronously'
+  addZshEnv
+  applyFontsToSystem
+  applyLinuxConfSettings
+  applyLinuxThemeFiles
+  applyRootConfig
+  applyWallpaper
+  configureNetworkManagerVPNProfiles
+  configureSSHD
+  dconfSettings
+  ensureSSHKey
+  emscriptenInstall
+  ensureQtStyleOverride
+  ensurePipUpdated
+  ensureSystemGemUpdated
+  ensureZshShell
+  gnomeExtensionSettings
+  grubSettings
+  installDockerRclonePlugin
+  installLocalBinPackageJson
+  installTerminalTheme
+  loadCronjobs
+  macOSSettings
+  symlinkAnsibleRoles
+  symlinkPython
+  userLogFolders
+  applyBasePlists
+  sshPermissions
+else
+  addZshEnv &
+  applyFontsToSystem &
+  applyLinuxConfSettings &
+  applyLinuxThemeFiles &
+  applyRootConfig &
+  applyWallpaper &
+  configureNetworkManagerVPNProfiles &
+  configureSSHD &
+  dconfSettings &
+  ensureSSHKey &
+  emscriptenInstall &
+  ensureQtStyleOverride &
+  ensurePipUpdated &
+  ensureSystemGemUpdated &
+  ensureZshShell &
+  gnomeExtensionSettings &
+  grubSettings &
+  installDockerRclonePlugin &
+  installLocalBinPackageJson &
+  installTerminalTheme &
+  loadCronjobs &
+  macOSSettings &
+  symlinkAnsibleRoles &
+  symlinkPython &
+  userLogFolders &
+  applyBasePlists &
+  sshPermissions &
+  wait
+fi
+
+gum log -sl info 'Completed post-dotfile-application routine'

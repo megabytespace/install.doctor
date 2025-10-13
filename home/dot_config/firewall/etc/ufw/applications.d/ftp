@@ -1,0 +1,4 @@
+[FTP]
+title=FTP
+description=FTP server
+ports=21/tcp

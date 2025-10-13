@@ -1,0 +1,5 @@
+{{- if stat (joinPath .chezmoi.homeDir "Applications" "iTerm.app" "Contents" "Resources" "iterm2_shell_integration.tcsh") -}}
+{{ .chezmoi.homeDir }}/Applications/iTerm.app/Contents/Resources/iterm2_shell_integration.tcsh
+{{- else if stat (joinPath "Applications" "iTerm.app" "Contents" "Resources" "iterm2_shell_integration.tcsh") -}}
+/Applications/iTerm.app/Contents/Resources/iterm2_shell_integration.tcsh
+{{- end -}}

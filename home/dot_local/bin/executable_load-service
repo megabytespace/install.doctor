@@ -1,0 +1,46 @@
+#!/usr/bin/env zx
+// @file Load Service
+// @brief This helper ensures system services are loaded at boot. Requires passwordless sudo.
+
+const customArgv = minimist(process.argv.slice(3), {
+  boolean: [
+    'exists'
+  ],
+  alias: {
+    e: 'exists',
+  }
+})
+
+const serviceDir = `${os.homedir()}/Library/LaunchDaemons`
+
+function runSyncCommand(command) {
+  return require('child_process').execSync(`${command}`, { stdio: 'inherit', shell: true })
+}
+
+if (!customArgv.exists && (!customArgv._.length || customArgv._.length > 1)) {
+  console.log('Must pass exactly one argument.', customArgv)
+  process.exit(1)
+} else {
+  const serviceName = customArgv._[0].replace('.plist', '')
+  const servicePath = `${serviceDir}/${serviceName}.plist`
+  const systemServicePath = `/Library/LaunchDaemons/${serviceName}.plist`
+  if (fs.existsSync(servicePath)) {
+    reloadDarwinService(serviceName, servicePath, systemServicePath)
+  } else {
+    console.error(`There is no LaunchDaemon file located at ${servicePath}`)
+    process.exit(1)
+  }
+}
+
+async function reloadDarwinService(serviceName, servicePath, systemServicePath) {
+  try {
+    if (serviceName === 'rclone.user') {
+      runSyncCommand(`if launchctl list | grep '${serviceName}' > /dev/null; then launchctl unload "${servicePath}"; fi && launchctl load -w "${servicePath}"`)
+    } else {
+      runSyncCommand(`sudo cp -f "${servicePath}" "${systemServicePath}" && if sudo launchctl list | grep '${serviceName}' > /dev/null; then sudo launchctl unload "${systemServicePath}"; fi && sudo launchctl load -w "${systemServicePath}"`)
+    }
+  } catch (e) {
+    console.error(`Failed to reload launchctl service`, e)
+    process.exit(1)
+  }
+}

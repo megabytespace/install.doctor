@@ -1,0 +1,19 @@
+---
+# full_terminal_roles
+
+- include_tasks: tasks/qubes/vm-common.yml
+
+- name: Ensure /etc/skel /usr/local.orig is setup for inheritence
+  become: true
+  copy:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    mode: '{{ item.mode }}'
+    remote_src: true
+  with_items:
+    - src: /home
+      dest: /etc/skel
+      mode: preserve
+    - src: /usr/local
+      dest: /usr/local.orig
+      mode: preserve

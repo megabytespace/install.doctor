@@ -1,0 +1,4 @@
+[rsyslog]
+title=rsyslog
+description=Enhanced, multi-threaded syslogd
+ports=514/tcp

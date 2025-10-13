@@ -6,11 +6,11 @@ All code projects have their own style. Coding style will vary from coder to cod
 
 Style guides are generally written for a specific language but a great place to start learning about the best coding practices is on [Google Style Guides](https://google.github.io/styleguide/). Follow the link and you will see style guides for most popular languages. We also recommend that you look through the following style guides, depending on what language you are coding with:
 
-* [Airbnb JavaScript Style Guide](https://github.com/airbnb/javascript)
-* [Angular Style Guide](https://angular.io/guide/styleguide)
-* [Effective Go](https://go.dev/doc/effective_go)
-* [PEP 8 Python Style Guide](https://www.python.org/dev/peps/pep-0008/)
-* [Git Style Guide](https://github.com/agis/git-style-guide)
+- [Airbnb JavaScript Style Guide](https://github.com/airbnb/javascript)
+- [Angular Style Guide](https://angular.io/guide/styleguide)
+- [Effective Go](https://go.dev/doc/effective_go)
+- [PEP 8 Python Style Guide](https://www.python.org/dev/peps/pep-0008/)
+- [Git Style Guide](https://github.com/agis/git-style-guide)
 
 For more informative links, refer to the [GitHub Awesome Guidelines List](https://github.com/Kristories/awesome-guidelines).
 

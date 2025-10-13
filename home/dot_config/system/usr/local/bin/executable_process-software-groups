@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# @file /usr/local/bin/process-software-groups
+# @brief Processes software package configurations from a YAML file
+# @description
+#     This script reads the `${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/software.yml` file,
+#     validates the software package configurations, and performs folder and group management tasks.
+#     Based on the provided configuration, it ensures executables are in the PATH,
+#     sets appropriate folder ownership and permissions, and manages user groups.
+
+# Causing premature exits so commenting out
+# set -euo pipefail
+# trap 'echo "An error occurred. Exiting." >&2; exit 1' ERR
+
+SOFTWARE_YAML="${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/software.yml"
+
+# Ensure required dependencies are installed
+if ! command -v gum &>/dev/null; then
+  echo "gum is not installed. Please install gum to proceed." >&2
+  exit 1
+fi
+
+if ! command -v yq &>/dev/null; then
+  echo "yq is not installed. Please install yq to proceed." >&2
+  exit 1
+fi
+
+# @description Checks if a binary is in the PATH
+isBinaryInPath() {
+  local BIN="$1"
+  command -v "$BIN" &>/dev/null
+}
+
+# @description Processes a single software package configuration
+processSoftwarePackage() {
+  local NAME="$1"
+  local BIN_LIST
+  local FOLDERS
+  local SOFTWARE_GROUPS
+
+  BIN_LIST=$(yq '(.softwarePackages["'"$NAME"'"])._bin' "$SOFTWARE_YAML")
+  FOLDERS=$(yq '(.softwarePackages["'"$NAME"'"])._folders[]' "$SOFTWARE_YAML" 2>/dev/null || true)
+  SOFTWARE_GROUPS=$(yq '(.softwarePackages["'"$NAME"'"])._groups[]' "$SOFTWARE_YAML" 2>/dev/null || true)
+
+  if [[ "$BIN_LIST" == "null" ]]; then
+    if [ -n "${DEBUG:-}" ]; then
+      gum log -sl warn "No binaries defined for $NAME. Skipping."
+    fi
+    return
+  fi
+
+  local BIN_FOUND=false
+  if [[ "$BIN_LIST" =~ \[ ]]; then
+    for BIN in $(echo "$BIN_LIST" | yq ".[]"); do
+      if isBinaryInPath "$BIN"; then
+        BIN_FOUND=true
+        break
+      fi
+    done
+  else
+    if isBinaryInPath "$BIN_LIST"; then
+      BIN_FOUND=true
+    fi
+  fi
+
+  # Handle case when binaries are found but no folders are defined
+  if [[ "$BIN_FOUND" == true && "$FOLDERS" == "null" && "$SOFTWARE_GROUPS" != "null" ]]; then
+    for GROUP_NAME in $SOFTWARE_GROUPS; do
+      gum log -sl info "Adding group $GROUP_NAME"
+      sudo add-usergroup "$GROUP_NAME" "$GROUP_NAME"
+    done
+    return
+  fi
+
+  if [[ "$BIN_FOUND" == true ]]; then
+    if [[ "$SOFTWARE_GROUPS" != "null" ]]; then
+      local GROUP_NAME
+      GROUP_NAME=$(echo "$SOFTWARE_GROUPS" | head -n 1)
+      for FOLDER in $FOLDERS; do
+        gum log -sl info "Assigning $FOLDER to $GROUP_NAME"
+        sudo own-folder "$FOLDER" "$GROUP_NAME" "$GROUP_NAME"
+      done
+    else
+      if [[ "$FOLDERS" != "null" ]]; then
+        for FOLDER in $FOLDERS; do
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            gum log -sl info "Assigning $FOLDER to $USER and staff"
+            sudo own-folder "$FOLDER" "$USER" staff
+          else
+            gum log -sl info "Assigning $FOLDER to $USER"
+            sudo own-folder "$FOLDER" "$USER" "$USER"
+          fi
+        done
+      fi
+    fi
+  else
+    if [ -n "${DEBUG:-}" ]; then
+      gum log -sl warn "$NAME binary not found in PATH. Managing groups instead."
+    fi
+
+    if [[ "$SOFTWARE_GROUPS" != "null" ]]; then
+      for GROUP_NAME in $SOFTWARE_GROUPS; do
+        gum log -sl info "Creating or ensuring group $GROUP_NAME exists"
+        sudo add-usergroup "$GROUP_NAME" "$GROUP_NAME"
+      done
+    fi
+  fi
+}
+
+# @description Main script execution logic
+main() {
+  if [[ ! -f "$SOFTWARE_YAML" ]]; then
+    gum log -sl error "Configuration file not found: $SOFTWARE_YAML"
+    exit 1
+  fi
+
+  local PACKAGES
+  PACKAGES=$(yq ".softwarePackages | keys[]" "$SOFTWARE_YAML")
+
+  for PACKAGE in $PACKAGES; do
+    if [ -n "${DEBUG:-}" ]; then
+      gum log -sl info "Processing package: $PACKAGE"
+    fi
+    processSoftwarePackage "$PACKAGE"
+  done
+
+  gum log -sl info "Software package processing completed."
+}
+
+main

@@ -1,0 +1,571 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  pve-sys-prep — Proxmox LXC/VM Post-Provision Bootstrap (Debian/Ubuntu/Fedora)
+# ------------------------------------------------------------------------------
+#  Location: /usr/local/bin/pve-sys-prep
+#
+#  Purpose:
+#    • Bring a fresh Debian/Ubuntu/Fedora guest (LXC or VM) to a consistent baseline:
+#      updates, baseline tools, timezone (default America/New_York), sudo user,
+#      SSH keys, DNS, MOTD, logrotate.
+#    • VM-only: ensure Proxmox integration by installing/enabling qemu-guest-agent.
+#    • Configure TRIM/Discard via:
+#         - pve-fstrim.service  → run fstrim at every boot
+#         - pve-fstrim.timer    → run fstrim on a periodic schedule
+#    • Install and configure Fail2ban with sane SSH defaults.
+#
+#  Quick start:
+#    install -m 0755 pve-sys-prep /usr/local/bin/pve-sys-prep
+#    sudo /usr/local/bin/pve-sys-prep
+#
+#  Logs:
+#    • /var/log/pve-sys-prep.log (always; tee)
+#    • journald for units: journalctl -u pve-fstrim.service -u fail2ban
+#
+# ------------------------------------------------------------------------------
+#  ENVIRONMENT VARIABLES (override as needed)
+#  ┌───────────────────────────────┬────────────────────────────┬──────────────────────────────────────────────────────────────┐
+#  │ Variable                      │ Default                    │ Description                                                  │
+#  ├───────────────────────────────┼────────────────────────────┼──────────────────────────────────────────────────────────────┤
+#  │ LOG_FILE                      │ /var/log/pve-sys-prep.log  │ Primary log file (also in journald for systemd units).      │
+#  │ AUTO_YES                      │ 0                          │ Assume “Yes” for prompts (1/0).                             │
+#  │ NONINTERACTIVE                │ 0                          │ Never prompt; use defaults/env (1/0).                       │
+#  │ TZ_DEFAULT                    │ America/New_York           │ Default timezone shown in prompt.                           │
+#  │ TIMEZONE                      │ $TZ_DEFAULT                │ Final timezone applied.                                      │
+#  │ BASE_PACKAGES                 │ __AUTO__                   │ Auto-pick sensible base per distro.                         │
+#  │ FIX_DNS                       │ 1                          │ Ensure resolvers in /etc/resolv.conf (when not systemd-resolved). │
+#  │ DNS_RESOLVERS                 │ "1.1.1.1 1.0.0.1"          │ Nameservers to apply if FIX_DNS=1.                          │
+#  │ CREATE_SUDO_USER              │ 1                          │ Create a sudo user (prompted).                              │
+#  │ SUDO_USER                     │ sysadmin                   │ Default sudo username.                                       │
+#  │ COPY_ROOT_AUTH_KEYS           │ 1                          │ Copy /root/.ssh/authorized_keys to sudo user.               │
+#  │ SSH_AUTH_KEYS_FILE            │ /root/.ssh/authorized_keys │ Source of authorized_keys.                                   │
+#  │ ENABLE_QEMU_GA                │ 1                          │ Install & enable qemu-guest-agent **on VMs only** (1/0).    │
+#  │ ENABLE_NODE_EXPORTER          │ 0                          │ Install node_exporter (1/0).                                │
+#  │ NODE_EXPORTER_VERSION         │ 1.8.2                      │ node_exporter release.                                       │
+#  │ ENABLE_FSTRIM                 │ 1                          │ Manage fstrim tooling/service/timer (1/0).                  │
+#  │ FSTRIM_SCHEDULE               │ weekly                     │ daily|weekly|monthly (timer cadence).                       │
+#  │ FSTRIM_PATHS                  │ ""                         │ Space-separated dirs to trim; empty = trim all (-A).        │
+#  │ CONFIGURE_LOGROTATE           │ 1                          │ Install a sane logrotate policy (1/0).                      │
+#  │ CONFIGURE_MOTD                │ 1                          │ Friendly MOTD hints (1/0).                                  │
+#  │ ENABLE_FAIL2BAN               │ 1                          │ Install & configure fail2ban with SSH jail (1/0).           │
+#  │ FAIL2BAN_SSH_PORT             │ 22                         │ SSH port to protect.                                        │
+#  │ FAIL2BAN_MAXRETRY             │ 5                          │ Attempts before ban.                                        │
+#  │ FAIL2BAN_FINDTIME             │ 600                        │ Seconds to count failures over.                             │
+#  │ FAIL2BAN_BANTIME              │ 3600                       │ Seconds to ban offending IPs.                               │
+#  │ FAIL2BAN_IGNOREIP             │ ""                         │ Space/comma list of whitelisted IPs/CIDRs.                  │
+#  │ FAIL2BAN_BACKEND              │ systemd                    │ log backend (systemd recommended).                          │
+#  │ RESUME_FROM                   │ ""                         │ Step number or key name to resume from.                     │
+#  │ VERBOSE                       │ 1                          │ Echo commands before running (1/0).                         │
+#  └───────────────────────────────┴────────────────────────────┴──────────────────────────────────────────────────────────────┘
+# ==============================================================================
+
+set -Eeuo pipefail
+
+# =========[ Defaults ]=========
+: "${LOG_FILE:=/var/log/pve-sys-prep.log}"
+: "${AUTO_YES:=0}"
+: "${NONINTERACTIVE:=0}"
+: "${TZ_DEFAULT:=America/New_York}"
+: "${TIMEZONE:=$TZ_DEFAULT}"
+
+: "${BASE_PACKAGES:=__AUTO__}"
+
+: "${FIX_DNS:=1}"
+: "${DNS_RESOLVERS:=1.1.1.1 1.0.0.1}"
+
+: "${CREATE_SUDO_USER:=1}"
+: "${SUDO_USER:=sysadmin}"
+: "${COPY_ROOT_AUTH_KEYS:=1}"
+: "${SSH_AUTH_KEYS_FILE:=/root/.ssh/authorized_keys}"
+
+: "${ENABLE_QEMU_GA:=1}"
+: "${ENABLE_NODE_EXPORTER:=0}"
+: "${NODE_EXPORTER_VERSION:=1.8.2}"
+
+: "${ENABLE_FSTRIM:=1}"
+: "${FSTRIM_SCHEDULE:=weekly}"
+: "${FSTRIM_PATHS:=}"
+
+: "${CONFIGURE_LOGROTATE:=1}"
+: "${CONFIGURE_MOTD:=1}"
+
+: "${ENABLE_FAIL2BAN:=1}"
+: "${FAIL2BAN_SSH_PORT:=22}"
+: "${FAIL2BAN_MAXRETRY:=5}"
+: "${FAIL2BAN_FINDTIME:=600}"
+: "${FAIL2BAN_BANTIME:=3600}"
+: "${FAIL2BAN_IGNOREIP:=}"
+: "${FAIL2BAN_BACKEND:=systemd}"
+
+: "${RESUME_FROM:=}"
+: "${VERBOSE:=1}"
+
+# =========[ Styling ]=========
+if [[ -t 1 ]]; then
+  BOLD="\e[1m"; DIM="\e[2m"; RESET="\e[0m"
+  RED="\e[31m"; GRN="\e[32m"; YLW="\e[33m"; BLU="\e[34m"; CYN="\e[36m"; MAG="\e[35m"
+  OK="${GRN}✔${RESET}"; WARN="${YLW}⚠${RESET}"; ERR="${RED}✖${RESET}"; RUN="${BLU}›${RESET}"; ASK="${CYN}?${RESET}"
+  BAR="${DIM}────────────────────────────────────────────────────────────────${RESET}"
+else
+  BOLD=""; DIM=""; RESET=""; RED=""; GRN=""; YLW=""; BLU=""; CYN=""; MAG=""
+  OK="[OK]"; WARN="[WARN]"; ERR="[ERR]"; RUN="[RUN]"; ASK="[?]"; BAR="----------------------------------------------------------------"
+fi
+
+# =========[ Logging ]=========
+mkdir -p "$(dirname "$LOG_FILE")"; touch "$LOG_FILE"; chmod 0640 "$LOG_FILE"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+# =========[ Error Handling ]=========
+_abort() { echo -e "$ERR ${1:-Aborted}"; exit 1; }
+_stacktrace() {
+  echo -e "${RED}--- stack trace ---${RESET}"
+  local i=0; while caller $i; do ((i++)); done
+  echo -e "${RED}--------------------${RESET}"
+}
+trap_err() {
+  local ec=$? ln=${BASH_LINENO[0]:-?} cmd=${BASH_COMMAND:-?}
+  echo -e "$ERR Error (code ${ec}) at line ${ln}: ${cmd}\nSee ${LOG_FILE}"
+  _stacktrace
+}
+trap 'trap_err' ERR
+[[ $EUID -eq 0 ]] || _abort "Run as root."
+
+# =========[ OS Detection ]=========
+os_id=""; os_like=""
+if [[ -r /etc/os-release ]]; then
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  os_id="${ID:-}"; os_like="${ID_LIKE:-}"
+fi
+is_debian_like() { [[ "$os_id" == "debian" || "$os_id" == "ubuntu" || "$os_like" == *debian* ]]; }
+is_fedora_like() { [[ "$os_id" == "fedora" || "$os_like" == *fedora* || "$os_like" == *rhel* || "$os_id" == "rocky" || "$os_id" == "almalinux" ]]; }
+
+PKG_UPDATE=""; PKG_INSTALL=""; PKG_ENABLE=""
+if is_debian_like; then
+  PKG_UPDATE="apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade"
+  PKG_INSTALL="DEBIAN_FRONTEND=noninteractive apt-get install -y"
+  PKG_ENABLE="systemctl enable --now"
+elif is_fedora_like; then
+  PKG_UPDATE="dnf -y upgrade --refresh"
+  PKG_INSTALL="dnf -y install"
+  PKG_ENABLE="systemctl enable --now"
+else
+  echo -e "$WARN Unsupported distro (ID='${os_id}', LIKE='${os_like}'). Defaulting to Debian-like commands."
+  PKG_UPDATE="apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade"
+  PKG_INSTALL="DEBIAN_FRONTEND=noninteractive apt-get install -y"
+  PKG_ENABLE="systemctl enable --now"
+fi
+
+# Auto baseline package set per distro if BASE_PACKAGES="__AUTO__"
+if [[ "$BASE_PACKAGES" == "__AUTO__" ]]; then
+  if is_debian_like; then
+    BASE_PACKAGES="sudo curl wget git vim htop net-tools unzip ca-certificates gnupg lsb-release logrotate util-linux jq"
+  elif is_fedora_like; then
+    BASE_PACKAGES="sudo curl wget git vim htop net-tools unzip ca-certificates gnupg2 logrotate util-linux jq"
+  else
+    BASE_PACKAGES="sudo curl wget git vim htop net-tools unzip ca-certificates gnupg logrotate util-linux jq"
+  fi
+fi
+
+# =========[ Helpers ]=========
+have_cmd() { command -v "$1" >/dev/null 2>&1; }
+run_cmd()  { local cmd="$*"; [[ "$VERBOSE" == "1" ]] && echo -e "$RUN $cmd"; bash -c "$cmd"; }
+confirm()  { [[ "$AUTO_YES" == "1" || "$NONINTERACTIVE" == "1" ]] && return 0; read -r -p "$(echo -e "$ASK ${BOLD}${1:-Proceed?}${RESET} [Y/n] ")" ans || true; [[ -z "${ans:-}" || "${ans,,}" == "y" || "${ans,,}" == "yes" ]]; }
+ask_value(){ local var="$1" def="$2" msg="$3"; if [[ "$NONINTERACTIVE" == "1" ]]; then printf -v "$var" "%s" "${!var:-$def}"; return; fi; local cur="${!var:-$def}"; read -r -p "$(echo -e "$ASK $msg ${DIM}($cur)${RESET}: ")" input || true; printf -v "$var" "%s" "${input:-$cur}"; }
+maybe_skip_prompt(){ [[ "$NONINTERACTIVE" == "1" ]] && return 0; echo -e "$ASK ${BOLD}$1${RESET} — press Enter, ${DIM}s=skip, q=quit${RESET}"; read -r -p "> " choice || true; case "${choice:-}" in s|S) echo -e "$WARN Skipping: $1"; return 1 ;; q|Q) _abort "User quit."; ;; *) return 0 ;; esac; }
+
+step_should_run(){
+  local id="$1" key="$2"
+  if [[ -z "$RESUME_FROM" ]]; then return 0; fi
+  if [[ "$RESUME_FROM" =~ ^[0-9]+$ ]]; then [[ "$id" -ge "$RESUME_FROM" ]]; return; fi
+  if [[ -z "${_reached_from:-}" ]]; then
+    if [[ "$key" == "$RESUME_FROM" ]]; then _reached_from=1; fi
+    [[ "$key" == "$RESUME_FROM" ]]
+  else
+    return 0
+  fi
+}
+
+announce(){ echo -e "\n${MAG}${BOLD}==>${RESET} ${BOLD}$1${RESET}\n$BAR"; }
+
+# --- Virtualization detection ----------------------------------------------
+virt_type() { have_cmd systemd-detect-virt && systemd-detect-virt 2>/dev/null || echo "unknown"; }
+is_container() { have_cmd systemd-detect-virt && systemd-detect-virt --container >/dev/null 2>&1; }
+is_vm()        { have_cmd systemd-detect-virt && systemd-detect-virt --vm >/dev/null 2>&1; }
+
+# =========[ Steps ]=========
+step_upgrade(){
+  maybe_skip_prompt "System update/upgrade" || return 0
+  run_cmd "$PKG_UPDATE"
+  echo -e "$OK System packages updated."
+}
+
+step_base_tools(){
+  maybe_skip_prompt "Install baseline tools" || return 0
+  run_cmd "$PKG_INSTALL $BASE_PACKAGES"
+  echo -e "$OK Baseline tools installed."
+}
+
+step_timezone(){
+  maybe_skip_prompt "Timezone configuration" || return 0
+  ask_value TIMEZONE "$TZ_DEFAULT" "Timezone"
+  if have_cmd timedatectl; then
+    run_cmd "timedatectl set-timezone \"$TIMEZONE\" || true"
+  fi
+  if [[ -f "/usr/share/zoneinfo/$TIMEZONE" ]]; then
+    ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
+    echo "$TIMEZONE" > /etc/timezone 2>/dev/null || true
+  fi
+  echo -e "$OK Timezone set to ${BOLD}$TIMEZONE${RESET}."
+}
+
+step_sudo_user(){
+  [[ "$CREATE_SUDO_USER" != "1" ]] && { echo -e "$WARN Skipping sudo user creation (CREATE_SUDO_USER!=1)"; return 0; }
+  maybe_skip_prompt "Create sudo user" || return 0
+  ask_value SUDO_USER "sysadmin" "Sudo username"
+  if id -u "$SUDO_USER" >/dev/null 2>&1; then
+    echo -e "$WARN User '$SUDO_USER' already exists. Ensuring sudo + SSH perms."
+  else
+    run_cmd "useradd -m -s /bin/bash \"$SUDO_USER\""
+  fi
+  mkdir -p /etc/sudoers.d
+  echo "$SUDO_USER ALL=(ALL) NOPASSWD:ALL" >/etc/sudoers.d/90-"$SUDO_USER"
+  chmod 0440 /etc/sudoers.d/90-"$SUDO_USER"
+  run_cmd "mkdir -p /home/$SUDO_USER/.ssh && chmod 700 /home/$SUDO_USER/.ssh && chown -R $SUDO_USER:$SUDO_USER /home/$SUDO_USER/.ssh"
+  if [[ "$NONINTERACTIVE" != "1" ]] && confirm "Set a password for '$SUDO_USER'?"; then
+    echo -e "$RUN Enter new password (will not echo)"; passwd "$SUDO_USER"
+  fi
+  echo -e "$OK Sudo user ready: ${BOLD}$SUDO_USER${RESET}"
+}
+
+step_ssh_keys(){
+  maybe_skip_prompt "Authorized keys setup" || return 0
+  if [[ "$COPY_ROOT_AUTH_KEYS" == "1" && -s "$SSH_AUTH_KEYS_FILE" && -d "/home/$SUDO_USER" ]]; then
+    install -m 600 -o "$SUDO_USER" -g "$SUDO_USER" "$SSH_AUTH_KEYS_FILE" "/home/$SUDO_USER/.ssh/authorized_keys"
+    echo -e "$OK Copied root authorized_keys to /home/$SUDO_USER/.ssh/authorized_keys"
+  else
+    echo -e "$WARN Skipped copying keys (COPY_ROOT_AUTH_KEYS=$COPY_ROOT_AUTH_KEYS, file: $SSH_AUTH_KEYS_FILE, user: $SUDO_USER)"
+  fi
+  # Gentle SSH hardening that won't lock you out
+  if [[ -f /etc/ssh/sshd_config ]]; then
+    sed -i -E 's/^#?\s*UseDNS\s+.*/UseDNS no/i' /etc/ssh/sshd_config || true
+    sed -i -E 's/^#?\s*LoginGraceTime\s+.*/LoginGraceTime 30/i' /etc/ssh/sshd_config || true
+    sed -i -E 's/^#?\s*MaxAuthTries\s+.*/MaxAuthTries 4/i' /etc/ssh/sshd_config || true
+    # Keep root key-only login possible; do not disable passwords unless keys are present for sudo user.
+    if [[ -s "/home/$SUDO_USER/.ssh/authorized_keys" ]]; then
+      sed -i -E 's/^#?\s*PasswordAuthentication\s+.*/PasswordAuthentication no/i' /etc/ssh/sshd_config || true
+      sed -i -E 's/^#?\s*PermitRootLogin\s+.*/PermitRootLogin prohibit-password/i' /etc/ssh/sshd_config || true
+    fi
+    systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+  fi
+}
+
+step_qemu_ga(){
+  [[ "$ENABLE_QEMU_GA" != "1" ]] && { echo -e "$WARN Skipping qemu-guest-agent (ENABLE_QEMU_GA!=1)"; return 0; }
+  if is_container; then
+    echo -e "$WARN Detected container ($(virt_type)); skipping qemu-guest-agent (VM-only)."
+    return 0
+  fi
+  if is_vm; then
+    announce "Ensuring qemu-guest-agent (VM detected: $(virt_type))"
+    run_cmd "$PKG_INSTALL qemu-guest-agent || true"
+    # Some distros ship qemu-guest-agent without [Install]; enabling may warn. Start & add wants to multi-user target.
+    if systemctl list-unit-files | grep -q '^qemu-guest-agent\.service'; then
+      systemctl start qemu-guest-agent.service || true
+      systemctl enable qemu-guest-agent.service 2>/dev/null || systemctl add-wants multi-user.target qemu-guest-agent.service || true
+    fi
+    echo -e "$OK qemu-guest-agent installed & activated."
+  else
+    echo -e "$WARN Could not confirm VM (virt: $(virt_type)); leaving qemu-guest-agent unmodified."
+  fi
+}
+
+# --- fstrim support: wrapper + service (boot) + timer (periodic) ------------
+_fstrim_wrapper_path(){ echo "/usr/local/sbin/pve-fstrim-run"; }
+_fstrim_service_path(){ echo "/etc/systemd/system/pve-fstrim.service"; }
+_fstrim_timer_path(){   echo "/etc/systemd/system/pve-fstrim.timer"; }
+
+_write_fstrim_wrapper(){
+  local wrapper="$(_fstrim_wrapper_path)"
+  cat >"$wrapper" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+# Wrapper to run fstrim with path fallbacks and optional path list.
+# Reads FSTRIM_PATHS from /etc/default/pve-fstrim if present.
+
+FSTRIM_BIN=""
+for C in /sbin/fstrim /usr/sbin/fstrim /bin/fstrim /usr/bin/fstrim; do
+  if [ -x "$C" ]; then FSTRIM_BIN="$C"; break; fi
+done
+[ -n "$FSTRIM_BIN" ] || { echo "fstrim not found"; exit 0; }
+
+# Load defaults if provided
+[ -r /etc/default/pve-fstrim ] && . /etc/default/pve-fstrim || true
+
+if [ -n "${FSTRIM_PATHS:-}" ]; then
+  rc=0
+  for P in $FSTRIM_PATHS; do
+    if [ -d "$P" ]; then
+      "$FSTRIM_BIN" -v "$P" || rc=$?
+    fi
+  done
+  exit $rc
+else
+  "$FSTRIM_BIN" -A -v
+fi
+EOF
+  chmod 0755 "$wrapper"
+}
+
+_write_fstrim_envfile(){
+  cat >/etc/default/pve-fstrim <<EOF
+# pve-fstrim defaults
+FSTRIM_SCHEDULE=${FSTRIM_SCHEDULE}
+FSTRIM_PATHS="${FSTRIM_PATHS}"
+EOF
+  chmod 0644 /etc/default/pve-fstrim
+}
+
+_write_fstrim_service(){
+  local svc="$(_fstrim_service_path)"
+  cat >"$svc" <<EOF
+[Unit]
+Description=Run fstrim at boot (and when triggered by timer)
+After=local-fs.target
+Wants=local-fs.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/default/pve-fstrim
+ExecStart=$(_fstrim_wrapper_path)
+
+[Install]
+WantedBy=multi-user.target
+EOF
+}
+
+_write_fstrim_timer(){
+  local tim="$(_fstrim_timer_path)"
+  local cal="weekly"
+  case "${FSTRIM_SCHEDULE,,}" in
+    daily) cal="daily" ;;
+    monthly) cal="monthly" ;;
+    weekly|*) cal="weekly" ;;
+  esac
+  cat >"$tim" <<EOF
+[Unit]
+Description=Periodic fstrim run (pve-fstrim.service)
+
+[Timer]
+OnCalendar=${cal}
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target
+EOF
+}
+
+step_fstrim_install(){
+  [[ "$ENABLE_FSTRIM" != "1" ]] && { echo -e "$WARN Skipping fstrim config (ENABLE_FSTRIM!=1)"; return 0; }
+  maybe_skip_prompt "Install fstrim boot service and periodic timer" || return 0
+
+  if ! have_cmd fstrim; then
+    run_cmd "$PKG_INSTALL util-linux"
+  fi
+
+  _write_fstrim_wrapper
+  _write_fstrim_envfile
+
+  if have_cmd systemctl; then
+    _write_fstrim_service
+    _write_fstrim_timer
+    run_cmd "systemctl daemon-reload"
+    run_cmd "systemctl enable pve-fstrim.service"
+    run_cmd "systemctl enable --now pve-fstrim.timer"
+    echo -e "$OK pve-fstrim.service enabled at boot; pve-fstrim.timer enabled (${BOLD}${FSTRIM_SCHEDULE}${RESET})."
+  else
+    echo -e "$WARN systemd not found; installing cron fallback for TRIM."
+    cat >/etc/cron.weekly/pve-fstrim <<'EOF'
+#!/bin/sh
+if command -v fstrim >/dev/null 2>&1; then
+  ( /sbin/fstrim -A -v || /usr/sbin/fstrim -A -v || fstrim -A -v || true ) 2>&1 | /usr/bin/logger -t pve-fstrim
+fi
+EOF
+    chmod +x /etc/cron.weekly/pve-fstrim
+    echo -e "$OK Installed weekly cron job /etc/cron.weekly/pve-fstrim"
+  fi
+}
+
+step_logrotate(){
+  [[ "$CONFIGURE_LOGROTATE" != "1" ]] && { echo -e "$WARN Skipping logrotate config (CONFIGURE_LOGROTATE!=1)"; return 0; }
+  maybe_skip_prompt "Configure log rotation" || return 0
+  cat >/etc/logrotate.d/pve-sys-prep <<'EOF'
+/var/log/*.log /var/log/pve-sys-prep.log {
+    daily
+    missingok
+    rotate 7
+    compress
+    delaycompress
+    notifempty
+    create 0640 root adm
+}
+EOF
+  echo -e "$OK logrotate policy installed."
+}
+
+step_dns(){
+  [[ "$FIX_DNS" != "1" ]] && { echo -e "$WARN Skipping DNS fix (FIX_DNS!=1)"; return 0; }
+  maybe_skip_prompt "Ensure working DNS resolvers" || return 0
+  local resolv="/etc/resolv.conf"
+  if [[ -L "$resolv" ]] && readlink "$resolv" | grep -q "systemd"; then
+    echo -e "$OK resolv.conf managed by systemd-resolved; leaving as-is."
+    return 0
+  fi
+  cp -f "$resolv" "${resolv}.bak.$(date +%s)" || true
+  { for ip in $DNS_RESOLVERS; do echo "nameserver $ip"; done; } > "$resolv"
+  chmod 0644 "$resolv"
+  echo -e "$OK DNS resolvers set: ${BOLD}$DNS_RESOLVERS${RESET}"
+}
+
+step_motd(){
+  [[ "$CONFIGURE_MOTD" != "1" ]] && { echo -e "$WARN Skipping MOTD setup (CONFIGURE_MOTD!=1)"; return 0; }
+  maybe_skip_prompt "MOTD hint" || return 0
+  cat >/etc/motd <<'EOF'
+  ┌─────────────────────────────────────────────────────┐
+  │  This guest was bootstrapped by pve-sys-prep.       │
+  │  • Log: /var/log/pve-sys-prep.log                   │
+  │  • Sudo user: (see /etc/sudoers.d/90-<user>)        │
+  │  • TRIM: systemctl status pve-fstrim.{service,timer}│
+  │  • SSH:  fail2ban-client status sshd                │
+  └─────────────────────────────────────────────────────┘
+EOF
+  echo -e "$OK MOTD updated."
+}
+
+step_node_exporter(){
+  [[ "$ENABLE_NODE_EXPORTER" != "1" ]] && { echo -e "$WARN Skipping node_exporter (ENABLE_NODE_EXPORTER!=1)."; return 0; }
+  local ver="$NODE_EXPORTER_VERSION" dir="/opt/node_exporter" svc="/etc/systemd/system/node_exporter.service"
+  mkdir -p "$dir"
+  if [[ ! -x "$dir/node_exporter" ]]; then
+    echo -e "$RUN Installing node_exporter $ver"
+    tmpdir="$(mktemp -d)"; pushd "$tmpdir" >/dev/null
+    arch="$(uname -m)"; case "$arch" in
+      x86_64|amd64) pkg="node_exporter-${ver}.linux-amd64" ;;
+      aarch64|arm64) pkg="node_exporter-${ver}.linux-arm64" ;;
+      *) _abort "Unsupported arch: $arch" ;;
+    esac
+    url="https://github.com/prometheus/node_exporter/releases/download/v${ver}/${pkg}.tar.gz"
+    curl -fsSL "$url" -o ne.tgz; tar -xzf ne.tgz
+    install -m 0755 "${pkg}/node_exporter" "$dir/node_exporter"
+    popd >/dev/null; rm -rf "$tmpdir"
+  fi
+  # choose a safe group
+  ne_group="$(getent group nogroup >/dev/null 2>&1 && echo nogroup || echo nobody)"
+  if have_cmd systemctl && [[ ! -f "$svc" ]]; then
+    cat >"$svc" <<EOF
+[Unit]
+Description=Prometheus Node Exporter
+After=network.target
+
+[Service]
+User=nobody
+Group=${ne_group}
+ExecStart=$dir/node_exporter
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload || true
+    systemctl enable --now node_exporter || true
+  fi
+  echo -e "$OK node_exporter installed (systemd managed if available)."
+}
+
+# --- Fail2ban (SSH) ----------------------------------------------------------
+step_fail2ban(){
+  [[ "$ENABLE_FAIL2BAN" != "1" ]] && { echo -e "$WARN Skipping fail2ban (ENABLE_FAIL2BAN!=1)"; return 0; }
+  maybe_skip_prompt "Install & configure Fail2ban for SSH" || return 0
+
+  # Install
+  if is_debian_like; then
+    run_cmd "$PKG_INSTALL fail2ban"
+  elif is_fedora_like; then
+    run_cmd "$PKG_INSTALL fail2ban"
+  else
+    run_cmd "$PKG_INSTALL fail2ban" || true
+  fi
+
+  # Determine default auth log (used when backend != systemd, but we set systemd)
+  local auth_log="/var/log/auth.log"
+  [[ -f /var/log/secure ]] && auth_log="/var/log/secure"
+
+  mkdir -p /etc/fail2ban/jail.d
+
+  # Global jail config (lightweight); prefer systemd backend for portability
+  cat >/etc/fail2ban/jail.d/00-defaults.local <<EOF
+[DEFAULT]
+bantime  = ${FAIL2BAN_BANTIME}
+findtime = ${FAIL2BAN_FINDTIME}
+maxretry = ${FAIL2BAN_MAXRETRY}
+backend  = ${FAIL2BAN_BACKEND}
+EOF
+
+  # Optional whitelist
+  if [[ -n "${FAIL2BAN_IGNOREIP// /}" ]]; then
+    cat >/etc/fail2ban/jail.d/01-ignoreip.local <<EOF
+[DEFAULT]
+ignoreip = ${FAIL2BAN_IGNOREIP//,/ }
+EOF
+  fi
+
+  # SSH jail
+  cat >/etc/fail2ban/jail.d/sshd.local <<EOF
+[sshd]
+enabled  = true
+port     = ${FAIL2BAN_SSH_PORT}
+logpath  = ${auth_log}
+backend  = ${FAIL2BAN_BACKEND}
+mode     = aggressive
+EOF
+
+  # Make sure ssh service name is consistent for filter
+  if [[ ! -f /etc/fail2ban/filter.d/sshd.conf && -f /etc/fail2ban/filter.d/sshd[.]conf ]]; then
+    ln -sf /etc/fail2ban/filter.d/sshd.conf /etc/fail2ban/filter.d/sshd.conf || true
+  fi
+
+  # Enable & start
+  if have_cmd systemctl; then
+    systemctl daemon-reload || true
+    systemctl enable --now fail2ban || true
+    systemctl restart fail2ban || true
+  fi
+
+  echo -e "$OK Fail2ban installed and SSH jail enabled."
+  echo -e "${DIM}Hint:${RESET} Check with: ${BOLD}fail2ban-client status sshd${RESET}"
+}
+
+# =========[ Runner ]=========
+declare -a STEPS_IDS=(10 20 30 40 50 55 57 60 65 70 80 90)
+declare -a STEPS_KEYS=("upgrade" "base-tools" "timezone" "sudo-user" "ssh-keys" "qemu-ga" "fstrim-install" "fail2ban" "logrotate" "dns" "motd" "node-exporter")
+declare -a STEPS_FUNCS=("step_upgrade" "step_base_tools" "step_timezone" "step_sudo_user" "step_ssh_keys" "step_qemu_ga" "step_fstrim_install" "step_fail2ban" "step_logrotate" "step_dns" "step_motd" "step_node_exporter")
+declare -a STEPS_TITLES=("System update/upgrade" "Install baseline tools" "Set timezone" "Create sudo user" "SSH authorized keys + gentle hardening" "Ensure qemu-guest-agent (VM-only)" "Install fstrim service & timer" "Install & configure Fail2ban (SSH)" "Configure logrotate" "Ensure DNS resolvers" "Update MOTD" "Optional: node_exporter")
+
+echo -e "${BOLD}${BLU}==>${RESET} ${BOLD}pve-sys-prep — Proxmox bootstrap (on ${os_id:-unknown})${RESET}"
+echo -e "${DIM}Log:${RESET} $LOG_FILE"
+[[ "$AUTO_YES" == "1" ]] && echo -e "$WARN AUTO_YES=1 (prompts default to Yes)"
+[[ "$NONINTERACTIVE" == "1" ]] && echo -e "$WARN NONINTERACTIVE=1 (no prompts; using ENV/defaults)"
+[[ -n "$RESUME_FROM" ]] && echo -e "$WARN RESUME_FROM=$RESUME_FROM"
+[[ "$NONINTERACTIVE" != "1" ]] && { confirm "Start running all steps now?" || _abort "Canceled."; }
+
+for i in "${!STEPS_IDS[@]}"; do
+  id="${STEPS_IDS[$i]}"; key="${STEPS_KEYS[$i]}"; title="${STEPS_TITLES[$i]}"; func="${STEPS_FUNCS[$i]}"
+  step_should_run "$id" "$key" || continue
+  announce "[$id/$key] $title"
+  "$func"
+  echo -e "$OK Completed: $title"
+done
+
+echo -e "\n$OK ${BOLD}All done!${RESET}  ${DIM}(Review ${LOG_FILE} for details)${RESET}"

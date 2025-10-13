@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# @file Configure HTTPS certificates via Certbot
+# @brief Acquires initial Certbot Let's Encrypt certificates and adds a cronjob for certificate renewal
+# @description
+#     This script ensures the system has Let's Encrypt SSL certificates loaded. It leverages the CloudFlare DNS method.
+#     So long as your `.user.cloudflare.username` value in `home/.chezmoi.yaml.tmpl`, your `CLOUDFLARE_API_TOKEN` variable,
+#     and your `.host.domain` value in `home/.chezmoi.yaml.tmpl` are available, then this process should work. The API token
+#     only needs access to `DNS:Zone:Edit` for your `.host.domain` on CloudFlare.
+#
+#    ## Links
+#
+#    * [certbot-dns-cloudflare](https://certbot-dns-cloudflare.readthedocs.io/en/stable/)
+#    * [CloudFlare API Tokens](https://dash.cloudflare.com/profile/api-tokens)
+
+# TODO: Integrate this into flow
+# TODO: Replace templated logic with live calls using yq
+
+if command -v certbot > /dev/null; then
+  ### Ensure certificate is present
+  if [ -f '/etc/letsencrypt/live/{{ .host.domain }}/cert.pem' ]; then
+    gum log -sl info 'LetsEncrypt SSL certificate is already available'
+  else
+    gum log -sl info 'Acquiring certbot LetsEncrypt SSL certificates'
+    certbot certonly --noninteractive --dns-cloudflare --agree-tos --email '{{ .user.cloudflare.username }}' --dns-cloudflare-propagation-seconds 14 -d '*.{{ .host.domain }},*.lab.{{ .host.domain }},*.{{ .host.hostname | replace .host.domain "" | replace "." "" }}.{{ .host.domain }}'
+  fi
+
+  ### Setup renewal cronjob
+  if ! sudo crontab -l | grep "$(which certbot) renew --quiet" > /dev/null; then
+    TMP="$(mktemp)"
+    echo "30 3 * * * $(which certbot) renew --quiet" > "$TMP"
+    gum log -sl info 'Adding certbot renew entry to crontab'
+    sudo crontab < "$TMP"
+  fi
+else
+  gum log -sl warn 'certbot is not available. SSL certificate issuance cannot be run without it.'
+fi

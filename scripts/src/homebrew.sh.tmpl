@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# @file Homebrew Install
+# @brief Installs Homebrew on macOS and / or Linux.
+# @description
+#     This script installs Homebrew on macOS and/or Linux machines. The script:
+#
+#     1. Ensures Homebrew is not already installed
+#     2. Installs Homebrew headlessly if sudo privileges are already given
+#     3. Prompts for the sudo password, if required
+#     4. Performs some clean up and update tasks when the Homebrew installation reports an error
+#
+#     **Note**: `https://install.doctor/brew` points to this file.
+
+{{ include "partials" "logg" }}
+{{ include "partials" "basic-deps" -}}
+ensureBasicDeps
+
+{{ include "partials" "homebrew" -}}
+ensureHomebrew

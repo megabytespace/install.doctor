@@ -1,0 +1,47 @@
+{
+  "$ref": "#/definitions/VaultSchema",
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "definitions": {
+    "VaultSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "admin_password": {
+          "type": "string"
+        },
+        "admin_username": {
+          "type": "string"
+        },
+        "maas_admin_email": {
+          "type": "string"
+        },
+        "maas_admin_password": {
+          "type": "string"
+        },
+        "maas_admin_username": {
+          "type": "string"
+        },
+        "maas_database_name": {
+          "type": "string"
+        },
+        "maas_database_password": {
+          "type": "string"
+        },
+        "maas_database_username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "admin_password",
+        "admin_username",
+        "maas_admin_email",
+        "maas_admin_password",
+        "maas_admin_username",
+        "maas_database_name",
+        "maas_database_password",
+        "maas_database_username"
+      ],
+      "title": "VaultSchema",
+      "type": "object"
+    }
+  }
+}

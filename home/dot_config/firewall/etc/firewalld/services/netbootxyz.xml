@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>NetbootXYZ</short>
+  <description>Boot over LAN service provider</description>
+  <port protocol="udp" port="69"/>
+</service>

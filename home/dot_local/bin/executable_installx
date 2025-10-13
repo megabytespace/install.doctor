@@ -1,0 +1,678 @@
+#!/usr/bin/env zx
+import osInfo from 'linux-os-info'
+
+$.verbose = false
+// Preserves color from subshells
+//process.env.CLICOLOR_FORCE = 3
+
+let installOrder, osArch, osId, osType, pkgs, sysType, chezmoiConfig, isHeadless
+const cacheDir = os.homedir() + '/.cache/installx'
+
+const customArgv = minimist(process.argv.slice(3), {
+  boolean: [
+    'all',
+    'lazy'
+  ],
+  alias: {
+    a: 'all',
+    l: 'lazy'
+  }
+})
+
+function log(message) {
+  console.log(`${chalk.greenBright.bold('installx ❯')} ${message}`)
+}
+
+async function getOsInfo() {
+  return osInfo({ mode: 'sync' })
+}
+
+function execPromise(command) {
+  return new Promise(function (resolve, reject) {
+    require('child_process').exec(command, (error, stdout, stderr) => {
+      if (error) {
+        reject(error)
+        return
+      }
+      resolve(stdout.trim())
+    })
+  })
+}
+
+function runSilentCommand(command) {
+  return require('child_process').execSync(`${command}`, { stdio: 'inherit', shell: true })
+}
+
+async function runScript(key, script) {
+  fs.writeFileSync(`${cacheDir}/${key}-raw`, script)
+  const [templatedScript, file, brief] = await Promise.all([
+    $`cat "${cacheDir}/${key}-raw" | chezmoi execute-template`,
+    $`cat "${cacheDir}/${key}-raw" | ( grep "^# @file" || [ "$?" == "1" ] ) | sed 's/^# @file //'`,
+    $`cat "${cacheDir}/${key}-raw" | ( grep "^# @brief" || [ "$?" == "1" ] ) | sed 's/^# @brief //'`
+  ])
+  fs.writeFileSync(`${cacheDir}/${key}-glow`, (file.stdout ? `# ${file.stdout}\n\n` : '') + (brief.stdout ? `> ${brief.stdout}\n\n` : '') + '```sh\n' + templatedScript.stdout + "\n```")
+  fs.writeFileSync(`${cacheDir}/${key}`, templatedScript.stdout)
+  try {
+    process.env.DEBUG && require('child_process').execSync(`glow --width 120 "${cacheDir}/${key}-glow"`)
+    // TODO: Set process.env.DEBUG || true here because the asynchronous method is not logging properly / running slow
+    if (process.env.DEBUG) {
+      return await runSilentCommand(`bash "${cacheDir}/${key}" || gum log -sl error 'Error occurred while processing script for ${key}'`)
+    } else {
+      return await $`bash "${cacheDir}/${key}" || gum log -sl error 'Error occurred while processing script for ${key}'`.pipe(process.stdout)
+    }
+  } catch (e) {
+    console.error(`Failed to run script associated with ${key}`, e)
+  }
+}
+
+function getPkgData(pref, pkg, installer) {
+  if (installer) {
+    if (pkg[`${pref}:${installer}:${osId}:${osArch}`]) {
+      return `${pref}:${installer}:${osId}:${osArch}` // Handles case like `_bin:pipx:debian:x64:`
+    } else if (pkg[`${pref}:${osId}:${installer}:${osArch}`]) {
+      return `${pref}:${osId}:${installer}:${osArch}` // Handles case like `_bin:debian:pipx:x64:`
+    } else if (pkg[`${pref}:${installer}:${osType}:${osArch}`]) {
+      return `${pref}:${installer}:${osType}:${osArch}` // Handles case like `_bin:pipx:windows:x64:`
+    } else if (pkg[`${pref}:${osType}:${installer}:${osArch}`]) {
+      return `${pref}:${osType}:${installer}:${osArch}` // Handles case like `_bin:windows:pipx:x64:`
+    } else if (pkg[`${pref}:${installer}:${osId}`]) {
+      return `${pref}:${installer}:${osType}` // Handles case like `_bin:pipx:fedora:`
+    } else if (pkg[`${pref}:${osId}:${installer}`]) {
+      return `${pref}:${osType}:${installer}` // Handles case like `_bin:fedora:pipx:`
+    } else if (pkg[`${pref}:${installer}:${osType}`]) {
+      return `${pref}:${installer}:${osType}` // Handles case like `_bin:pipx:darwin:`
+    } else if (pkg[`${pref}:${osType}:${installer}`]) {
+      return `${pref}:${osType}:${installer}` // Handles case like `_bin:darwin:pipx:`
+    } else if (pkg[`${pref}:${installer}`]) {
+      return `${pref}:${installer}` // Handles case like `_bin:pipx:`
+    } else if (pkg[`${pref}`]) {
+      return `${pref}` // Handles case like `_bin:`
+    } else {
+      return false
+    }
+  } else {
+    if (pkg[`${pref}:${osId}:${osArch}`]) {
+      return `${pref}:${osId}:${osArch}` // Handles case like `pipx:debian:x64:`
+    } else if (pkg[`${pref}:${osType}:${osArch}`]) {
+      return `${pref}:${osType}:${osArch}` // Handles case like `pipx:windows:x64:`
+    } else if (pkg[`${pref}:${osId}`]) {
+      return `${pref}:${osType}` // Handles case like `pipx:fedora:`
+    } else if (pkg[`${pref}:${osType}`]) {
+      return `${pref}:${osType}` // Handles case like `pipx:darwin:`
+    } else if (pkg[`${pref}`]) {
+      return `${pref}` // Handles case like `pipx:`
+    } else {
+      return false
+    }
+  }
+}
+
+async function getSoftwareDefinitions() {
+  try {
+    // Try to read from chezmoi source directory first
+    const chezmoiSourceDir = `${os.homedir()}/.local/share/chezmoi`
+    const fallbackPath = `${os.homedir()}/.local/share/install.doctor/software.yml`
+    
+    let softwareYmlPath = `${chezmoiSourceDir}/software.yml`
+    
+    // If the file doesn't exist in chezmoi source, try fallback location
+    if (!fs.existsSync(softwareYmlPath)) {
+      if (fs.existsSync(fallbackPath)) {
+        softwareYmlPath = fallbackPath
+      } else {
+        // Try current working directory as last resort
+        const cwdPath = `${process.cwd()}/software.yml`
+        if (fs.existsSync(cwdPath)) {
+          softwareYmlPath = cwdPath
+        } else {
+          throw new Error(`software.yml not found in any of the expected locations: ${softwareYmlPath}, ${fallbackPath}, ${cwdPath}`)
+        }
+      }
+    }
+    
+    return YAML.parse(fs.readFileSync(softwareYmlPath, 'utf8'))
+  } catch (e) {
+    throw Error('Failed to load software definitions', e)
+  }
+}
+
+async function getChezmoiConfig() {
+  try {
+    return YAML.parse(fs.readFileSync(`${os.homedir()}/.config/chezmoi/chezmoi.yaml`, 'utf8'))
+  } catch (e) {
+    throw Error('Failed to load Chezmoi configuration', e)
+  }
+}
+
+async function getSystemType() {
+  if (process.platform === "win32") {
+    return "windows"
+  } else if (process.platform === "linux") {
+    if (which.sync('apk', { nothrow: true })) {
+      return "apk"
+    } else if (which.sync('apt-get', { nothrow: true })) {
+      return "apt"
+    } else if (which.sync('dnf', { nothrow: true })) {
+      return "dnf"
+    } else if (which.sync('pacman', { nothrow: true })) {
+      return "pacman"
+    } else if (which.sync('zypper', { nothrow: true })) {
+      return "zypper"
+    } else {
+      return "linux"
+    }
+  } else {
+    return process.platform
+  }
+}
+
+function expandDeps(keys) {
+  for (const i of keys) {
+    for (const pref of installOrder[sysType]) {
+      const installKey = getPkgData(pref, pkgs[i], false)
+      if (installKey) {
+        const installType = installKey.split(':')[0]
+        const depsKey = getPkgData('_deps', pkgs[i], installType)
+        if (depsKey) {
+          const deps = typeof pkgs[i][depsKey] === 'string' ? [pkgs[i][depsKey]] : pkgs[i][depsKey]
+          return [...keys, ...expandDeps(deps)]
+        }
+      }
+    }
+    return [...keys]
+  }
+  return [...keys]
+}
+
+async function createCaskLinks(caskMap) {
+  if (!caskMap) return
+  const caskApps = caskMap
+    .filter(x => {
+      // Filter out macOS apps that already have a _app installed
+      if (x.installType === 'cask' || (osId === 'darwin' && x._app)) {
+        const appField = getPkgData('_app', x, x.installType)
+        const binField = getPkgData('_bin', x, x.installType)
+        const sysDir = fs.existsSync(`/Applications/${x[appField]}`)
+        const homeDir = fs.existsSync(`${os.homedir()}/Applications/${x[appField]}`)
+        const binFile = fs.existsSync(`${os.homedir()}/.local/bin/cask/${x[binField]}`)
+        if (sysDir || homeDir) {
+          return !binFile
+        } else {
+          return false
+        }
+      } else {
+        return false
+      }
+    })
+  caskApps.length && await $`mkdir -p "$HOME/.local/bin/cask"`
+  for (const app of caskApps) {
+    const appField = getPkgData('_app', app, app.installType)
+    if (!appField) {
+      log(`${app.listKey} is missing an _app definition`)
+      return
+    }
+    const binField = getPkgData('_bin', app, app.installType)
+    if (!binField) {
+      log(`${app.listKey} is missing a _bin definition`)
+      return
+    }
+    if (fs.existsSync(`${os.homedir()}/Applications/${app[appField]}`)) {
+      fs.writeFileSync(`${os.homedir()}/.local/bin/cask/${app[binField]}`, `#!/usr/bin/env bash\nopen "$HOME/Applications/${app[appField]}" $*`)
+      await $`chmod +x '${os.homedir()}/.local/bin/cask/${app[binField]}'`
+    } else if (fs.existsSync(`/Applications/${app[appField]}`)) {
+      fs.writeFileSync(`${os.homedir()}/.local/bin/cask/${app[binField]}`, `#!/usr/bin/env bash\nopen "/Applications/${app[appField]}" $*`)
+      await $`chmod +x '${os.homedir()}/.local/bin/cask/${app[binField]}'`
+    } else {
+      log(`Unable to create bin link to ${app[appField]}`)
+    }
+  }
+  caskApps.length && log(`Finished creating Homebrew cask links in ~/.local/bin/cask`)
+}
+
+async function createFlatpakLinks(flatpakMap) {
+  const flatpakInstallations = await $`flatpak --installations`
+  const flatpakDir = flatpakInstallations.stdout.replace('\n', '')
+  const flatpakApps = flatpakMap
+    .filter(x => {
+      if (x.installType === 'flatpak') {
+        const binField = getPkgData('_bin', x, x.installType)
+        const binFile = fs.existsSync(`${os.homedir()}/.local/bin/flatpak/${x[binField]}`)
+        return !binFile
+      }
+      return false
+    })
+  flatpakApps.length && await $`mkdir -p "$HOME/.local/bin/flatpak"`
+  for (const app of flatpakApps) {
+    const binField = getPkgData('_bin', app, app.installType)
+    if (!binField) {
+      log(`${app.listKey} is missing a _bin definition`)
+      return
+    }
+    if (fs.existsSync(`${flatpakDir}/app/${app.installList[0]}`)) {
+      fs.writeFileSync(`${os.homedir()}/.local/bin/flatpak/${app[binField]}`, `#!/usr/bin/env bash\nflatpak run ${app.installList[0]} $*`)
+      await $`chmod +x '${os.homedir()}/.local/bin/flatpak/${app[binField]}'`
+    } else {
+      log(`Unable to create bin link to ${x.flatpak}`)
+    }
+  }
+  flatpakApps.length && log(`Finished creating Flatpak links in ~/.local/bin/flatpak`)
+}
+
+async function bundleInstall(brews, casks, caskMap) {
+  try {
+    const lines = []
+    casks.length && log(`Adding following casks to Brewfile for installation: ${casks.join(' ')}`)
+    for (const cask of casks) {
+      if (cask.indexOf('/') !== -1) {
+        lines.push(`tap "${cask.substring(0, cask.lastIndexOf('/'))}"`)
+      }
+      if (cask.indexOf(' --no-quarantine') === -1) {
+        lines.push(`cask "${cask}"`)
+      } else {
+        lines.push(`cask "${cask.replace(' --no-quarantine', '')}", args: { "no-quarantine": true }`)
+      }
+    }
+    brews.length && log(`Adding following brews to Brewfile for installation: ${brews.join(' ')}`)
+    for (const brew of brews) {
+      if (brew.indexOf('/') !== -1) {
+        lines.push(`tap "${brew.substring(0, brew.lastIndexOf('/'))}"`)
+      }
+      lines.push(`brew "${brew}"`)
+    }
+    log(`Creating Brewfile to install from`)
+    cd(await $`mktemp -d`)
+    fs.writeFileSync('Brewfile', lines.join('\n'))
+    log(`Installing packages via brew bundle`)
+    await $`brew bundle --file Brewfile`
+    log(`Finished installing via Brewfile`)
+  } catch (e) {
+    console.log('Error:', e)
+    log(`Error occurred while installing via Brewfile`)
+  }
+
+  try {
+    await createCaskLinks(caskMap)
+  } catch (e) {
+    console.log('Error:', e)
+    log(`Error occurred while creating cask bin links`)
+  }
+}
+
+async function forEachSeries(iterable) {
+  for (const x of iterable) {
+    await x
+  }
+}
+
+async function installPackages(pkgInstructions) {
+  const combined = {}
+  const promises = []
+  log(`Populating install order lists`)
+  for (const option of installOrder[sysType]) {
+    const instructions = pkgInstructions.filter(x => x.installType === option).filter((value, index, array) => array.indexOf(value) === index)
+    if (instructions.length) {
+      combined[option] = instructions
+    }
+  }
+  log(`Running Homebrew installation via Brewfile`)
+  if ((combined.brew && combined.brew.length) || (combined.cask && combined.cask.length)) {
+    promises.push(bundleInstall(combined.brew ? combined.brew.flatMap(x => x.installList.flatMap(i => i)) : [], combined.cask ? combined.cask.flatMap(x => x.installList.flatMap(i => i)) : [], combined.cask))
+  }
+  for (const key of Object.keys(combined)) {
+    if (key !== 'script') {
+      log(`Install orders for ${key}: ${combined[key].flatMap(i => i.installList).join(' ')}`)
+    }
+    switch (key) {
+      case 'ansible':
+        promises.push(forEachSeries(combined[key].flatMap(x => x.installList.flatMap(i => $`${key} 127.0.0.1 -v${process.env.DEBUG && 'vv'} -e '{ ansible_connection: "local", ansible_become_user: "root", ansible_user: "${process.env.USER}", ansible_family: "${osId.charAt(0).toUpperCase() + osId.slice(1)}", install_homebrew: False }' -m include_role -a name=${i}`))))
+        break
+      case 'apk':
+        const apkPackages = combined[key]?.flatMap(x => x.installList || []) || []
+        if (apkPackages.length > 0) {
+          promises.push($`sudo ${key} add ${apkPackages.join(' ')}`)
+        }
+        break
+      case 'appimage':
+        promises.push(...combined[key].flatMap(x => x.installList.flatMap(i => {
+          process.env.DEBUG && console.log('AppImage', x)
+          if (typeof x === 'string') {
+            if (x.substring(0, 4) === 'http') {
+              return $`zap install --select-first -q --from ${i}`
+            } else if ((x.match(/\//g) || []).length === 1) {
+              return $`zap install --select-first -q --github --from ${i}`
+            } else {
+              return $`zap install --select-first -q ${i}`
+            }
+          }
+        })))
+        break
+      case 'apt':
+        const packages = combined[key]?.flatMap(x => x.installList || []) || []
+        if (packages.length > 0) {
+          promises.push($`DEBIAN_FRONTEND=noninteractive sudo apt-get -o DPkg::Options::=--force-confdef install -y --ignore-missing ${packages}`)
+        }
+        break
+      case 'basher':
+      case 'baulk':
+      case 'cargo':
+      case 'crew':
+      case 'gem':
+      case 'go':
+      case 'pip':
+      case 'pipx':
+      case 'scoop': // Maybe needs forEachSeries
+      case 'winget': // Maybe needs forEachSeries
+        promises.push(...combined[key].flatMap(x => x.installList.flatMap(i => $`${key} install ${i.split(' ')}`)))
+        break
+      case 'npm':
+        promises.push(...combined[key].flatMap(x => x.installList.flatMap(i => $`volta install ${i}`)))
+        break
+      case 'binary':
+        // TODO
+        promises.push(...combined[key].flatMap(x => x.installList.flatMap(i => $`TMP="$(mktemp)" && curl -sSL ${i} > "$TMP" && sudo mv "$TMP" /usr/local/src/${x._bin} && chmod +x /usr/local/src/${x._bin}`)))
+        break
+      case 'brew':
+      case 'cask': // Handled above
+        break
+      case 'choco':
+        promises.push($`${key} install -y ${combined[key].flatMap(x => x.installList).join(' ')}`)
+        break
+      case 'dnf':
+      case 'yum':
+        promises.push($`sudo ${key} install -y ${combined[key].flatMap(x => x.installList).join(' ')} --setopt=skip_if_unavailable=True --setopt=skip_missing_names_on_install=True`)
+        break
+      case 'zypper':
+        promises.push($`sudo ${key} --non-interactive install -y ${combined[key].flatMap(x => x.installList).join(' ')}`)
+        break
+      case 'emerge':
+      case 'pkg_add':
+        promises.push($`sudo ${key} ${combined[key].flatMap(x => x.installList).join(' ')}`)
+        break
+      case 'eopkg':
+      case 'pkg-freebsd':
+      case 'pkg-termux':
+      case 'pkgin':
+      case 'port':
+      case 'snap':
+        const command = `${combined[key].flatMap(x => x.installList).join(' ')}`
+        process.env.DEBUG && console.log(command)
+        const items = command.match(/\S+/g) || []
+        process.env.DEBUG && console.log(items)
+        let classicInstall = []
+        let regularInstall = []
+        // Split the command into individual items
+        let previousItem = ""
+        items.forEach(item => {
+          if (item === '--classic') {
+            classicInstall.push(previousItem)
+          } else if (!item.startsWith("--")) {
+            // Add non-flag items to regularInstall temporarily
+            regularInstall.push(item)
+          }
+          previousItem = item
+        })
+
+        // Filter out items that were moved to classicInstall from regularInstall
+        regularInstall = regularInstall.filter(item => !classicInstall.includes(item))
+
+        if (classicInstall.length > 0) {
+          process.env.DEBUG && log(`DEBUG: sudo snap install ${classicInstall.join(' ')} --classic`)
+          promises.push($`sudo snap install ${['--classic', ...classicInstall]}`)
+        }
+
+        if (regularInstall.length > 0) {
+          process.env.DEBUG && log(`DEBUG: sudo snap install ${regularInstall.join(' ')}`)
+          promises.push($`sudo snap install ${regularInstall}`)
+        }
+        break
+      case 'flatpak':
+        promises.push(forEachSeries(combined[key].flatMap(x => x.installList.flatMap(i => $`sudo ${key} install -y flathub ${i}`))))
+        break
+      case 'github': // TODO
+        break
+      case 'nix-env': // TODO
+      case 'nix-pkg': // TODO
+      case 'nix-shell': // TODO
+        break
+      case 'pacman':
+        promises.push($`sudo ${key} -Sy --noconfirm --needed ${combined[key].flatMap(x => x.installList).join(' ')}`)
+        break
+      case 'pkg-darwin':
+        break
+      case 'sbopkg': // TODO
+        break
+      case 'script':
+        promises.push(...combined[key].flatMap(x => x.installList.flatMap(i => runScript(x.listKey, i))))
+        break
+      case 'whalebrew': // TODO
+        break
+      case 'xbps':
+        promises.push($`sudo xbps-install -S ${combined[key].flatMap(x => x.installList).join(' ')}`)
+        break
+      case 'yay':
+        promises.push($`yay -Sy --noconfirm --needed ${combined[key].flatMap(x => x.installList).join(' ')}`)
+        break
+      default:
+        log(`Unable to find install key instructions for ${key}`)
+    }
+  }
+  log(`Performing ${promises.length} installations`)
+  const installs = await Promise.allSettled(promises)
+  log(`All of the installations have finished`)
+  process.env.DEBUG && console.log('Completed installs:', installs)
+  await postInstall(combined)
+}
+
+async function postInstall(combined) {
+  log(`Running post-install routine`)
+  const promises = []
+  Object.keys(combined).includes('flatpak') && promises.push(createFlatpakLinks(combined.flatpak))
+  const postInstalls = await Promise.allSettled(promises)
+  process.env.DEBUG && console.log('Post installs:', postInstalls)
+}
+
+async function acquireManagerList(type, command) {
+  if (which.sync(type, { nothrow: true })) {
+    if (fs.existsSync(`${cacheDir}/${type}`)) {
+      setTimeout(() => {
+        require('child_process').exec(`${command} > ${cacheDir}/${type}`)
+      }, 100)
+    } else {
+      require('child_process').execSync(`${command} > ${cacheDir}/${type}`)
+    }
+    return fs.readFileSync(`${cacheDir}/${type}`).toString().split('\n')
+  } else {
+    log(`${type} is not installed`)
+    return []
+  }
+}
+
+function pkgMap(pkgDefs) {
+  return pkgDefs
+    .map(i => {
+      for (const pref of installOrder[sysType]) {
+        const installKey = getPkgData(pref, pkgs[i], false)
+        if (installKey) {
+          return {
+            ...pkgs[i],
+            listKey: i,
+            installKey,
+            installType: installKey.split(':')[0],
+            installList: typeof pkgs[i][installKey] === 'string' ? [pkgs[i][installKey]] : pkgs[i][installKey]
+          }
+        }
+      }
+      return {
+        ...pkgs[i],
+        listKey: i,
+        installKey: false,
+        installType: false,
+        installList: []
+      }
+    })
+    .filter(x => x.installKey)
+}
+
+async function checkIfHeadless() {
+  try {
+    process.env.DEBUG && log('Checking if session is headless')
+    runSilentCommand(`if [ -d /System ] && [ -d /Applications ]; then system_profiler SPDisplaysDataType > /dev/null 2>&1; else xrandr --listmonitors > /dev/null 2>&1; fi`)
+    return false
+  } catch (e) {
+    return true
+  }
+}
+
+
+async function main() {
+  await $`mkdir -p ${cacheDir}`
+  log(`Acquiring software definitions and system information`)
+  const initData = await Promise.all([
+    getOsInfo(),
+    getSoftwareDefinitions(),
+    getSystemType(),
+    getChezmoiConfig(),
+    checkIfHeadless()
+  ])
+  osArch = initData[0].arch
+  osId = process.platform === 'win32' ? 'win32' : (process.platform === 'linux' ? initData[0].id : process.platform)
+  osType = process.platform === 'win32' ? 'windows' : process.platform
+  pkgs = initData[1].softwarePackages
+  sysType = initData[2]
+  chezmoiConfig = initData[3]
+  isHeadless = initData[4]
+  installOrder = initData[1].installerPreference
+  log(`Populating lists of pre-installed packages`)
+  const listPromises = [
+    acquireManagerList('apt', `if command -v dpkg; then dpkg -l; fi`),
+    acquireManagerList('brew', `brew list -1`),
+    acquireManagerList('cargo', `cargo install --list | awk '/^[[:alnum:]]/ {print $1}'`),
+    acquireManagerList('dnf', `rpm -qa`),
+    acquireManagerList('flatpak', `flatpak --columns=app list`),
+    acquireManagerList('gem', `gem list | awk '{print $1}'`),
+    acquireManagerList('npm', `volta list --format plain | awk '{print $2}' | sed 's/@.*//'`),
+    acquireManagerList('pacman', `pacman -Qs`),
+    acquireManagerList('pip', `pip3 list | awk '{print $1}'`),
+    acquireManagerList('pipx', `pipx list --short | awk '{print $1}'`),
+    acquireManagerList('snap', `if command -v snapd; then snap list; fi`),
+    acquireManagerList('zap', `zap list`)
+  ]
+  const lists = await Promise.all(listPromises)
+  const managerLists = {
+    appimage: lists[6],
+    apt: lists[0],
+    brew: lists[1],
+    cargo: lists[2],
+    cask: lists[1],
+    dnf: lists[3],
+    flatpak: lists[4],
+    gem: lists[5],
+    npm: lists[6],
+    pacman: lists[7],
+    pip: lists[8],
+    pipx: lists[9],
+    snap: lists[10],
+    zap: lists[11]
+  }
+  log(`Acquiring installation keys`)
+  const installKeys = Object.keys(pkgs)
+    .filter(i => expandDeps(argv._).includes(i))
+  log(`Constructing installation data`)
+  const installData = pkgMap(customArgv.all ? Object.keys(pkgs) : installKeys)
+  log(`Filtering install instructions`)
+  process.env.DEBUG && log(`Headless session detected: ${isHeadless}`)
+  const installInstructions = installData
+    .filter(x => !!x.installList)
+    .map(x => {
+      return {
+        ...x,
+        installList: x.installList.filter(y => {
+          if ((x.installType === 'brew' || x.installType === 'cask') && y.includes('/')) {
+            return managerLists[x.installType] ? !managerLists[x.installType].includes(y.substring(y.lastIndexOf('/') + 1, y.length)) : true
+          } else {
+            return managerLists[x.installType] ? !managerLists[x.installType].includes(y) : true
+          }
+        })
+      }
+    })
+    .filter(x => {
+      // Filter out packages already installed by by package managers
+      return x.installList.length
+    })
+    .filter(x => {
+      // Filter out packages that contain a deprecation note
+      return !x._deprecated
+    })
+    .filter(x => {
+
+      // Only install casks or flatpaks and items with `_preload: true` in the `software.yml` file
+      if (customArgv.lazy) {
+        if (isHeadless) {
+          if (x._app || x.flatpak || x.appimage) {
+            return false
+          } else if (x._serviceEnabled) {
+            return true
+          } else {
+            return !!x._preload
+          }
+        } else {
+          if (x._app || x.flatpak || x._serviceEnabled) {
+            return true
+          } else {
+            return !!x._preload
+          }
+        }
+      } else {
+        return true
+      }
+    })
+    .filter(x => {
+      // Filter out macOS apps that already have a _app installed
+      if (x.installType === 'cask' || (osId === 'darwin' && x._app)) {
+        const appField = getPkgData('_app', x, x.installType)
+        const appCheck = fs.existsSync(`/Applications/${x[appField]}`) || fs.existsSync(`${os.homedir()}/Applications/${x[appField]}`)
+        appCheck && log(`Skipping installation of ${x.listKey} because the application is in an Applications folder`)
+        return !appCheck
+      } else {
+        return true
+      }
+    })
+    .filter(x => {
+      // Filter out packages that already have a bin in the PATH
+      const binField = getPkgData('_bin', x, x.installType)
+      const isArray = Array.isArray(x[binField])
+      if (typeof x[binField] === 'string' || isArray) {
+        isArray && log(`_bin field for ${x.listKey} is an array so the first entry will be used to check`)
+        const whichCheck = which.sync(typeof x[binField] === 'string' ? x[binField] : x[binField][0], { nothrow: true })
+        whichCheck && log(`Skipping installation of ${x.listKey} because its binary is available in the PATH`)
+        return !whichCheck
+      } else {
+        log(`Ignoring _bin check because the _bin field for ${x.listKey} is not a string or array`)
+        return true
+      }
+    })
+    .filter(x => {
+      // Filter out packages that do not pass _when check
+      const whenField = getPkgData('_when', x, x.installType)
+      if (x[whenField]) {
+        if (typeof x[whenField] === 'string') {
+          try {
+            runSilentCommand(`${x[whenField]}`)
+            return true
+          } catch (e) {
+            return false
+          }
+        } else {
+          log(`typeof _when for ${x.listKey} must be a string`)
+          return true
+        }
+      } else {
+        return true
+      }
+    })
+  log(`Running installation routine`)
+  await installPackages(installInstructions)
+  log(`Installation process complete!`)
+}
+
+main()

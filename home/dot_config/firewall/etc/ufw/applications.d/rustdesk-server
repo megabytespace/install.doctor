@@ -1,0 +1,4 @@
+[RustDesk]
+title=RustDesk
+description=RustDesk server
+ports=21116/udp|8000/tcp|21115:21119/tcp

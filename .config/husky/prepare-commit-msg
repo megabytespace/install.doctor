@@ -21,12 +21,12 @@ if [ -f "$(dirname "$0")/_/husky.sh" ]; then
    logger info 'This git hook is configured to run even when --no-verify is used. In order to bypass this prompt, use the -n flag instead.'
     logger info 'Opening a `git commit` dialog'
     if ! type pnpx > /dev/null && type npm > /dev/null; then
-      npm install -g pnpm
+      npm install --no-progress -g pnpm
     elif ! type pnpx > /dev/null; then
       logger error '`pnpm` or `npm` must be installed'
     fi
     if ! type git-cz &> /dev/null; then
-      pnpm install -g commitizen
+      pnpm install --no-progress -g commitizen
     fi
     exec < /dev/tty && (git-cz --hook || true)
   fi

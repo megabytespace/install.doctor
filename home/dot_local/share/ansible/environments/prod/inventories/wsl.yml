@@ -1,0 +1,10 @@
+---
+all:
+  children:
+    ubuntu-wsl:
+      hosts:
+        wsl:
+          ansible_connection: local
+          ansible_sudo_pass: '{{ admin_password }}'
+          ansible_password: '{{ admin_password }}'
+          ansible_user: '{{ admin_username }}'

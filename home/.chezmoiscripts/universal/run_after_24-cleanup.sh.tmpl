@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# @file Miscellaneous Clean Up
+# @brief Removes certain files that should not be necessary
+# @description
+#     This script removes various files in the `HOME` directory that are either no longer necessary
+#     or cluttery.
+
+{{ includeTemplate "universal/profile" }}
+{{ includeTemplate "universal/logg" }}
+
+cleanAptGet() {
+  if command -v apt-get > /dev/null; then
+    gum log -sl info 'Running sudo apt-get autoclean' && sudo apt-get autoclean
+    gum log -sl info 'Running sudo apt-get -y autoremove' && sudo apt-get -y autoremove
+  fi
+}
+
+cleanupBrew() {
+  if command -v brew > /dev/null; then
+    gum log -sl info 'Running brew cleanup' && brew cleanup
+  fi
+}
+
+removeDotVolta() {
+  if [ -d "$HOME/.volta" ]; then
+    gum log -sl info "Removing $HOME/.volta folder (its tucked away in ~/.local/share now)"
+    sudo rm -rf "$HOME/.volta"
+  fi
+}
+
+### Remove meta sudo file
+if [ -f "$HOME/.sudo_as_admin_successful" ]; then
+    rm -f "$HOME/.sudo_as_admin_successful"
+fi
+
+### Remove .bash_history file
+# New dotfiles specify this to be kept in the ~/.local folder
+if [ -f "$HOME/.bash_history" ]; then
+    rm -f "$HOME/.bash_history"
+fi
+
+### Remove wget history file
+# New dotfiles include alias that automatically adds the wget-hsts file in the ~/.local folder
+if [ -f "$HOME/.wget-hsts" ]; then
+    rm -f "$HOME/.wget-hsts"
+fi
+
+### Remove .viminfo
+# No idea how this is being created
+if [ -f "$HOME/.viminfo" ]; then
+    sudo rm -f "$HOME/.viminfo"
+fi
+
+### Remove .wrangler
+# Not sure how this is populating but the proper environment variables appear to be in place and nothing breaks when its removed
+if [ -d "$HOME/.wrangler" ]; then
+    rm -rf "$HOME/.wrangler"
+fi
+
+if [ -d /Applications ] && [ -d /System ]; then
+    ### Empty trash
+    if command -v m > /dev/null; then
+        gum log -sl info 'Emptying trash' && m trash clean
+    fi
+fi
+
+removeDotVolta &
+cleanAptGet &
+cleanupBrew &
+wait
+
+gum log -sl info 'Finished cleanup process' && exit 0

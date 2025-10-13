@@ -28,7 +28,7 @@ tasks:
         sh: jq --arg collections "$(yq eval -o=json '.collections' {{.REQUIREMENTS_PATH}})" '.{{.COLLECTION_DEPS}} = ($collections | fromjson) |
           .{{.COLLECTION_DEPS}}[] | "<a href=\"" + .source + "/" + (.name | split(".") | join("/")) + "\" title=\"" + .name +
           " collection on Ansible Galaxy\" target=\"_blank\"><img alt=\"" + .name + " Ansible Galaxy badge\"
-          src=\"https://img.shields.io/badge/Ansible%20Galaxy-" + .name + "-000000?logo=ansible&logoColor=white&style=for-the-badge\"></a>"'
+          src=\"https://img.shields.io/badge/Ansible%20Galaxy-" + .name + "-000000?logo=ansible&logoColor=white&style=for-the-badge\" /></a>"'
           -r  {{.VARIABLES_PATH}} | jq --raw-input --slurp 'split("\n") | .[0:((. | length) - 1)]'
       TMP:
         sh: mktemp

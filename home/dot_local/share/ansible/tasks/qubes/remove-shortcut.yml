@@ -1,0 +1,20 @@
+---
+- name: Check if {{ item }} desktop link exists
+  stat:
+    path: '/usr/share/applications/{{ item }}'
+  register: sys_tool_link
+
+- name: Backup {{ item }} link to /usr/share/applications/hidden
+  become: true
+  copy:
+    src: '/usr/share/applications/{{ item }}'
+    dest: '/usr/share/applications/hidden/{{ item }}'
+    remote_src: true
+  when: sys_tool_link.stat.exists
+
+- name: Remove {{ item }} link from the desktop shortcut menu
+  become: true
+  file:
+    path: '{{ item }}'
+    state: absent
+  when: sys_tool_link.stat.exists

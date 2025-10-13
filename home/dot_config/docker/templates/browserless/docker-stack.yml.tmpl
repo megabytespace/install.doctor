@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  browserless:
+    image: browserless/chrome:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    ports:
+      - "3000:3000" # change host port if needed
+    environment:
+      - TOKEN=your-strong-token # optional: to secure access
+      - MAX_CONCURRENT_SESSIONS=5
+      - PREBOOT_CHROME=true
+      - CONNECTION_TIMEOUT=300000
+      - KEEP_ALIVE=true
+    volumes:
+      - browserless_data:/data
+
+volumes:
+  browserless_data:

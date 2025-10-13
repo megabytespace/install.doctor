@@ -1,0 +1,44 @@
+#!/usr/bin/env sh
+# @file App Backup Variables
+# @brief Stores variables that instruct various utilities what location to use for private application data
+# @description
+#     The variables in this file are used to instruct `autorestic` and possibly other utilities about the
+#     location of the private application data for various programs that get backed up.
+
+if [ -d /Applications ] && [ -d /System ]; then
+  ### macOS
+  export ALTAIR_APPDATA="$HOME/Library/Application Support/Altair GraphQL Client"
+  export ANDROID_STUDIO_APPDATA="$HOME/Library/Application Support/Google/AndroidStudio2023.1"
+  export BRAVE_BROWSER_APPDATA="$HOME/Library/Application Support/BraveSoftware/Brave-Browser/Default"
+  export FERDIUM_APPDATA="$HOME/Library/Application Support/Ferdium"
+  export FIREFOX_APPDATA="$HOME/Library/Application Support/Firefox/Profiles"
+  export GOOGLE_CHROME_APPDATA="$HOME/Library/Application Support/Google/Chrome/Default"
+  export LOGI_OPTIONS_PLUS_APPDATA="$HOME/Library/Application Support/LogiOptionsPlus"
+  export MARK_TEXT_APPDATA="$HOME/Library/Application Support/marktext"
+  export MICROSOFT_EDGE_APPDATA="$HOME/Library/Application Support/Microsoft Edge/Default"
+  export NOTION_APPDATA="$HOME/Library/Application Support/Notion"
+  export PIECES_OS_APPDATA="$HOME/Library/Application Support/com.pieces.os"
+  export RAYCAST_APPDATA="$HOME/Library/Application Support/com.raycast.macos"
+  # export REMMINA_APPDATA - Remmina not available on macOS
+  export SPACEDRIVE_APPDATA="$HOME/Library/Application Support/spacedrive"
+  export TOR_BROWSER_APPDATA="$HOME/Library/Application Support/TorBrowser-Data/Tor"
+  export WARP_TERMINAL_APPDATA="$HOME/Library/Application Support/dev.warp.Warp-Stable"
+else
+  ### Linux
+  # Currently, we assume the Flatpak location whenever possible
+  export ANDROID_STUDIO_APPDATA="$HOME/.var/app/com.google.AndroidStudio/config/Google/AndroidStudio2023.1"
+  export ALTAIR_APPDATA="$HOME/snap/altair/current/.config/Altair GraphQL Client"
+  export BRAVE_BROWSER_APPDATA="$HOME/.var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser/Default"
+  export FERDIUM_APPDATA="$HOME/.var/app/org.ferdium.Ferdium/config/Ferdium"
+  export FIREFOX_APPDATA="$HOME/.var/app/org.mozilla.firefox/.mozilla/firefox"
+  export GOOGLE_CHROME_APPDATA="$HOME/.var/app/com.google.Chrome/config/google-chrome/Default"
+  export MAILSPRING_APPDATA="$HOME/.var/app/com.getmailspring.Mailspring/config/Mailspring"
+  export MARK_TEXT_APPDATA="$HOME/.var/app/com.github.marktext.marktext/config/marktext"
+  export MICROSOFT_EDGE_APPDATA="$HOME/.var/app/com.microsoft.Edge/config/microsoft-edge/Default"
+  # export NOTION_APPDATA - Notion does not have a Linux app
+  export PIECES_OS_APPDATA="$HOME/snap/pieces-os/current"
+  export REMMINA_APPDATA="$HOME/.var/app/org.remmina.Remmina/config/remmina/remmina.pref"
+  export SPACEDRIVE_APPDATA="$HOME/.var/app/TODO"
+  export TOR_BROWSER_APPDATA="$HOME/.var/app/com.github.micahflee.torbrowser-launcher/data/torbrowser/tbb/x86_64/tor-browser/Browser/TorBrowser/Data/"
+  export WARP_TERMINAL_APPDATA="$HOME/.local/state/warp-terminal/warp.sqlite"
+fi

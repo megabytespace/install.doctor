@@ -1,0 +1,8 @@
+---
+inputDir: src/
+outputMap: |
+  ./{{ .in | strings.ReplaceAll ".tmpl" "" }}
+
+datasources:
+  partials:
+    url: partials/
