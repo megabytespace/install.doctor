@@ -117,3 +117,38 @@ venv.bak/
 yarn-error.log
 .yubi.json
 .yubi-masterkey
+
+# TypeScript incremental compilation
+*.tsbuildinfo
+.tsbuildinfo
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettiercache
+
+# Build artifacts
+lib/
+dist/
+build/
+
+# OS generated files
+.DS_Store?
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# IDE files
+*.swp
+*.swo
+*~
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
