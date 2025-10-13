@@ -889,7 +889,7 @@ loadCronjobs() {
 #     as well as improve security. Some of the tweaks include modifying default settings for various applications.
 macOSSettings() {
   if [ -d /System ] && [ -d /Applications ] && [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/macos.sh" ]; then
-    bash "${XDG_CONFIG_HOME:-$HOME/.config}/shell/macos.sh"
+    APPLY_MACOS_SETTINGS=true bash "${XDG_CONFIG_HOME:-$HOME/.config}/shell/macos.sh"
   fi
 }
 

@@ -6,6 +6,11 @@
 #     This script houses a wide range of macOS system tweaks that are intended to improve the developer experience on macOS,
 #     as well as improve security. Some of the tweaks include modifying default settings for various applications.
 
+# Exit early if not explicitly requested to run system configuration
+if [ "$APPLY_MACOS_SETTINGS" != "true" ]; then
+  exit 0
+fi
+
 gum log -sl info 'Applying optimized macOS settings'
 
 # Ask for the administrator password upfront
