@@ -71,8 +71,8 @@ else
       gum log -sl info 'Cloning yay from https://aur.archlinux.org/yay.git to /usr/local/src/yay'
       sudo git clone https://aur.archlinux.org/yay.git /usr/local/src/yay
       cd /usr/local/src/yay
-      gum log -sl info 'Installing yay via sudo makepkg -si'
-      sudo makepkg -si
+      gum log -sl info 'Installing yay via makepkg -si --noconfirm'
+      sudo makepkg -si --noconfirm
     fi
   elif [ '{{ .host.distro.id }}' = 'centos' ]; then
     ### Upgrade system
@@ -213,7 +213,7 @@ else
       gum log -sl info 'Installing '"$PACKAGE"''
       sudo pkg install -y "$PACKAGE" || EXIT_CODE=$?
       if [ -n "$EXIT_CODE" ]; then
-        gum log -sl error 'Error installing '"$PACKAGE"' via zypper'
+        gum log -sl error 'Error installing '"$PACKAGE"' via pkg'
         gum log -sl info 'Proceeding with installation..'
         unset EXIT_CODE
       fi
@@ -224,8 +224,8 @@ else
     gum log -sl info 'Dependencies: {{ $packages | sortAlpha | uniq | join " " -}}'
 
     ### Install base_devel
-    gum log -sl info 'Installing base_devel pattern with sudo zypper install -t pattern devel_basis'
-    sudo zypper install -t pattern devel_basis
+    gum log -sl info 'Installing base_devel pattern with sudo zypper install -y -t pattern devel_basis'
+    sudo zypper install -y -t pattern devel_basis
 
     ### Install packages if they are not already present
     for PACKAGE in {{ $packages | sortAlpha | uniq | join " " -}}; do

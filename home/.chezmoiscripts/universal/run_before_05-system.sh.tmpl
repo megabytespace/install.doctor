@@ -109,7 +109,7 @@ configureGPG() {
       gum log -sl info 'Key is already in keyring'
     fi
     gum log -sl info 'Stopping dirmngr'
-    gpgconf --kill dirmngr && gum log -sl info 'Stopped dirmngr' || info warn 'Failed to stop dirmngr'
+    gpgconf --kill dirmngr && gum log -sl info 'Stopped dirmngr' || gum log -sl warn 'Failed to stop dirmngr'
     logg 'Ensuring the trust of the provided public GPG key is set to maximum'
     echo -e "trust\n5\ny" | gpg --command-fd 0 --edit-key "$KEYID"
   else
@@ -221,7 +221,7 @@ ensureUserGroup() {
       if [[ "$(sudo dscl . read /Users/$USERNAME UniqueID 2>&1)" == *'No such key'* ]]; then
         MAX_ID_USER="$(dscl . -list /Users UniqueID | awk '{print $2}' | sort -ug | tail -1)"
         USER_ID="$((MAX_ID_USER+1))"
-        sudo dscl . create /Users/$USERNAME UniqueID "$USERID"
+        sudo dscl . create /Users/$USERNAME UniqueID "$USER_ID"
       fi
 
       ### Add user to group
@@ -379,13 +379,13 @@ installDocker() {
   elif command -v pacman > /dev/null; then
     # Archlinux
     gum log -sl info 'Installing Docker on Archlinux'
-    sudo pacman -Syu
-    sudo pacman -S docker
+    sudo pacman -Syu --noconfirm
+    sudo pacman -S --noconfirm docker
   elif command -v zypper > /dev/null; then
     # OpenSUSE
     gum log -sl info 'Installing Docker on OpenSUSE'
-    sudo zypper addrepo https://download.docker.com/linux/sles/docker-ce.repo
-    sudo zypper install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    sudo zypper addrepo https://download.docker.com/linux/sles/docker-ce.repo || true
+    sudo zypper install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
   fi
 
   ### Add Docker group on Linux
@@ -566,7 +566,7 @@ removeLinuxBloatware() {
         fi
       elif command -v pacman > /dev/null; then
         if pacman -Qs "$PKG" > /dev/null; then
-          sudo pacman -R "$PKG"
+          sudo pacman -R --noconfirm "$PKG"
           gum log -sl info 'Removed '"$PKG"' via pacman'
         fi
       elif command -v zypper > /dev/null; then
@@ -744,7 +744,7 @@ installYay() {
     sudo rm -rf /usr/local/src/yay
     sudo git clone https://aur.archlinux.org/yay.git /usr/local/src/yay
     cd /usr/local/src/yay
-    sudo makepkg -si
+    sudo makepkg -si --noconfirm
   fi
 }
 

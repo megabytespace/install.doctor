@@ -1,33 +1,28 @@
 #!/bin/bash
-# @file run-vm.sh
-# @brief Script to run a Linux VM in a CI/CD environment.
+# @file test-linux.sh
+# @brief Script to run a Linux VM in a CI/CD environment and execute commands inside it.
 # @description
 #     This script sets up and runs a virtual machine using QEMU/KVM.
 #     It supports multiple Linux distributions, configures a cloud-init ISO,
 #     launches the VM, and executes a specified command inside the VM.
 #
+#     Supported distributions: ubuntu, arch, fedora, centos, debian, alpine, opensuse
+#
 #     Features:
-#      * Supports Ubuntu, Arch Linux, Fedora, CentOS, Debian, and Alpine.
-#      * Automatically downloads the correct cloud image.
-#      * Optimized SSH wait logic for faster boot times.
-#      * Shrinks cloud images before booting for improved efficiency.
-#      * Snapshot mode to preserve base image integrity.
-#      * Enhanced logging and error handling.
-#      * Automatically detects and generates SSH keys if missing.
+#      * Downloads the correct cloud image for each distribution
+#      * Configures cloud-init for passwordless sudo and SSH access
+#      * Snapshot mode to preserve base image integrity
+#      * Automatic SSH key detection and generation
+#      * Configurable memory, CPU count, and SSH port via environment variables
 #
 # @usage
-#   ./run-vm.sh <distro> "your-command-here"
+#   ./test-linux.sh <distro> "your-command-here"
 #
-# @option ubuntu Use Ubuntu (default).
-# @option arch Use Arch Linux.
-# @option fedora Use Fedora.
-# @option centos Use CentOS.
-# @option debian Use Debian.
-# @option alpine Use Alpine Linux.
-#
-# @requires
-#   - QEMU/KVM installed (`qemu-system-x86_64`, `genisoimage`)
-#   - SSH client (`ssh`)
+# @envvar MEMORY  VM memory in MB (default: 2048)
+# @envvar CPUS  Number of VM CPUs (default: 2)
+# @envvar SSH_PORT  Host port for SSH forwarding (default: 2222)
+# @envvar CI  Set in CI environments for non-interactive behavior
+# @envvar TEST_INSTALL  Alternative to CI for triggering headless mode
 #
 # @exitcode 0 If successful.
 # @exitcode 1 If an error occurs.
@@ -36,7 +31,6 @@ set -e
 
 # Redirect output to log files
 LOG_FILE="run-vm.log"
-ERROR_LOG="run-vm-error.log"
 exec > >(tee -i "$LOG_FILE") 2>&1
 
 # ==============================================================================
@@ -54,18 +48,14 @@ SSH_USER="ci-user"
 
 # ==============================================================================
 # @description Detect an existing SSH key or create a new one if missing.
-#
-# @stdout The detected or newly generated SSH key path.
-#
-# @exitcode 0 If a key is found or successfully created.
-# @exitcode 1 If SSH key generation fails.
 # ==============================================================================
 detectSshKey() {
-  SSH_KEY=$(find ~/.ssh -name "*.pub" | head -n 1)
+  SSH_KEY="$(find "$HOME/.ssh" -name "*.pub" 2>/dev/null | head -n 1)"
   if [ -z "$SSH_KEY" ]; then
     echo "No SSH key found. Generating one..."
-    ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N "" >/dev/null 2>&1
-    SSH_KEY="~/.ssh/id_rsa.pub"
+    mkdir -p "$HOME/.ssh"
+    ssh-keygen -t rsa -b 4096 -f "$HOME/.ssh/id_rsa" -N "" >/dev/null 2>&1
+    SSH_KEY="$HOME/.ssh/id_rsa.pub"
     if [ ! -f "$SSH_KEY" ]; then
       echo "Error: Failed to generate SSH key."
       exit 1
@@ -76,29 +66,50 @@ detectSshKey() {
 
 # ==============================================================================
 # @description Download the selected Linux cloud image if not already available.
-#
-# @stdout Download progress if needed.
-#
-# @exitcode 0 If successful.
-# @exitcode 1 If the download fails.
+#     Each distribution has its own cloud image URL for proper testing.
 # ==============================================================================
 downloadImage() {
-  local IMAGE_URL
-  IMAGE_URL="https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-
-  if [ ! -f "$IMAGE" ]; then
-    echo "Downloading $DISTRO cloud image..."
-    wget -O "$IMAGE" "$IMAGE_URL"
+  if [ -f "$IMAGE" ]; then
+    echo "Cloud image already exists: $IMAGE"
+    return 0
   fi
+
+  local IMAGE_URL
+  case "$DISTRO" in
+    ubuntu)
+      IMAGE_URL="https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+      ;;
+    debian)
+      IMAGE_URL="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
+      ;;
+    fedora)
+      IMAGE_URL="https://download.fedoraproject.org/pub/fedora/linux/releases/39/Cloud/x86_64/images/Fedora-Cloud-Base-39-1.5.x86_64.qcow2"
+      ;;
+    centos)
+      IMAGE_URL="https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      ;;
+    arch)
+      IMAGE_URL="https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-cloudimg.qcow2"
+      ;;
+    alpine)
+      IMAGE_URL="https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/cloud/nocloud_alpine-3.19.1-x86_64-bios-cloudinit-r0.qcow2"
+      ;;
+    opensuse)
+      IMAGE_URL="https://download.opensuse.org/distribution/leap/15.5/appliances/openSUSE-Leap-15.5-Minimal-VM.x86_64-Cloud.qcow2"
+      ;;
+    *)
+      echo "Error: Unsupported distribution '$DISTRO'"
+      echo "Supported: ubuntu, debian, fedora, centos, arch, alpine, opensuse"
+      exit 1
+      ;;
+  esac
+
+  echo "Downloading $DISTRO cloud image from $IMAGE_URL..."
+  wget -q --show-progress -O "$IMAGE" "$IMAGE_URL"
 }
 
 # ==============================================================================
-# @description Reduce image size before booting to improve efficiency.
-#
-# @stdout Confirmation message after resizing.
-#
-# @exitcode 0 If successful.
-# @exitcode 1 If resizing fails.
+# @description Resize the cloud image to allow sufficient disk space.
 # ==============================================================================
 resizeImage() {
   echo "Resizing cloud image for efficiency..."
@@ -107,11 +118,7 @@ resizeImage() {
 
 # ==============================================================================
 # @description Generate cloud-init configuration files for VM initialization.
-#
-# @stdout Confirmation messages on success.
-#
-# @exitcode 0 If successful.
-# @exitcode 1 If file creation fails.
+#     Creates a user with passwordless sudo and SSH key access.
 # ==============================================================================
 createCloudInitConfig() {
   echo "Creating cloud-init configuration..."
@@ -141,14 +148,9 @@ EOF
 
 # ==============================================================================
 # @description Start the Linux VM using QEMU with snapshot mode.
-#
-# @stdout Status message on VM start.
-#
-# @exitcode 0 If successful.
-# @exitcode 1 If VM fails to start.
 # ==============================================================================
 startQemuVm() {
-  echo "Starting $DISTRO VM..."
+  echo "Starting $DISTRO VM (memory: ${MEMORY}MB, cpus: ${CPUS})..."
   qemu-system-x86_64 \
       -m "$MEMORY" \
       -smp "$CPUS" \
@@ -162,50 +164,45 @@ startQemuVm() {
 
 # ==============================================================================
 # @description Wait for SSH to become available inside the VM.
-#
-# @stdout Status message.
-#
-# @exitcode 0 If SSH is reachable.
-# @exitcode 1 If SSH does not become available.
+#     Times out after 120 seconds to prevent hanging in CI.
 # ==============================================================================
 waitForSsh() {
-  echo "Waiting for SSH connection..."
-  SECONDS_WAITED=0
-  MAX_WAIT=60
-  while ! nc -z localhost "$SSH_PORT"; do
-    if [[ $SECONDS_WAITED -ge $MAX_WAIT ]]; then
+  echo "Waiting for SSH connection on port $SSH_PORT..."
+  local SECONDS_WAITED=0
+  local MAX_WAIT=120
+  while ! nc -z localhost "$SSH_PORT" 2>/dev/null; do
+    if [ "$SECONDS_WAITED" -ge "$MAX_WAIT" ]; then
       echo "Error: SSH did not become available within $MAX_WAIT seconds."
       exit 1
     fi
     sleep 2
     SECONDS_WAITED=$((SECONDS_WAITED + 2))
   done
+  # Give sshd a moment to fully initialize after port is open
+  sleep 3
   echo "SSH is available!"
 }
 
 # ==============================================================================
 # @description Run a command inside the VM via SSH.
+#     Sets CI and HEADLESS_INSTALL environment variables automatically.
+#     Uses StrictHostKeyChecking=no since VM keys are ephemeral in CI.
 #
-# @arg $2 string The command to execute inside the VM.
-#
-# @stdout Command output.
-#
-# @exitcode 0 If successful.
-# @exitcode 1 If SSH command fails.
+# @arg $1 string The command to execute inside the VM.
 # ==============================================================================
 runCommandInVm() {
-  local COMMAND=$2
+  local COMMAND="$1"
   echo "Running command inside VM: $COMMAND"
-  ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER"@localhost "$COMMAND"
+  ssh -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      -o ConnectTimeout=10 \
+      -p "$SSH_PORT" \
+      "$SSH_USER"@localhost \
+      "export CI=true; export TEST_INSTALL=true; export HEADLESS_INSTALL=true; $COMMAND"
 }
 
 # ==============================================================================
 # @description Stop the QEMU VM process gracefully.
-#
-# @stdout Status message on VM stop.
-#
-# @exitcode 0 If successful.
-# @exitcode 1 If termination fails.
 # ==============================================================================
 stopVm() {
   echo "Stopping VM..."
@@ -218,8 +215,11 @@ stopVm() {
 main() {
   if [ -z "$2" ]; then
     echo "Usage: $0 <distro> \"your-command-here\""
+    echo "Supported distros: ubuntu, debian, fedora, centos, arch, alpine, opensuse"
     exit 1
   fi
+
+  trap stopVm EXIT
 
   detectSshKey
   downloadImage
@@ -228,7 +228,6 @@ main() {
   startQemuVm
   waitForSsh
   runCommandInVm "$2"
-  stopVm
 }
 
 main "$@"

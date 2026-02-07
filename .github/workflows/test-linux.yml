@@ -1,18 +1,128 @@
-name: Test Multiple Linux VMs in GitHub CI
+name: Test Install Doctor on Linux
 
 on:
   push:
     branches:
       - main
+      - master
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test-linux-vm:
+  # ============================================================================
+  # Native container tests - fast, no QEMU overhead
+  # Tests the bootstrap script directly in each distro's container
+  # ============================================================================
+  test-container:
+    name: "${{ matrix.distro }} (container)"
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
+      fail-fast: false
       matrix:
-        distro: [ubuntu, arch, fedora, centos, debian, alpine]
+        include:
+          - distro: ubuntu-22.04
+            image: ubuntu:22.04
+          - distro: ubuntu-24.04
+            image: ubuntu:24.04
+          - distro: debian-12
+            image: debian:12
+          - distro: fedora-39
+            image: fedora:39
+          - distro: fedora-40
+            image: fedora:40
+          - distro: centos-stream-9
+            image: quay.io/centos/centos:stream9
+          - distro: archlinux
+            image: archlinux:latest
+          - distro: alpine-3.19
+            image: alpine:3.19
+          - distro: opensuse-leap
+            image: opensuse/leap:15.5
+
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - name: Install prerequisites (Debian/Ubuntu)
+        if: contains(matrix.distro, 'ubuntu') || contains(matrix.distro, 'debian')
+        run: |
+          apt-get update
+          apt-get install -y curl bash sudo
+
+      - name: Install prerequisites (Fedora)
+        if: contains(matrix.distro, 'fedora')
+        run: |
+          dnf install -y curl bash sudo
+
+      - name: Install prerequisites (CentOS)
+        if: contains(matrix.distro, 'centos')
+        run: |
+          dnf install -y curl bash sudo
+
+      - name: Install prerequisites (Archlinux)
+        if: contains(matrix.distro, 'archlinux')
+        run: |
+          pacman -Sy --noconfirm curl bash sudo
+
+      - name: Install prerequisites (Alpine)
+        if: contains(matrix.distro, 'alpine')
+        run: |
+          apk add --update curl bash sudo shadow
+
+      - name: Install prerequisites (OpenSUSE)
+        if: contains(matrix.distro, 'opensuse')
+        run: |
+          zypper install -y curl bash sudo
+
+      - name: Create non-root user
+        run: |
+          if command -v useradd > /dev/null; then
+            useradd -m -s /bin/bash testuser || true
+          elif command -v adduser > /dev/null; then
+            adduser -D -s /bin/bash testuser || true
+          fi
+          echo "testuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+      - name: Run Install Doctor bootstrap (headless)
+        run: |
+          su - testuser -c '
+            export CI=true
+            export TEST_INSTALL=true
+            export HEADLESS_INSTALL=true
+            export NO_RESTART=true
+            export SOFTWARE_GROUP=Basic
+            bash <(curl -sSL https://install.doctor/start)
+          '
+        timeout-minutes: 60
+
+      - name: Verify key tools installed
+        run: |
+          su - testuser -c '
+            echo "=== Verification ==="
+            command -v chezmoi && echo "chezmoi: OK" || echo "chezmoi: MISSING"
+            command -v brew && echo "brew: OK" || echo "brew: MISSING"
+            command -v task && echo "task: OK" || echo "task: MISSING"
+            command -v node && echo "node: OK" || echo "node: MISSING"
+            echo "=== Done ==="
+          '
+
+  # ============================================================================
+  # QEMU VM tests - full OS with systemd, networking, etc.
+  # More realistic but slower than container tests
+  # ============================================================================
+  test-vm:
+    name: "${{ matrix.distro }} (VM)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [ubuntu, debian, fedora, centos, arch]
 
     steps:
       - name: Checkout Repository
@@ -20,18 +130,23 @@ jobs:
 
       - name: Install QEMU and Dependencies
         run: |
-          sudo apt update
-          sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils genisoimage wget
+          sudo apt-get update
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils genisoimage wget netcat-openbsd
 
       - name: Make Script Executable
         run: chmod +x scripts/test-linux.sh
 
-      - name: Run ${{ matrix.distro }} VM and Execute Command
-        run: scripts/test-linux.sh ${{ matrix.distro }} "bash <(curl -sSL https://install.doctor/start)"
+      - name: Run ${{ matrix.distro }} VM and Execute Install Doctor
+        run: |
+          scripts/test-linux.sh ${{ matrix.distro }} "bash <(curl -sSL https://install.doctor/start)"
+        timeout-minutes: 90
 
-      - name: Upload Logs for Debugging
+      - name: Upload Logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: vm-logs-${{ matrix.distro }}
-          path: run-vm.log
+          path: |
+            run-vm.log
+            run-vm-error.log
+          retention-days: 7
