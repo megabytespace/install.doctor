@@ -56,7 +56,7 @@ allocateSwap() {
         gum log -sl info 'Running sudo swapon /swapfile'
         sudo swapon /swapfile
         if cat /etc/fstab | grep "/swapfile"; then
-          sudo sed -i '/\/swapfile/\/swapfile none swap defaults 0 0/' /etc/fstab
+          sudo sed -i 's|.*/swapfile.*|/swapfile none swap defaults 0 0|' /etc/fstab
         else
           echo "/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab > /dev/null
         fi
@@ -81,7 +81,7 @@ configureGPG() {
     find "$HOME/.gnupg" -type f -exec chmod 600 {} \;
     find "$HOME/.gnupg" -type d -exec chmod 700 {} \;
     if [ ! -f "$HOME/.gnupg/gpg.conf" ]; then
-      logg 'Downloading hardened gpg.conf file to ~/.gpnupg/gpg.conf'
+      logg 'Downloading hardened gpg.conf file to ~/.gnupg/gpg.conf'
       curl -sSL --compressed "{{ .config.gpg }}" > "$HOME/.gnupg/gpg.conf"
       chmod 600 "$HOME/.gnupg/gpg.conf"
     fi

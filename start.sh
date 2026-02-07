@@ -1,13 +1,27 @@
 #!/usr/bin/env bash
 
-# @file .config/scripts/start.sh
-# @brief Ensures Task is installed and up-to-date and then runs `task start`
+# @file start.sh
+# @brief Bootstrap script that ensures Task is installed and up-to-date, then runs `task start`.
 # @description
-#   This script will ensure [Task](https://github.com/go-task/task) is up-to-date
-#   and then run the `start` task which is generally a good entrypoint for any repository
-#   that is using the Megabyte Labs templating/taskfile system. The `start` task will
-#   ensure that the latest upstream changes are retrieved, that the project is
-#   properly generated with them, and that all the development dependencies are installed.
+#   This script is the initial entry point when running `bash <(curl -sSL https://install.doctor/start)`.
+#   It performs the following steps:
+#
+#   1. **Environment Setup**: Configures git, PATH, and SSH known hosts
+#   2. **Dependency Installation**: Ensures curl, git, gzip, sudo, and jq are installed
+#   3. **Homebrew Setup**: Installs Homebrew (with non-interactive mode support)
+#   4. **Task Installation**: Downloads and installs the [Task](https://github.com/go-task/task) runner
+#   5. **Taskfile Setup**: Downloads shared Taskfile library from upstream
+#   6. **Execution**: Runs `task start` to begin the main provisioning process
+#
+#   The script supports running as root by creating a `megabyte` user and re-executing
+#   under that user (required because Homebrew cannot run as root).
+#
+#   ## Non-Interactive Mode
+#
+#   All package manager operations use non-interactive flags (`-y`, `--noconfirm`, etc.)
+#   to prevent blocking on prompts. Homebrew installation is piped an empty string to
+#   bypass its confirmation prompt.
+#
 #   Documentation on Taskfile.yml syntax can be found [here](https://taskfile.dev/).
 git config url."https://gitlab.com/".insteadOf git@gitlab.com:
           git config url."https://github.com/".insteadOf git@github.com:
@@ -99,14 +113,15 @@ function ensureAlpinePackageInstalled() {
   fi
 }
 
-# @description Helper function for ensurePackageInstalled for ArchLinux installations
+# @description Helper function for ensurePackageInstalled for ArchLinux installations.
+#     Uses `--noconfirm` flag to prevent interactive prompts during automated installs.
 function ensureArchPackageInstalled() {
   if type sudo &> /dev/null && [ "$CAN_USE_SUDO" != 'false' ]; then
-    sudo pacman update
-    sudo pacman -S "$1"
+    sudo pacman -Sy --noconfirm
+    sudo pacman -S --noconfirm "$1"
   else
-    pacman update
-    pacman -S "$1"
+    pacman -Sy --noconfirm
+    pacman -S --noconfirm "$1"
   fi
 }
 
@@ -166,7 +181,7 @@ function ensureRootPackageInstalled() {
 # can only be invoked by non-root users.
 if [ -z "$NO_INSTALL_HOMEBREW" ] && [ "$USER" == "root" ] && [ -z "$INIT_CWD" ] && type useradd &> /dev/null; then
   # shellcheck disable=SC2016
-  logger info 'Running as root - creating seperate user named megabyte to run script with'
+  logger info 'Running as root - creating separate user named megabyte to run script with'
   echo "megabyte ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
   useradd -m -s "$(which bash)" --gecos "" --disabled-login -c "Megabyte Labs" megabyte > /dev/null || ROOT_EXIT_CODE=$?
   if [ -n "$ROOT_EXIT_CODE" ]; then
@@ -357,7 +372,7 @@ function installTask() {
     sudo mkdir -p "$TARGET_BIN_DIR"
     sudo mv "$TMP_DIR/task/task" "$TARGET_DEST"
   else
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
+          echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
           if [ -d "/opt/homebrew" ]; then
             logger info "Setting owner of /opt/homebrew to '$USER'" && sudo chown -R "$USER" /opt/homebrew || logger warn "Failed to chown /opt/homebrew to '$USER'"
           fi
@@ -542,7 +557,7 @@ if [ -z "$NO_INSTALL_HOMEBREW" ]; then
           echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         else
           logger warn "Homebrew is not installed. The script will attempt to install Homebrew and you might be prompted for your password."
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
+          echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
           if [ -n "$BREW_EXIT_CODE" ]; then
             if command -v brew > /dev/null; then
               .config/log warn "Homebrew was installed but part of the installation failed. Retrying again after changing a few things.."
@@ -573,7 +588,7 @@ if [ -z "$NO_INSTALL_HOMEBREW" ]; then
       fi
       if ! type jq &> /dev/null; then
         # shellcheck disable=SC2016
-        brew install jq || logger info 'There may have been an issue installiny jq with brew'
+        brew install jq || logger info 'There may have been an issue installing jq with brew'
       fi
       if ! type yq &> /dev/null; then
         # shellcheck disable=SC2016
@@ -581,11 +596,15 @@ if [ -z "$NO_INSTALL_HOMEBREW" ]; then
       fi
       if ! type volta &> /dev/null || ! type node &> /dev/null; then
         # shellcheck disable=SC2016
-        curl https://get.volta.sh | bash
+        curl https://get.volta.sh | bash -s -- --skip-setup 2>/dev/null || curl https://get.volta.sh | bash
         # shellcheck disable=SC1091
         . "$HOME/.profile" &> /dev/null || true
-        volta setup
-        volta install node
+        if type volta &> /dev/null; then
+          volta setup
+          volta install node
+        else
+          logger warn "Volta installation may have failed. Node.js may not be available."
+        fi
       fi
     fi
   fi

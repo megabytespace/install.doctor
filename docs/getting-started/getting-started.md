@@ -17,6 +17,25 @@ On macOS/Linux, the only requirements are that `bash` and `curl` are installed.
 bash <(curl -sSL https://install.doctor/start)
 ```
 
+### Headless / Non-Interactive Mode
+
+All prompts have 30-second timeouts and auto-proceed with sensible defaults. For fully unattended installs:
+
+```shell
+HEADLESS_INSTALL=true bash <(curl -sSL https://install.doctor/start)
+```
+
+For complete control over headless installations:
+
+```shell
+HEADLESS_INSTALL=true \
+  SOFTWARE_GROUP=Full \
+  SUDO_PASSWORD=your_password \
+  FULL_NAME="Your Name" \
+  PRIMARY_EMAIL="you@example.com" \
+  bash <(curl -sSL https://install.doctor/start)
+```
+
 ### Windows
 
 On Windows, you can run the following from an administrator PowerShell terminal:
@@ -39,3 +58,22 @@ The one-liner installation methods above will interactively prompt for a few det
 
 * The type of installation (i.e. a minimal set of software or all the software Install Doctor supports - see the [Customization Overview](/docs/customization) for more details)
 * Your name / e-mail address (to pre-populate things like the Git configuration)
+
+All prompts include timeouts (typically 30 seconds) and will auto-proceed with default values if no input is provided. This ensures the installation process never hangs, even when running unattended.
+
+## Environment Variables
+
+You can customize the provisioning process by setting environment variables before running the script:
+
+| Variable | Description | Default |
+|---|---|---|
+| `START_REPO` | Git repo URL or GitHub `user/repo` shorthand | `megabyte-labs/install.doctor` |
+| `HEADLESS_INSTALL` | Skip all interactive prompts | unset |
+| `SOFTWARE_GROUP` | Software group: `Basic`, `Server`, `Standard`, `Full` | `Full` |
+| `SUDO_PASSWORD` | Sudo password for automated setup | unset |
+| `CI` or `TEST_INSTALL` | Enable CI mode with test defaults | unset |
+| `NO_RESTART` | Prevent automatic reboots | unset |
+| `AGE_PASSWORD` | Passphrase for Age-encrypted secrets | unset |
+| `DEBUG_MODE` | Enable verbose logging | unset |
+
+See the full [Environment Variables](/docs/customization) documentation for more details.

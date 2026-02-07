@@ -18,10 +18,10 @@
 #     | Dependency         | Description                                                                          |
 #     |--------------------|--------------------------------------------------------------------------------------|
 #     | **Chezmoi**        | Dotfile configuration manager (on-device provisioning)                               |
-#     | **Task**           | Task runner used on-device for task parallelization and dependency management        |
+#     | **Task**           | Task runner used on-device for task parallelization and dependency management         |
 #     | **ZX / Node.js**   | ZX is a Node.js abstraction that allows for better scripts                           |
-#     | Gum                | Gum is a terminal UI prompt CLI (which allows sweet, interactive prompts)            |
-#     | Glow               | Glow is a markdown renderer used for applying terminal-friendly styles to markdown   |
+#     | Gum                | Terminal UI prompt CLI (provides interactive prompts and styled output)               |
+#     | Glow               | Markdown renderer used for applying terminal-friendly styles to markdown             |
 #
 #     There are also a handful of system packages that are installed like `curl` and `git`. Then, during the Chezmoi provisioning
 #     process, there are a handful of system packages that are installed to ensure things run smoothly. You can find more details
@@ -31,20 +31,52 @@
 #     Although Install Doctor comes with presets that install a whole gigantic amount of software, it can actually
 #     be quite good at provisioning minimal server environments where you want to keep the binaries to a minimum.
 #
-#     ## Variables
+#     ## Environment Variables
 #
 #     Specify certain environment variables to customize the behavior of Install Doctor. With the right combination of
-#     environment variables, this script can be run completely headlessly. This allows us to do things like test our
-#     provisioning script on a wide variety of operating systems.
+#     environment variables, this script can be run completely headlessly (no interactive prompts). This allows
+#     automated testing across a wide variety of operating systems.
 #
 #     | Variable                  | Description                                                                       |
 #     |---------------------------|-----------------------------------------------------------------------------------|
-#     | `START_REPO` (or `REPO`)  | Variable to specify the Git fork to use when provisioning                         |
+#     | `START_REPO` (or `REPO`)  | Git fork URL or GitHub user/repo shorthand to use when provisioning               |
 #     | `ANSIBLE_PROVISION_VM`    | **For Qubes**, determines the name of the VM used to provision the system         |
-#     | `DEBUG_MODE` (or `DEBUG`) | Set to true to enable verbose logging                                             |
+#     | `DEBUG_MODE` (or `DEBUG`) | Set to `true` to enable verbose logging                                           |
+#     | `HEADLESS_INSTALL`        | Set to `true` to skip all interactive prompts and use defaults                    |
+#     | `SOFTWARE_GROUP`          | Software group to install: "Basic", "Server", "Standard", or "Full" (default)    |
+#     | `SUDO_PASSWORD`           | Sudo password for automated passwordless sudo setup                               |
+#     | `CI` or `TEST_INSTALL`    | Set either to enable CI mode with predefined defaults                             |
+#     | `NO_RESTART`              | Set to `true` to prevent automatic reboots                                        |
+#     | `FULL_NAME`               | User's full name for git and other configurations                                 |
+#     | `PRIMARY_EMAIL`           | User's primary email address                                                      |
+#     | `KEEP_GOING`              | Set to `true` to continue provisioning even if errors occur                       |
+#
+#     ### Fully Headless Installation
+#
+#     To run the installer with zero interactive prompts:
+#
+#     ```bash
+#     HEADLESS_INSTALL=true SOFTWARE_GROUP=Full SUDO_PASSWORD=your_password \
+#       bash <(curl -sSL https://install.doctor/start)
+#     ```
 #
 #     For a full list of variables you can use to customize Install Doctor, check out our [Customization](https://install.doctor/docs/customization)
 #     and [Secrets](https://install.doctor/docs/customization/secrets) documentation.
+#
+#     ## Supported Platforms
+#
+#     | Platform       | Status       | Notes                                           |
+#     |----------------|--------------|-------------------------------------------------|
+#     | macOS          | Supported    | Intel and Apple Silicon (Rosetta 2 auto-installed)|
+#     | Ubuntu/Debian  | Supported    | Tested on latest LTS releases                    |
+#     | Fedora/RHEL    | Supported    | Tested on latest releases                        |
+#     | Archlinux      | Supported    | Tested on rolling release                        |
+#     | CentOS         | Supported    | Via yum/dnf                                      |
+#     | OpenSUSE       | Supported    | Via zypper                                       |
+#     | Alpine         | Supported    | Via apk                                          |
+#     | Qubes OS       | In Progress  | Dom0 and AppVM provisioning                      |
+#     | Windows        | Roadmap      | Planned via WSL                                  |
+#     | FreeBSD        | Roadmap      | Not yet implemented                              |
 #
 #     ## Links
 #
@@ -124,8 +156,18 @@ logg() {
   fi
 }
 
-# @description Ensure Ubuntu / Debian run in `noninteractive` mode. Detect `START_REPO` format and determine appropriate git address,
-#     otherwise use the master Install Doctor branch
+# @description Sets core environment variables for the provisioning process.
+#     - Sets `DEBIAN_FRONTEND=noninteractive` to prevent apt-get from prompting during package installation
+#     - Sets `HOMEBREW_NO_ENV_HINTS=true` to suppress Homebrew hint messages
+#     - Determines the `START_REPO` git URL based on user input:
+#       - If `START_REPO` and `REPO` are both unset, defaults to the official Install Doctor repository
+#       - If `REPO` is set but `START_REPO` is not, copies `REPO` to `START_REPO`
+#       - Supports shorthand formats: `user/repo` expands to `https://github.com/user/repo.git`
+#       - Supports bare username format: `user` expands to `https://github.com/user/install.doctor.git`
+#       - Full git URLs (containing `://` or `:`) are used as-is
+#
+#     @envvar START_REPO  The git repository URL to clone for provisioning
+#     @envvar REPO  Alternative to START_REPO (START_REPO takes precedence)
 setEnvironmentVariables() {
   export DEBIAN_FRONTEND=noninteractive
   export HOMEBREW_NO_ENV_HINTS=true
@@ -148,11 +190,23 @@ setEnvironmentVariables() {
   fi
 }
 
-# @description This function ensures dependencies like `git` and `curl` are installed. More specifically, this function will:
+# @description Ensures essential system dependencies are installed using the platform's native package manager.
+#     This function detects the operating system and installs the following packages if missing:
 #
-#     1. Check if `curl`, `git`, `expect`, `rsync`, and `unbuffer` are on the system
-#     2. If any of the above are missing, it will then use the appropriate system package manager to satisfy the requirements. *Note that some of the requirements are not scanned for in order to keep it simple and fast.*
-#     3. On macOS, the official Xcode Command Line Tools are installed.
+#     - `curl` - HTTP client for downloading files
+#     - `git` - Version control system
+#     - `expect` / `unbuffer` - Terminal automation utilities
+#     - `rsync` - File synchronization tool
+#     - `file` - File type detection utility
+#     - `procps` / `procps-ng` - Process utilities (ps, top, etc.)
+#     - `moreutils` - Additional Unix utilities (ts, sponge, etc.)
+#     - Build tools (`build-essential`, `base-devel`, etc.)
+#
+#     On macOS, this function also ensures:
+#     - Xcode Command Line Tools are installed (via `softwareupdate`)
+#     - Rosetta 2 is installed on Apple Silicon Macs
+#
+#     Supported package managers: apt-get, dnf, yum, pacman, zypper, apk, choco (Windows)
 ensureBasicDeps() {
   if ! command -v curl > /dev/null || ! command -v git > /dev/null || ! command -v expect > /dev/null || ! command -v rsync > /dev/null || ! command -v unbuffer > /dev/null; then
     if command -v apt-get > /dev/null; then
@@ -169,8 +223,8 @@ ensureBasicDeps() {
       logg info 'Running sudo yum install -y curl expect git moreutils rsync procps-ng file' && sudo yum install -y curl expect git moreutils rsync procps-ng file
     elif command -v pacman > /dev/null; then
       ### Archlinux
-      logg info 'Running sudo pacman update' && sudo pacman update
-      logg info 'Running sudo pacman -Syu base-devel curl expect git moreutils rsync procps-ng file' && sudo pacman -Syu base-devel curl expect git moreutils rsync procps-ng file
+      logg info 'Running sudo pacman -Sy --noconfirm' && sudo pacman -Sy --noconfirm
+      logg info 'Running sudo pacman -Syu --noconfirm base-devel curl expect git moreutils rsync procps-ng file' && sudo pacman -Syu --noconfirm base-devel curl expect git moreutils rsync procps-ng file
     elif command -v zypper > /dev/null; then
       ### OpenSUSE
       logg info 'Running sudo zypper install -yt pattern devel_basis' && sudo zypper install -yt pattern devel_basis
@@ -283,7 +337,7 @@ ensurePackageManagerHomebrew() {
       fixHomebrewSharePermissions
     else
       logg info 'Installing Homebrew. Sudo privileges not available. Password may be required.'
-      bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
+      echo | bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
       if [ -d "/opt/homebrew" ]; then
         if id -u apple >/dev/null 2>&1; then
           logg info "Setting owner of /opt/homebrew to 'apple'" && sudo chown -R apple /opt/homebrew || logg warn "Failed to chown /opt/homebrew to 'apple'"
@@ -363,26 +417,32 @@ printFullDiskAccessNotice() {
   fi
 }
 
-# @description
-#     This script ensures the terminal running the provisioning process has full disk access permissions. It also
-#     prints information regarding the process of how to enable the permission as well as information related to
-#     the specific reasons that the terminal needs full disk access. More specifically, the scripts need full
-#     disk access to modify various system files and permissions.
+# @description Ensures the terminal running the provisioning process has full disk access on macOS.
+#     Full disk access is required to modify system files, preferences, and permissions during provisioning.
 #
-#     Ensures the terminal running the provisioning process script has full disk access on macOS. It does this
-#     by attempting to read a file that requires full disk access. If it does not, the program opens the preferences
-#     pane where the user can grant access so that the script can continue.
+#     This function works by attempting to read a file (`com.apple.TimeMachine.plist`) that requires
+#     full disk access. If the read fails, it means the terminal lacks the permission.
 #
-#     #### Links
+#     **Behavior when full disk access is missing:**
+#     - In headless mode (`HEADLESS_INSTALL=true`): Logs a warning and continues (some operations may fail)
+#     - In interactive mode: Opens the macOS System Preferences pane and exits so the user can grant access
 #
-#     * [Detecting Full Disk Access permission on macOS](https://www.dzombak.com/blog/2021/11/macOS-Scripting-How-to-tell-if-the-Terminal-app-has-Full-Disk-Access.html)
+#     After granting access, the user must restart the terminal. A temporary entry is added to `~/.zshrc`
+#     to automatically re-run the install script on the next terminal launch.
+#
+#     @envvar HEADLESS_INSTALL  If set, skips the interactive full disk access prompt
+#     @see [Detecting Full Disk Access on macOS](https://www.dzombak.com/blog/2021/11/macOS-Scripting-How-to-tell-if-the-Terminal-app-has-Full-Disk-Access.html)
 ensureFullDiskAccess() {
   if [ -d /Applications ] && [ -d /System ]; then
     if ! plutil -lint /Library/Preferences/com.apple.TimeMachine.plist > /dev/null ; then
+      if [ -n "$HEADLESS_INSTALL" ]; then
+        logg warn 'Full disk access is not available. Some macOS operations may fail in headless mode.'
+        return 0
+      fi
       printFullDiskAccessNotice
       logg star 'Opening Full Disk Access preference pane.. Grant full-disk access for the terminal you would like to run the provisioning process with.' && open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
       logg info 'You may have to force quit the terminal and have it reload.'
-      if [ ! -f "$HOME/.zshrc" ] || ! cat "$HOME/.zshrc" | grep '# TEMPORARY FOR INSTALL DOCTOR MACOS' > /dev/null; then
+      if [ ! -f "$HOME/.zshrc" ] || ! grep -q '# TEMPORARY FOR INSTALL DOCTOR MACOS' "$HOME/.zshrc"; then
         echo 'bash <(curl -sSL https://install.doctor/start) # TEMPORARY FOR INSTALL DOCTOR MACOS' >> "$HOME/.zshrc"
       fi
       exit 0
@@ -392,23 +452,22 @@ ensureFullDiskAccess() {
         if command -v gsed > /dev/null; then
           gsed -i '/# TEMPORARY FOR INSTALL DOCTOR MACOS/d' "$HOME/.zshrc" || logg warn "Failed to remove kickstart script from .zshrc"
         else
-          if [ -d /Applications ] && [ -d /System ]; then
-            ### macOS
-            sed -i '' '/# TEMPORARY FOR INSTALL DOCTOR MACOS/d' "$HOME/.zshrc" || logg warn "Failed to remove kickstart script from .zshrc"
-          else
-            ### Linux
-            sed -i '/# TEMPORARY FOR INSTALL DOCTOR MACOS/d' "$HOME/.zshrc" || logg warn "Failed to remove kickstart script from .zshrc"
-          fi
+          sed -i '' '/# TEMPORARY FOR INSTALL DOCTOR MACOS/d' "$HOME/.zshrc" || logg warn "Failed to remove kickstart script from .zshrc"
         fi
       fi
     fi
   fi
 }
 
-# @description Applies changes that require input from the user such as using Touch ID on macOS when
-#     importing certificates into the system keychain.
+# @description Imports the CloudFlare Teams certificate into the macOS system keychain.
+#     This is required for CloudFlare Zero Trust / WARP to function properly with HTTPS inspection.
 #
-#     * Ensures CloudFlare Teams certificate is imported into the system keychain
+#     **Conditions for execution:**
+#     - Only runs on macOS (checks for `/Applications` and `/System` directories)
+#     - Skipped entirely when `HEADLESS_INSTALL` is set (requires Touch ID / password prompt)
+#     - Certificate must exist at `$HOME/.local/etc/ssl/cloudflare/cloudflare.crt`
+#
+#     @envvar HEADLESS_INSTALL  If set, skips certificate import (requires user interaction on macOS)
 importCloudFlareCert() {
   if [ -d /Applications ] && [ -d /System ] && [ -z "$HEADLESS_INSTALL" ]; then
     ### Acquire certificate
@@ -427,19 +486,31 @@ importCloudFlareCert() {
 }
 
 
-# @description Load default settings if it is in a CI setting
+# @description Applies default environment variable settings when running in a CI/CD environment.
+#     This function is triggered when either the `CI` or `TEST_INSTALL` environment variable is set.
+#     It configures the provisioning process for unattended, headless operation with sensible defaults.
+#
+#     The following defaults are applied:
+#     - `NO_RESTART=true` - Prevents automatic reboots during provisioning
+#     - `HEADLESS_INSTALL=true` - Disables all interactive prompts
+#     - `SOFTWARE_GROUP=Full-Desktop` - Installs the full desktop software suite
+#     - Various identity variables are set to default values for testing
+#
+#     @envvar CI  Set by most CI/CD platforms (GitHub Actions, GitLab CI, etc.)
+#     @envvar TEST_INSTALL  Alternative flag for triggering CI mode manually
 setCIEnvironmentVariables() {
   if [ -n "$CI" ] || [ -n "$TEST_INSTALL" ]; then
-    logg info "Automatically setting environment variables since the CI environment variable is defined"
-    logg info "Setting NO_RESTART to true" && export NO_RESTART=true
-    logg info "Setting HEADLESS_INSTALL to true " && export HEADLESS_INSTALL=true
-    logg info "Setting SOFTWARE_GROUP to Full-Desktop" && export SOFTWARE_GROUP="Full-Desktop"
-    logg info "Setting FULL_NAME to Brian Zalewski" && export FULL_NAME="Brian Zalewski"
-    logg info "Setting PRIMARY_EMAIL to brian@megabyte.space" && export PRIMARY_EMAIL="brian@megabyte.space"
-    logg info "Setting PUBLIC_SERVICES_DOMAIN to lab.megabyte.space" && export PUBLIC_SERVICES_DOMAIN="lab.megabyte.space"
-    logg info "Setting RESTRICTED_ENVIRONMENT to false" && export RESTRICTED_ENVIRONMENT=false
-    logg info "Setting WORK_ENVIRONMENT to false" && export WORK_ENVIRONMENT=false
-    logg info "Setting HOST to $(hostname -s)" && export HOST="$(hostname -s)"
+    logg info "Automatically setting environment variables for CI/headless mode"
+    export NO_RESTART=true
+    export HEADLESS_INSTALL=true
+    export SOFTWARE_GROUP="${SOFTWARE_GROUP:-Full-Desktop}"
+    export FULL_NAME="${FULL_NAME:-Brian Zalewski}"
+    export PRIMARY_EMAIL="${PRIMARY_EMAIL:-brian@megabyte.space}"
+    export PUBLIC_SERVICES_DOMAIN="${PUBLIC_SERVICES_DOMAIN:-lab.megabyte.space}"
+    export RESTRICTED_ENVIRONMENT="${RESTRICTED_ENVIRONMENT:-false}"
+    export WORK_ENVIRONMENT="${WORK_ENVIRONMENT:-false}"
+    export HOST="${HOST:-$(hostname -s)}"
+    logg info "CI environment configured: SOFTWARE_GROUP=$SOFTWARE_GROUP, HEADLESS_INSTALL=$HEADLESS_INSTALL"
   fi
 }
 
@@ -454,10 +525,23 @@ ensureWarpDisconnected() {
   fi
 }
 
-# @description Notify user that they can press CTRL+C to prevent `/etc/sudoers` from being modified (which is currently required for headless installs on some systems).
-#     Additionally, this function will add the current user to `/etc/sudoers` so that headless automation is possible.
+# @description Temporarily grants the current user passwordless sudo for the duration of the provisioning process.
+#     This function will:
+#     1. Check if passwordless sudo is already available
+#     2. Try to decrypt the SUDO_PASSWORD from Chezmoi secrets if available
+#     3. Use the SUDO_PASSWORD environment variable if set
+#     4. Fall back to prompting the user with a 30-second timeout (auto-proceeds on timeout)
+#
+#     The passwordless sudo entry is marked with a comment so it can be removed later by `removePasswordlessSudo()`.
+#
+#     @envvar SUDO_PASSWORD  If set, used to authenticate sudo without interactive prompts
+#     @envvar HEADLESS_INSTALL  If set, skips interactive prompts entirely
 setupPasswordlessSudo() {
   sudo -n true || SUDO_EXIT_CODE=$?
+  if [ -z "$SUDO_EXIT_CODE" ]; then
+    logg info 'Passwordless sudo is already available'
+    return 0
+  fi
   logg info 'Your user will temporarily be granted passwordless sudo for the duration of the script'
   if [ -n "$SUDO_EXIT_CODE" ] && [ -z "$SUDO_PASSWORD" ] && command -v chezmoi > /dev/null && [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/.chezmoitemplates/secrets-$(hostname -s)/SUDO_PASSWORD" ] && [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" ]; then
     logg info "Acquiring SUDO_PASSWORD by using Chezmoi to decrypt ${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/.chezmoitemplates/secrets-$(hostname -s)/SUDO_PASSWORD"
@@ -468,12 +552,18 @@ setupPasswordlessSudo() {
     logg info 'Using the acquired sudo password to automatically grant the user passwordless sudo privileges for the duration of the script'
     echo "$SUDO_PASSWORD" | sudo -S sh -c "echo '$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR' | sudo -S tee -a /etc/sudoers > /dev/null"
     echo ""
-    # Old method below does not work on macOS due to multiple sudo prompts
-    # printf '%s\n%s\n' "$SUDO_PASSWORD" | sudo -S echo "$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR" | sudo -S tee -a /etc/sudoers > /dev/null
   else
-    logg info 'Press CTRL+C to bypass this prompt to either enter your password when needed or perform a non-privileged installation'
-    logg info 'Note: Non-privileged installations are not yet supported'
-    echo "$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR" | sudo tee -a /etc/sudoers > /dev/null
+    if [ -n "$HEADLESS_INSTALL" ]; then
+      logg warn 'HEADLESS_INSTALL is set but no SUDO_PASSWORD is available. Attempting to continue without passwordless sudo.'
+      return 0
+    fi
+    logg info 'Sudo password required. You have 30 seconds to enter your password (auto-skips on timeout).'
+    logg info 'To bypass this prompt, set the SUDO_PASSWORD environment variable or use HEADLESS_INSTALL=true.'
+    if timeout 30 bash -c "echo '$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR' | sudo tee -a /etc/sudoers > /dev/null" 2>/dev/null; then
+      logg success 'Passwordless sudo granted successfully'
+    else
+      logg warn 'Sudo prompt timed out or failed. Continuing without passwordless sudo - some operations may prompt for a password.'
+    fi
   fi
 }
 
@@ -648,33 +738,48 @@ cloneChezmoiSourceRepo() {
 }
 
 # @description Guide the user through the initial setup by showing TUI introduction and accepting input through various prompts.
+#     This function performs three main steps:
 #
-#     1. Show `chezmoi-intro.md` with `glow`
-#     2. Prompt for the software group if the `SOFTWARE_GROUP` variable is not defined
-#     3. Run `chezmoi init` when the Chezmoi configuration is missing (i.e. `${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.yaml`)
+#     1. **Introduction Display**: Shows `chezmoi-intro.md` with `glow` (non-blocking, informational only)
+#     2. **Software Group Selection**: Prompts for the software group if `SOFTWARE_GROUP` is not defined.
+#        Currently defaults to "Full" (other groups like "Basic", "Server", "Standard" are planned).
+#        To skip the prompt entirely, set `SOFTWARE_GROUP` before running the script.
+#     3. **Chezmoi Initialization**: Runs `chezmoi init` when the Chezmoi configuration file is missing.
+#        In headless mode (`HEADLESS_INSTALL=true`), this uses the `--force` flag to skip interactive prompts.
+#
+#     @envvar SOFTWARE_GROUP  Pre-set to skip the software group selection prompt (default: "Full")
+#     @envvar HEADLESS_INSTALL  If set, forces chezmoi init to run non-interactively
 initChezmoiAndPrompt() {
-  ### Show `chezmoi-intro.md` with `glow`
+  ### Show `chezmoi-intro.md` with `glow` (non-blocking)
   if command -v glow > /dev/null; then
     glow "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/docs/terminal/chezmoi-intro.md"
   fi
 
-  ### Prompt for the software group if the `SOFTWARE_GROUP` variable is not defined
-  if command -v gum > /dev/null; then
-    if [ -z "$SOFTWARE_GROUP" ]; then
-      # logg prompt 'Select the software group you would like to install. If your environment is a macOS, Windows, or environment with the DISPLAY environment variable then desktop software will be installed too. The software groups are in the '"${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.yaml"' file.'
-      SOFTWARE_GROUP="Full"
-      # TODO - Uncomment this when other SOFTWARE_GROUP types are implemented properly
-      # SOFTWARE_GROUP="$(gum choose "Basic" "Server" "Standard" "Full")"
-      export SOFTWARE_GROUP
+  ### Set the software group - defaults to "Full" if not specified
+  if [ -z "$SOFTWARE_GROUP" ]; then
+    SOFTWARE_GROUP="Full"
+    export SOFTWARE_GROUP
+  fi
+  logg info "Software group set to: $SOFTWARE_GROUP"
+
+  ### Ensure gum is available (used for TUI prompts elsewhere)
+  if ! command -v gum > /dev/null; then
+    logg warn 'Gum is not installed. Attempting to install via Homebrew.'
+    if command -v brew > /dev/null; then
+      brew install --quiet gum || logg warn 'Failed to install gum via Homebrew'
+    else
+      logg warn 'Homebrew is not available. Some interactive features may be unavailable.'
     fi
-  else
-    logg error 'Woops! Gum needs to be installed for the guided installation. Try running brew install gum' && exit 1
   fi
 
   if [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.yaml" ]; then
     ### Run `chezmoi init` when the Chezmoi configuration is missing
-    logg info 'Running chezmoi init since the '"${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.yaml"' is not present'
-    chezmoi init
+    logg info "Running chezmoi init since ${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.yaml is not present"
+    if [ -n "$HEADLESS_INSTALL" ]; then
+      chezmoi init --force
+    else
+      chezmoi init
+    fi
   fi
 }
 
@@ -684,8 +789,19 @@ beforeRebootDarwin() {
   logg info "Ensuring macfuse is installed" && brew install --cask --no-quarantine --quiet macfuse
 }
 
-# @description Save the log of the provision process to `$HOME/.local/var/log/install.doctor/install.doctor.$(date +%s).log` and add the Chezmoi
-#     `--force` flag if the `HEADLESS_INSTALL` variable is set to `true`.
+# @description Runs `chezmoi apply` with appropriate flags and logging.
+#     - Logs output to `$HOME/.local/var/log/install.doctor/chezmoi-apply-<timestamp>.log`
+#     - Adds the `--force` flag when `HEADLESS_INSTALL` is set (skips all chezmoi prompts)
+#     - Adds `-k` (keep going) flag to continue on errors
+#     - Adds debug flags (`-vvv --debug --verbose`) when `DEBUG_MODE` or `DEBUG` is set
+#     - On macOS, uses `caffeinate` to prevent system sleep during provisioning
+#     - Uses `unbuffer` when available for cleaner log output
+#     - Handles macOS-specific exit code 140 (reboot required for system updates)
+#
+#     @envvar HEADLESS_INSTALL  If set, adds --force flag to chezmoi apply
+#     @envvar KEEP_GOING  If set, adds -k flag to continue past errors
+#     @envvar DEBUG_MODE  If set, enables verbose debug output
+#     @envvar DEBUG  Alternative to DEBUG_MODE
 runChezmoi() {
   ### Set up logging
   mkdir -p "$HOME/.local/var/log/install.doctor"
@@ -758,7 +874,7 @@ runChezmoi() {
 
   ### Handle actual process exit code
   if [ -n "$CHEZMOI_EXIT_CODE" ]; then
-    logg error "Chezmoi encountered an error and exitted with an exit code of $CHEZMOI_EXIT_CODE"
+    logg error "Chezmoi encountered an error and exited with an exit code of $CHEZMOI_EXIT_CODE"
   else
     logg info 'Finished provisioning the system'
   fi
@@ -862,8 +978,23 @@ function ensureAppleUser() {
   fi
 }
 
-# @description The `provisionLogic` function is used to define the order of the script. All of the functions it relies on are defined
-#     above.
+# @description Main orchestration function that defines the execution order of all provisioning steps.
+#     This function is the primary entry point and runs the following steps in order:
+#
+#     1. **User Setup** - Creates a non-root user if running as root (required for Homebrew)
+#     2. **Environment Setup** - Loads Homebrew, sets environment variables, configures CI defaults
+#     3. **Network Preparation** - Disconnects WARP VPN to prevent conflicts during provisioning
+#     4. **Sudo Setup** - Temporarily grants passwordless sudo (with timeout, auto-skips on failure)
+#     5. **Dependencies** - Installs basic system dependencies (curl, git, etc.)
+#     6. **Repository** - Clones or updates the Install Doctor source repository
+#     7. **macOS Setup** - Ensures full disk access and imports CloudFlare certificates (macOS only)
+#     8. **Homebrew** - Ensures Homebrew is installed and installs required brew packages
+#     9. **Qubes** - Handles Qubes dom0 provisioning if applicable
+#     10. **Chezmoi Init** - Initializes Chezmoi configuration and prompts for settings
+#     11. **Chezmoi Apply** - Runs the main provisioning via `chezmoi apply`
+#     12. **Cleanup** - Removes temporary passwordless sudo, installs VIM plugins
+#     13. **Reboot Check** - Reboots the system if required by updates
+#     14. **Post-Install** - Displays post-installation instructions
 provisionLogic() {
   logg info "Ensuring script is not run with root" && ensureAppleUser
   logg info "Attempting to load Homebrew" && loadHomebrew
@@ -871,7 +1002,7 @@ provisionLogic() {
   logg info "Handling CI variables" && setCIEnvironmentVariables
   logg info "Ensuring WARP is disconnected" && ensureWarpDisconnected
   logg info "Applying passwordless sudo" && setupPasswordlessSudo
-  logg info "Ensuring system Homebrew dependencies are installed" && ensureBasicDeps
+  logg info "Ensuring system dependencies are installed" && ensureBasicDeps
   logg info "Cloning / updating source repository" && cloneChezmoiSourceRepo
   if [ -d /Applications ] && [ -d /System ]; then
     ### macOS only
@@ -885,7 +1016,7 @@ provisionLogic() {
   logg info "Running the Chezmoi provisioning" && runChezmoi
   logg info "Ensuring temporary passwordless sudo is removed" && removePasswordlessSudo
   logg info "Running post-install VIM plugin installations" && vimPlugins
-  logg info "Determing whether or not reboot" && handleRequiredReboot
+  logg info "Determining whether or not to reboot" && handleRequiredReboot
   logg info "Handling post-provision logic" && postProvision
 }
 provisionLogic

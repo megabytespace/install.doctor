@@ -1,21 +1,30 @@
 #!/usr/bin/env bash
 # @file Homebrew / Xcode Tools Installation
-# @brief Ensures Xcode tools are installed on macOS and ensures Homebrew is installed on either Linux or macOS
+# @brief Ensures Xcode tools are installed on macOS and ensures Homebrew is installed on either Linux or macOS.
 # @description
-#     This script ensures macOS has tools like `git` by installing the Xcode command-line developer tools if they are
-#     not already installed. Then, on both Linux and macOS, it ensures Homebrew is installed.
+#     This script runs as a Chezmoi `run_before` script during provisioning. It ensures:
 #
-#     It also tries to perform a system update and there may be some manual work required since it is not possible
-#     to completely automate the system update process for macOS.
+#     1. **System dependencies** (curl, git, expect, rsync) are installed via the native package manager
+#     2. **Homebrew** is installed on both macOS and Linux
+#     3. **macOS system updates** are applied (with automatic reboot handling)
+#     4. **Rosetta 2** is installed on Apple Silicon Macs
+#
+#     All package manager commands use non-interactive flags (`-y`, `--noconfirm`, etc.) to prevent
+#     blocking during automated installations. The Homebrew install is piped an empty string to
+#     bypass its confirmation prompt.
 #
 #     ## Environment Variables
 #
-#     * `NO_RESTART` - Set this variable to skip restarts triggered by system updates on macOS
+#     * `NO_RESTART` - Set to skip restarts triggered by system updates on macOS
+#     * `SUDO_PASSWORD` - If set, used for automated sudo authentication during macOS updates
+#     * `HEADLESS_INSTALL` - If set, skips the SUDO_PASSWORD input prompt
+#     * `DEBUG` / `DEBUG_MODE` - Enables `set -x` for verbose script tracing
 #
 #     ## Homebrew Requirement
 #
-#     Install Doctor relies on Homebrew for many tools that are currently only available via Homebrew. Removing the dependency
-#     would be a nice-to-have but there are currently no plans for supporting systems without Homebrew installed.
+#     Install Doctor relies on Homebrew for many tools that are currently only available via Homebrew.
+#     Removing the dependency would be a nice-to-have but there are currently no plans for supporting
+#     systems without Homebrew installed.
 
 if [ -n "$DEBUG" ] || [ -n "$DEBUG_MODE" ]; then
   set -x
@@ -38,8 +47,8 @@ ensureHomebrewDeps() {
       sudo yum install -y curl expect git rsync procps-ng file
     elif command -v pacman > /dev/null; then
       # @description Ensure `base-devel`, `curl`, `expect`, `git`, `rsync`, `procps-ng`, and `file` are installed on Archlinux
-      sudo pacman update
-      sudo pacman -Sy base-devel curl expect git rsync procps-ng file
+      sudo pacman -Sy --noconfirm
+      sudo pacman -S --noconfirm base-devel curl expect git rsync procps-ng file
     elif command -v zypper > /dev/null; then
       # @description Ensure `curl`, `expect`, `git`, `rsync`, `procps`, and `file` are installed on OpenSUSE (as well as the devel_basis pattern)
       sudo zypper install -yt pattern devel_basis
@@ -82,7 +91,7 @@ ensurePackageManagerHomebrew() {
       fi
     else
       gum log -sl info 'Homebrew is not installed. Password may be required.'
-      bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
+      echo | bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
       fixHomebrewPermissions
       if [ -d "/opt/homebrew" ]; then
         gum log -sl info "Setting owner of /opt/homebrew to '$USER'" && sudo chown -R "$USER" /opt/homebrew || gum log -sl warn "Failed to chown /opt/homebrew to '$USER'"
@@ -146,11 +155,17 @@ upgradeDarwin() {
       export SUDO_PASSWORD
     fi
 
-    ### Prompt for SUDO_PASSWORD
+    ### Prompt for SUDO_PASSWORD with timeout to prevent blocking automated installs
     if [ -z "$SUDO_PASSWORD" ] || [ "$SUDO_PASSWORD" = "" ]; then
-      gum log -sl info "Enter the current user's login / admin password. Press ENTER to bypass and skip enabling auto-login. If you would like to bypass this prompt next time then pass in the password as an environment variable named SUDO_PASSWORD before running the kickstart script."
-      SUDO_PASSWORD="$(gum input --password --placeholder="Enter password..")"
-      export SUDO_PASSWORD
+      if [ -n "$HEADLESS_INSTALL" ]; then
+        gum log -sl info "Skipping password prompt in headless mode. Set SUDO_PASSWORD env var for auto-login support."
+      elif command -v gum > /dev/null; then
+        gum log -sl info "Enter the current user's login / admin password. Auto-skipping in 30 seconds. Set SUDO_PASSWORD env var to bypass this prompt."
+        SUDO_PASSWORD="$(timeout 30 gum input --password --placeholder="Enter password (30s timeout).." 2>/dev/null)" || true
+        export SUDO_PASSWORD
+      else
+        gum log -sl info "Skipping password prompt (gum not available). Set SUDO_PASSWORD env var for auto-login support."
+      fi
     fi
 
     ### Ensure Rosetta 2 is installed
@@ -234,7 +249,7 @@ loadHomebrew() {
     elif [ -d "$HOME/.linuxbrew" ]; then
       eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
     elif [ -d "/home/linuxbrew/.linuxbrew" ]; then
-      eval "(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+      eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     fi
   fi
 }

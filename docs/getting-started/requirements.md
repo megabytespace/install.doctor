@@ -58,4 +58,4 @@ qvm-run --pass-io sys-firewall "curl -sSL https://install.doctor/qubes" > ~/setu
 
 ## Windows
 
-The Windows 11 requires elevated administrator privileges so when you first run the one-line setup script, you should preferrably run it from an Administrator PowerShell terminal window.
+Windows 11 requires elevated administrator privileges so when you first run the one-line setup script, you should preferably run it from an Administrator PowerShell terminal window.

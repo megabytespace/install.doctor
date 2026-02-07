@@ -56,7 +56,7 @@ There are many other variables you can make use of which are detailed in one of 
 
 ## Encrypted Secrets
 
-For added security and convienience, Install Doctor supports embedding your secret variables into your own fork of Install Doctor by encrypting them with the [Chezmoi](https://www.chezmoi.io/) default encryption provider called [Age](https://github.com/FiloSottile/age). By using this method, you will no longer have to manage a long set of environment variables and you will be able to store your encrypted secrets in a public git that you can use to provision any of your devices.
+For added security and convenience, Install Doctor supports embedding your secret variables into your own fork of Install Doctor by encrypting them with the [Chezmoi](https://www.chezmoi.io/) default encryption provider called [Age](https://github.com/FiloSottile/age). By using this method, you will no longer have to manage a long set of environment variables and you will be able to store your encrypted secrets in a public git that you can use to provision any of your devices.
 
 **The first thing you should do when leveraging your own Age encryption key in your own fork of Install Doctor is to delete all the keys stored in the `home/.chezmoitemplates/secrets/` folder.** If you do not do this, then Install Doctor will try unencrypting the test secrets using your key.
 
@@ -446,7 +446,7 @@ export DOCKERHUB_REGISTRY_PASSWORD="$DOCKERHUB_TOKEN"
 
 This approach works well because it first checks for the presence of the `home/.chezmoitemplates/secrets/key-DOCKERHUB_TOKEN` file and then decrypts the value and injects it into the results `private.sh` file if the `key-DOCKERHUB_TOKEN` is present. Otherwise, it attempts to use the `DOCKERHUB_TOKEN` key.
 
-_Note: Preferrably, you should store the secret as the same name as the corresponding environment variable._ That is, an environment variable named `DOCKERHUB_TOKEN` should be stored as a key stored in `home/.chezmoitemplates/secrets/key-DOCKERHUB_TOKEN`. Additionally, encrypted files that decrypt to files stored in `~/.ssh/` should be prefixed with `ssh-` instead of `key-`.
+_Note: Preferably, you should store the secret as the same name as the corresponding environment variable._ That is, an environment variable named `DOCKERHUB_TOKEN` should be stored as a key stored in `home/.chezmoitemplates/secrets/key-DOCKERHUB_TOKEN`. Additionally, encrypted files that decrypt to files stored in `~/.ssh/` should be prefixed with `ssh-` instead of `key-`.
 
 ### Encrypted Files
 

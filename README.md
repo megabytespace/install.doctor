@@ -1,4 +1,4 @@
-<!-- ⚠️ This README has been generated from the file(s) ".config/docs/blueprint-readme-misc.md" ⚠️--><div align="center">
+<!-- This README has been generated from the file(s) ".config/docs/blueprint-readme-misc.md" --><div align="center">
   <center>
     <a href="https://github.com/megabyte-labs/install.doctor">
       <img width="320" alt="Install Doctor logo" src="https://gitlab.com/megabyte-labs/install.doctor/-/raw/master/docs/logo-full.png" />
@@ -6,7 +6,7 @@
   </center>
 </div>
 <div align="center">
-  <center><h1 align="center"><i></i>Install Doctor, The Desktop Provisioning System<i></i></h1></center>
+  <center><h1 align="center"><i></i>Install Doctor - Cross-Platform Desktop Provisioning<i></i></h1></center>
   <center><h4 style="color: #18c3d1;">Maintained by <a href="https://megabyte.space" target="_blank">Megabyte Labs</a></h4><i></i></center>
 </div>
 
@@ -31,7 +31,7 @@
   </a>
 </div>
 
-> </br><h4 align="center">**A glorious combination of application / theme settings and a performant cross-platform, desktop-oriented software suite.**</h4></br>
+> <br/><h4 align="center"><strong>A performant, cross-platform desktop provisioning system combining application settings, themes, and automated software installation.</strong></h4><br/>
 
 <a href="#table-of-contents" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
 
@@ -39,10 +39,17 @@
 
 - [Overview](#overview)
 - [Quick Start](#quick-start)
+  - [Headless Installation](#headless-installation)
+  - [Using a Fork](#using-a-fork)
   - [Quick Start Notes](#quick-start-notes)
+- [Environment Variables](#environment-variables)
+- [Architecture](#architecture)
+  - [Provisioning Flow](#provisioning-flow)
+  - [Dependencies](#dependencies)
 - [Chezmoi-Based](#chezmoi-based)
 - [Security Focused](#security-focused)
 - [Cross-Platform](#cross-platform)
+  - [Supported Platforms](#supported-platforms)
   - [Custom Software Provisioning System](#custom-software-provisioning-system)
   - [Beautiful Anywhere](#beautiful-anywhere)
   - [Qubes Support](#qubes-support)
@@ -57,45 +64,144 @@
 
 ## Overview
 
-Want to try out a new desktop jam-packed with a whole suite of GitHub's most-starred projects? Install Doctor is a combination of application settings, theme files, and a performant yet flexible software installer written with [ZX](https://github.com/google/zx). It is easily customizable, with optional prompts that ask you for API keys if you want to completely automate everything. The installer supports almost any operating system, just checkout the [software.yml file](https://gitlab.com/megabyte-labs/install.doctor/-/blob/master/software.yml). It uses [Chezmoi](https://github.com/twpayne/chezmoi) to apply file changes in an interactive way. It is not your typical Chezmoi project - it is built around the philosophy that you should be able to bash all your computers to bits with a hammer and then resurrect them the next day ✝️️ by storing stateful data to an encrypted S3 bucket and automating desktop configuration as much as possible.
+Install Doctor is a cross-platform development environment provisioning system that combines application settings, theme files, and a performant software installer written with [ZX](https://github.com/google/zx). It uses [Chezmoi](https://github.com/twpayne/chezmoi) to manage dotfiles and apply configuration changes across systems.
 
-Install Doctor is a cross-platform development environment provisioning system. The project began as an ongoing Ansible project named [Gas Station](https://github.com/megabyte-labs/gas-station) but transitioned to a dotfile-ish approach for easier adoption and less overhead. It is intended for:
+The project is built around the philosophy that you should be able to reformat your computer and fully restore it by storing stateful data in an encrypted S3 bucket and automating desktop configuration. It supports macOS, most Linux distributions, and has Windows support on the roadmap.
 
-1. Power users that want to maximize their long-term efficiency by incorporating the [most-starred applications / projects / CLIs on GitHub](https://stars.megabyte.space) into their stack.
-2. Users that distro hop but want to retain their favorite tools regardless of whether they are using macOS, Windows, or Linux
-3. People that want to reformat their computers on a, perhaps, daily basis while retaining stateful elements of their file system by leveraging S3 buckets
-4. Enthusiasts that want to deploy as many cool, useful tools as possible without having to spend much time configuring their file system
-5. Perfectionists that love software that behaives as it should, looks gorgeous (desktop preview screenshots below), and performs tasks quickly on any platform
-6. CLI ninjas that want to bring their set of tools wherever they go
+Install Doctor is intended for:
+
+1. **Power users** who want to maximize efficiency by incorporating [popular open-source tools](https://stars.megabyte.space) into their stack
+2. **Distro hoppers** who want consistent tooling across macOS, Windows, and Linux
+3. **Automation enthusiasts** who want to reformat and restore their systems with minimal effort
+4. **CLI users** who want a portable, reproducible terminal environment
+5. **Security-conscious users** who regularly reformat and need fast, reliable reprovisioning
 
 <a href="#quick-start" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
 
 ## Quick Start
 
-To provision your workstation, you can run the following which will install some basic dependencies (e.g. Chezmoi) and provide interactive prompts where you can personalize your configuration:
+To provision your workstation with interactive prompts:
 
-```
+```bash
 bash <(curl -sSL https://install.doctor/start)
 ```
 
-If you fork this repository and would like to use your fork as the source, you can still use the command shown above by setting the `START_REPO` environment variable. If it is located on GitHub, you can do this by running:
+### Headless Installation
 
+To run completely unattended with no interactive prompts (all prompts auto-proceed with defaults after a 30-second timeout):
+
+```bash
+HEADLESS_INSTALL=true bash <(curl -sSL https://install.doctor/start)
 ```
+
+For full control over the headless installation:
+
+```bash
+HEADLESS_INSTALL=true \
+  SOFTWARE_GROUP=Full \
+  SUDO_PASSWORD=your_password \
+  FULL_NAME="Your Name" \
+  PRIMARY_EMAIL="you@example.com" \
+  bash <(curl -sSL https://install.doctor/start)
+```
+
+### Using a Fork
+
+If you fork this repository and would like to use your fork as the source, set the `START_REPO` environment variable:
+
+```bash
+# GitHub shorthand (user/repo)
 START_REPO=my-gh-user/my-fork-name bash <(curl -sSL https://install.doctor/start)
-```
 
-Alternatively, if you want to host your project on GitLab or another git provider, then just specify the git remote's URL:
+# Full git URL
+START_REPO=git@gitlab.com:my-user/install.doctor.git bash <(curl -sSL https://install.doctor/start)
 
-```
-START_REPO=git@gitlab.com:megabyte-labs/install.doctor.git bash <(curl -sSL https://install.doctor/start)
+# GitHub username only (assumes repo name is install.doctor)
+START_REPO=my-gh-user bash <(curl -sSL https://install.doctor/start)
 ```
 
 ### Quick Start Notes
 
-- The quick start script is tested on the latest versions of Archlinux, CentOS, Debian, Fedora, macOS, and Ubuntu
-- The quick start script is the preferred method of using this project to provision your system
-- The script can be configured to be completely headless by specifying environment variables which are detailed below
-- _Windows support is on the roadmap._
+- Tested on latest versions of Archlinux, CentOS, Debian, Fedora, macOS, and Ubuntu
+- The quick start script is the preferred method of provisioning
+- All interactive prompts have timeouts and will auto-proceed with sensible defaults
+- _Windows support is on the roadmap_
+
+<a href="#environment-variables" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
+
+## Environment Variables
+
+The following environment variables can be used to customize the provisioning process:
+
+| Variable | Description | Default |
+|---|---|---|
+| `START_REPO` (or `REPO`) | Git repository URL or GitHub `user/repo` shorthand | `megabyte-labs/install.doctor` |
+| `HEADLESS_INSTALL` | Skip all interactive prompts and use defaults | unset |
+| `SOFTWARE_GROUP` | Software group to install: `Basic`, `Server`, `Standard`, or `Full` | `Full` |
+| `SUDO_PASSWORD` | Sudo password for automated passwordless sudo setup | unset (prompts with 30s timeout) |
+| `CI` or `TEST_INSTALL` | Enable CI mode with predefined test defaults | unset |
+| `NO_RESTART` | Prevent automatic reboots after system updates | unset |
+| `FULL_NAME` | User's full name for git config and other tools | unset |
+| `PRIMARY_EMAIL` | User's primary email address | unset |
+| `AGE_PASSWORD` | Passphrase for decrypting Age-encrypted secrets | unset |
+| `DEBUG_MODE` (or `DEBUG`) | Enable verbose logging and debug output | unset |
+| `KEEP_GOING` | Continue provisioning even if errors occur | unset |
+| `ANSIBLE_PROVISION_VM` | **Qubes only**: Name of the VM used for provisioning | `provision` |
+| `NO_INSTALL_HOMEBREW` | Skip Homebrew installation entirely | unset |
+
+For a full list of variables, see the [Customization](https://install.doctor/docs/customization) and [Secrets](https://install.doctor/docs/customization/secrets) documentation.
+
+<a href="#architecture" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
+
+## Architecture
+
+### Provisioning Flow
+
+```
+bash <(curl -sSL https://install.doctor/start)
+  |
+  v
+scripts/provision.sh (main orchestrator)
+  |-- ensureBasicDeps()     - Install system packages (curl, git, etc.)
+  |-- ensureHomebrew()      - Install and configure Homebrew
+  |-- setupPasswordlessSudo() - Temporary passwordless sudo (with 30s timeout)
+  |-- cloneChezmoiSourceRepo() - Clone/update the Install Doctor repository
+  |-- ensureHomebrewDeps()  - Install Chezmoi, Gum, Glow, Node.js, ZX
+  |-- initChezmoiAndPrompt() - Initialize Chezmoi configuration
+  |-- runChezmoi()          - Apply dotfiles and run provisioning scripts
+  |     |
+  |     v
+  |   home/.chezmoiscripts/
+  |     |-- run_before_01-prepare.sh      - System preparation
+  |     |-- run_before_02-homebrew.sh     - Homebrew setup
+  |     |-- run_before_03-decrypt-age-key.sh - Secret decryption
+  |     |-- run_before_04-requirements.sh - System requirements
+  |     |-- run_before_05-system.sh       - System tweaks
+  |     |-- run_after_01-pre-install.sh   - Pre-install tasks
+  |     |-- run_after_10-install.sh       - Software installation
+  |     |-- run_after_15-chezmoi-system.sh - System-level chezmoi
+  |     |-- run_after_20-post-install.sh  - Post-install configuration
+  |     |-- run_after_24-cleanup.sh       - Cleanup tasks
+  |
+  |-- removePasswordlessSudo() - Remove temporary sudo privileges
+  |-- handleRequiredReboot()   - Reboot if system updates require it
+  v
+  Done
+```
+
+### Dependencies
+
+The following tools are installed automatically during provisioning:
+
+| Dependency | Required | Description |
+|---|---|---|
+| Chezmoi | Yes | Dotfile configuration manager |
+| Task | Yes | Task runner for parallelization and dependency management |
+| ZX / Node.js | Yes | Node.js-based scripting for the software installer |
+| Homebrew | Yes | Cross-platform package manager |
+| Gum | No | Terminal UI prompt CLI for interactive prompts |
+| Glow | No | Markdown renderer for terminal-friendly documentation display |
+| Age | No | Encryption tool for Chezmoi secret management |
 
 <a href="#chezmoi-based" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
 
@@ -103,55 +209,78 @@ START_REPO=git@gitlab.com:megabyte-labs/install.doctor.git bash <(curl -sSL http
 
 This project leverages [Chezmoi](https://github.com/twpayne/chezmoi) to provide:
 
-1. File diffs that show how files are being changed
-2. Easy-to-use encryption that lets you store private data publicly on GitHub
-3. A basic set of prompts that accept and integrate API credentials for services like CloudFlare, GitHub, GitLab, and Slack so that your development environment is augmented by free cloud services
+1. **File diffs** that show exactly how files are being changed before applying
+2. **Encryption** via [Age](https://github.com/FiloSottile/age) that lets you store private data publicly on GitHub
+3. **Template-based configuration** that adapts dotfiles to the current OS, hostname, and user preferences
+4. **Interactive prompts** that accept API credentials for services like CloudFlare, GitHub, GitLab, and Slack
 
 <a href="#security-focused" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
 
 ## Security Focused
 
-This software was built in an adversarial environment. This led towards a focus on security which is why we employ technologies like [Firejail](https://github.com/netblue30/firejail), [Portmaster](https://safing.io/), [Little Snitch](https://www.obdev.at/products/littlesnitch/index.html), and [Qubes](https://www.qubes-os.org/). Whenever possible, Flatpaks are used as the preferred application type. This also led to an emphasis on performance. When your workstation is possibly compromised or you have a good habit of reformatting your workstation on regular basis then it makes sense to use a provisioning system that can restore the workstation to a similar state quicker.
+This software was built with security as a priority, employing technologies like:
+
+- [Firejail](https://github.com/netblue30/firejail) - Application sandboxing
+- [Portmaster](https://safing.io/) - Network monitor and firewall
+- [Little Snitch](https://www.obdev.at/products/littlesnitch/index.html) - macOS network monitor
+- [Qubes OS](https://www.qubes-os.org/) - Security-oriented operating system
+
+Whenever possible, Flatpaks are used as the preferred application type for their sandboxing capabilities. The emphasis on security also drives the emphasis on performance - when you regularly reformat your workstation, fast provisioning is essential.
 
 <a href="#cross-platform" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
 
 ## Cross-Platform
 
-This project has been developed with support for Archlinux, CentOS, Fedora, macOS, Ubuntu, and Windows. Almost all the testing has been done on x86_64 systems but the system is flexible enough to be adapted for other systems such as ARM or FreeBSD. A lot of effort has also gone into supporting Qubes which, when fully provisioned, is basically a combination of all the operating systems we have developed this project for.
+### Supported Platforms
+
+| Platform | Status | Notes |
+|---|---|---|
+| macOS | Supported | Intel and Apple Silicon (Rosetta 2 auto-installed) |
+| Ubuntu / Debian | Supported | Tested on latest LTS releases |
+| Fedora / RHEL | Supported | Tested on latest releases |
+| CentOS | Supported | Via yum/dnf |
+| Archlinux | Supported | Rolling release |
+| OpenSUSE | Supported | Via zypper |
+| Alpine | Supported | Via apk |
+| Qubes OS | In Progress | Dom0 and AppVM provisioning |
+| Windows | Roadmap | Planned via WSL |
+| FreeBSD | Roadmap | Not yet implemented |
 
 ### Custom Software Provisioning System
 
-The project also incorporates a custom [ZX](https://github.com/google/zx) script that allows you to choose which package managers you would like to manage your software. It attempts to be as asynchronous as possible without opening the door to errors. The script leverages the [software.yml](/software.yml) file in the root of this repository to figure out which package manager to use. By default, the installer will choose the most secure option (e.g. Flatpaks are preferred for Linux applications). The installer is more performant and less error-prone than our Ansible variant. It also makes it a lot easier to add software to your stack in such a way that you can keep the software regardless of what operating system you are using by storing everything in the aforementioned `software.yml` file.
+The project incorporates a custom [ZX](https://github.com/google/zx) script that manages software installation across multiple package managers. It uses the [software.yml](/software.yml) file to determine which package manager to use for each application, preferring the most secure option (e.g., Flatpaks for Linux applications). The installer runs asynchronously where possible for better performance.
 
 ### Beautiful Anywhere
 
-Windows and macOS do a great job of making things look good from a UI perspective out of the box. Linux on the other hand requires some finessing especially when you follow our philosophy of taking many different operating systems and deploying similar software on them. A sizable amount of effort went into customizing the popular [Sweet](https://github.com/EliverLara/Sweet) theme and adapting it to our liking. Bells and whistles like a customized GRUB2 and Plymouth theme are included.
+A sizable amount of effort went into customizing the popular [Sweet](https://github.com/EliverLara/Sweet) theme across platforms. Custom GRUB2 and Plymouth themes are included for a polished boot experience on Linux.
 
 ### Qubes Support
 
-Qubes support is on its way.
+Qubes OS support is in progress, with dom0 provisioning and AppVM configuration being actively developed. See the `home/.chezmoiscripts/qubes/` directory for Qubes-specific provisioning scripts.
 
 <a href="#gas-station" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
 
 ## Gas Station
 
-This project began as something to supplement our provisioning system that uses Ansible. The system is called [Gas Station](https://gitlab.com/megabyte-labs/gas-station). It includes hundreds of Ansible roles. If you look at the [`software.yml`](/software.yml) file, you will notice that some of the Ansible roles that Gas Station provides are inside of it. By default, this project will try to install software / dependencies using other, lighter methods before resorting to using Ansible. This is because of the software installer order that is defined at the top of the software.yml file. Gas Station is also still used to house some of the variables / data that this project uses.
+This project evolved from [Gas Station](https://gitlab.com/megabyte-labs/gas-station), an Ansible-based provisioning system with hundreds of roles. Some Gas Station Ansible roles are still referenced in [`software.yml`](/software.yml) as a fallback installation method. The installer tries lighter methods (Homebrew, Flatpak, etc.) before resorting to Ansible.
 
 <a href="#chezmoi" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
 
 ## Chezmoi
 
-This project uses Chezmoi to orchestrate the provisioning. After calling the quick start script shown above, the quick start script will ensure some dependencies are installed (including Chezmoi) and then initiate Chezmoi. In order to customize this project, you should head over to the Chezmoi documentation to get a better understanding of why some of the files in this repository start with `dot_`, `run_`, etc.
+This project uses Chezmoi to orchestrate the provisioning process. After the quick start script installs dependencies (including Chezmoi), it hands control to Chezmoi which manages dotfile application and runs provisioning scripts.
+
+To customize this project, refer to the [Chezmoi documentation](https://www.chezmoi.io/) for details on file naming conventions (`dot_`, `run_`, `encrypted_`, etc.).
 
 ### Resetting Chezmoi
 
-This script is designed to run only the code that is necessary to improve performance. This is accomplished by using [`.chezmoiscripts`](home/.chezmoiscripts), Chezmoi's `onchange_` identifier, and a custom installer written in ZX that is powered by the software definitions in [`software.yml`](software.yml).
+If there is an error during provisioning or your changes are not being applied, clear Chezmoi's cache and configuration:
 
-If there is an error during the provision process or you make changes that are not being run during the provision process then you might want to clear Chezmoi's cache and configuration. This can be done on macOS/Linux by running:
-
-```
+```bash
 rm -rf ~/.config/chezmoi && rm -rf ~/.cache/chezmoi
 ```
+
+Then re-run the quick start command to reprovision from scratch.
 
 <a href="#contributing" style="width:100%"><img style="width:100%" src="https://gitlab.com/megabyte-labs/assets/-/raw/master/png/aqua-divider.png" /></a>
 
@@ -199,4 +328,4 @@ Below you will find a list of services we leverage that offer special incentives
 
 ## License
 
-Copyright © 2020-2021 [Megabyte LLC](https://megabyte.space). This project is [MIT](https://gitlab.com/megabyte-labs/install.doctor/-/blob/master/LICENSE) licensed.
+Copyright (c) 2020-2025 [Megabyte LLC](https://megabyte.space). This project is [MIT](https://gitlab.com/megabyte-labs/install.doctor/-/blob/master/LICENSE) licensed.
