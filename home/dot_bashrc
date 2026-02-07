@@ -50,7 +50,7 @@ case $- in
 esac
 
 ### History
-export HISTFILE="$XDG_STATE_HOME/bash/history"
+export HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/bash/history"
 if command -v hstr > /dev/null; then
   ### Append new history items to .bash_history
   shopt -s histappend

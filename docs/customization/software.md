@@ -1,15 +1,15 @@
 ---
-title: Customizing Software Defintions
+title: Customizing Software Definitions
 description: Read the technical details on how to customize the software that Install Doctor provisions and configures on your devices.
 sidebar_label: Software
 slug: /customization/software
 ---
 
-Install Doctor makes it easy to customize what software is installed on your devices. Although we provide some great templates that install packages we recommend, you may want to customize the installation process to only install packages that are relevant to the technologies you want to focus on. You can customize the packages that are provisioned by forking Install Doctor and then editting YAML files where the lists of software you want to install are housed.
+Install Doctor makes it easy to customize what software is installed on your devices. Although we provide some great templates that install packages we recommend, you may want to customize the installation process to only install packages that are relevant to the technologies you want to focus on. You can customize the packages that are provisioned by forking Install Doctor and then editing YAML files where the lists of software you want to install are housed.
 
 ## Customizing
 
-The basics of customizing the software you want to install on your device with your fork are outlined on the [Customization](/docs/customization) page. There, you can find details on how to define a list of software packages you want to install. You can customize the software installed by editting our templates or even defining hostname-specific lists.
+The basics of customizing the software you want to install on your device with your fork are outlined on the [Customization](/docs/customization) page. There, you can find details on how to define a list of software packages you want to install. You can customize the software installed by editing our templates or even defining hostname-specific lists.
 
 ## Plugins
 
@@ -66,9 +66,9 @@ softwarePlugins:
 
 ## Defining Packages
 
-After reading our [Customization](/customization) documentation, you will begin to realize how easy it is to define software package installations across many different operating systems. This can be done with very little code by editting the YAML definitions either in the `software.yml` file (if you decide to open a pull request so that the definitions can be made available to everyone) or in the `software-custom.yml` file that can contain defintions that you do not wish to contribute.
+After reading our [Customization](/customization) documentation, you will begin to realize how easy it is to define software package installations across many different operating systems. This can be done with very little code by editing the YAML definitions either in the `software.yml` file (if you decide to open a pull request so that the definitions can be made available to everyone) or in the `software-custom.yml` file that can contain definitions that you do not wish to contribute.
 
-There are a handful of ways to customize the defintions. You can make definitions that will only use a certain method on a specific operating system, add pre-install / post-install logic, and more. The particulars are outlined below as well as in comments at the top of the `software.yml` file. Similarly, the following video walks through the process of creating new software definitions in either `software.yml` or `software-custom.yml`:
+There are a handful of ways to customize the definitions. You can make definitions that will only use a certain method on a specific operating system, add pre-install / post-install logic, and more. The particulars are outlined below as well as in comments at the top of the `software.yml` file. Similarly, the following video walks through the process of creating new software definitions in either `software.yml` or `software-custom.yml`:
 
 <iframe width="100%" height="430" src="https://www.youtube-nocookie.com/embed/UHpoYumybeY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 
@@ -144,4 +144,4 @@ The preference of which package manager to use during the installation process i
 
 #### Package Manager Installation
 
-If the preferred package manager determined by the `installPreference` variable is not available on the system, then the installer will install the package manager prior to using it to install the package. The installation method can be determined by inspecting the [source of the ZX-based installer](https://github.com/megabyte-labs/install.doctor/blob/master/home/dot_local/bin/executable_install-program).
+If the preferred package manager determined by the `installerPreference` variable is not available on the system, then the installer will install the package manager prior to using it to install the package. The installation method can be determined by inspecting the [source of the ZX-based installer](https://github.com/megabyte-labs/install.doctor/blob/master/home/dot_local/bin/executable_install-program).

@@ -384,7 +384,7 @@ ensureHomebrew() {
 
 # @description This function determines whether or not a reboot is required on the target system.
 #     On Linux, it will check for the presence of the `/var/run/reboot-required` file to determine
-#     whether or not a reboot is required. On macOS, it will reboot `/Library/Updates/index.plist`
+#     whether or not a reboot is required. On macOS, it will read `/Library/Updates/index.plist`
 #     to determine whether or not a reboot is required.
 #
 #     After determining whether or not a reboot is required, the script will attempt to automatically
@@ -475,7 +475,7 @@ importCloudFlareCert() {
       CRT_TMP="$HOME/.local/etc/ssl/cloudflare/cloudflare.crt"
       ### Validate / import certificate
       security verify-cert -c "$CRT_TMP" > /dev/null 2>&1
-      if [ $? != 0 ]; then
+      if [ $? -ne 0 ]; then
         logg info '**macOS Manual Security Permission** Requesting security authorization for Cloudflare trusted certificate'
         sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$CRT_TMP" && logg info 'Successfully imported cloudflare.crt into System.keychain'
       fi
@@ -550,7 +550,7 @@ setupPasswordlessSudo() {
   fi
   if [ -n "$SUDO_PASSWORD" ]; then
     logg info 'Using the acquired sudo password to automatically grant the user passwordless sudo privileges for the duration of the script'
-    echo "$SUDO_PASSWORD" | sudo -S sh -c "echo '$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR' | sudo -S tee -a /etc/sudoers > /dev/null"
+    echo "$SUDO_PASSWORD" | sudo -S sh -c "echo '$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR' | tee -a /etc/sudoers > /dev/null"
     echo ""
   else
     if [ -n "$HEADLESS_INSTALL" ]; then
@@ -672,7 +672,7 @@ handleQubesDom0() {
 #     first checking if it is already available on the system.
 installBrewPackage() {
   if ! command -v "$1" > /dev/null; then
-    logg 'Installing '"$1"''
+    logg info 'Installing '"$1"''
     brew install --quiet "$1"
   fi
 }
@@ -815,7 +815,7 @@ runChezmoi() {
     FORCE_MODIFIER="--force"
   fi
   # TODO: https://github.com/twpayne/chezmoi/discussions/3448
-  KEEP_GOING_MODIFIER="-k"
+  KEEP_GOING_MODIFIER=""
   if [ -n "$KEEP_GOING" ]; then
     logg info 'Instructing chezmoi to keep going in the case of errors because KEEP_GOING is set'
     KEEP_GOING_MODIFIER="-k"
@@ -865,7 +865,7 @@ runChezmoi() {
   fi
 
   ### Handle exit codes in log
-  if [ -f "$LOG_FILE" ] && cat "$LOG_FILE" | grep 'chezmoi: exit status 140' > /dev/null; then
+  if [ -f "$LOG_FILE" ] && grep -q 'chezmoi: exit status 140' "$LOG_FILE"; then
     beforeRebootDarwin
     logg info "Chezmoi signalled that a reboot is necessary to apply a system update"
     logg info "Running softwareupdate with the reboot flag"
@@ -939,7 +939,8 @@ function ensureAppleUser() {
         # For macOS
         dscl . -create /Users/apple
         dscl . -create /Users/apple UserShell /bin/bash
-        dscl . -create /Users/apple UniqueID "$(dscl . -list /Users UniqueID | awk '{print $2}' | sort -n | tail -1 | xargs -I{} echo {} + 1)"
+        NEW_UID="$(dscl . -list /Users UniqueID | awk '{print $2}' | sort -n | tail -1)"
+        dscl . -create /Users/apple UniqueID "$((NEW_UID + 1))"
         dscl . -create /Users/apple PrimaryGroupID 20
         dscl . -create /Users/apple NFSHomeDirectory /Users/apple
         mkdir -p /Users/apple

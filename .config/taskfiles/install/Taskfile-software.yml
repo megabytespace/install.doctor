@@ -273,11 +273,11 @@ tasks:
       - .config/log warn "Archlinux support for Homebrew is not very well documented.. if this does not work and you can get it working, please open a PR :)"
       - |
         if type sudo &> /dev/null; then
-          sudo pacman update
-          sudo pacman -S {{.PACKAGES}}
+          sudo pacman -Sy --noconfirm
+          sudo pacman -S --noconfirm {{.PACKAGES}}
         else
-          pacman update
-          pacman -S base-devel {{.PACKAGES}}
+          pacman -Sy --noconfirm
+          pacman -S --noconfirm base-devel {{.PACKAGES}}
         fi
     status:
       - type bash &> /dev/null

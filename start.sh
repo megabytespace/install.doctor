@@ -343,7 +343,7 @@ function installTask() {
   else
     DOWNLOAD_URL="$TASK_RELEASE_URL/download/task_linux_amd64.tar.gz"
   fi
-  logger "Creating folder for Task download"
+  logger info "Creating folder for Task download"
   mkdir -p "$(dirname "$DOWNLOAD_DESTINATION")"
   logger info "Downloading latest version of Task"
   curl -sSL "$DOWNLOAD_URL" -o "$DOWNLOAD_DESTINATION"
@@ -355,7 +355,7 @@ function installTask() {
   mkdir -p "$TMP_DIR/task"
   tar -xzf "$DOWNLOAD_DESTINATION" -C "$TMP_DIR/task" > /dev/null
   if type task &> /dev/null && [ -w "$(which task)" ]; then
-    TARGET_BIN_DIR="."
+    TARGET_BIN_DIR="$(dirname "$(which task)")"
     TARGET_DEST="$(which task)"
   else
     if [ "$USER" == "root" ] || (type sudo &> /dev/null && sudo -n true); then
@@ -560,7 +560,7 @@ if [ -z "$NO_INSTALL_HOMEBREW" ]; then
           echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
           if [ -n "$BREW_EXIT_CODE" ]; then
             if command -v brew > /dev/null; then
-              .config/log warn "Homebrew was installed but part of the installation failed. Retrying again after changing a few things.."
+              logger warn "Homebrew was installed but part of the installation failed. Retrying again after changing a few things.."
               BREW_DIRS="share/man share/doc share/zsh/site-functions etc/bash_completion.d"
               for BREW_DIR in $BREW_DIRS; do
                 if [ -d "$(brew --prefix)/$BREW_DIR" ]; then
@@ -640,7 +640,7 @@ if [ -d .git ] && type git &> /dev/null; then
     date +%s > .cache/start.sh/git-pull-time
     git fetch origin
     GIT_POS="$(git rev-parse --abbrev-ref HEAD)"
-    logger info 'Current branch is '"$GIT_POS"''
+    logger info 'Current branch is '"$GIT_POS"
     if [ "$GIT_POS" == 'synchronize' ] || [ "$CI_COMMIT_REF_NAME" == 'synchronize' ]; then
       git reset --hard origin/master
       git push --force origin synchronize || FORCE_SYNC_ERR=$?

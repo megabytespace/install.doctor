@@ -28,7 +28,7 @@ elif qvm-pci list | grep 'VGA compatible controller' | grep 'NVIDIA'; then
   gum log -sl info 'An NVIDIA GPU was detected'
   enableSysGUIGPU
   gum log -sl info 'Attaching NVIDIA GPU PCI devices to sys-gui-gpu'
-  for ID of "$(qvm-pci list | grep 'NVIDIA' | sed 's/^\([^ ]*\).*/\1/')"; do
+  for ID in $(qvm-pci list | grep 'NVIDIA' | sed 's/^\([^ ]*\).*/\1/'); do
     gum log -sl info "Attaching PCI device with ID of $ID"
     qvm-pci attach sys-gui-gpu "$ID" --persistent -o permissive=true
   done

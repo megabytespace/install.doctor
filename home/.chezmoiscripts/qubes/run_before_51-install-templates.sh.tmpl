@@ -27,7 +27,7 @@ installMirageFirewall() {
   fi
 
   ### Create dummy initrmfs for the mirage-firewall kernel
-  if [ ! -f/var/lib/qubes/vm-kernels/mirage-firewall/initramfs ]; then
+  if [ ! -f /var/lib/qubes/vm-kernels/mirage-firewall/initramfs ]; then
     gum log -sl info 'Adding dummy initrmfs file to the mirage-firewall kernel folder'
     gzip -n9 < /dev/null > /var/lib/qubes/vm-kernels/mirage-firewall/initramfs
   fi
@@ -44,7 +44,7 @@ installUnofficialTemplate() {
   gum log -sl info "File: $FILE"
   if [ ! -f "/var/lib/qubes/vm-templates/$TEMPLATE" ]; then
     gum log -sl info "Downloading the unofficial $TEMPLATE TemplateVM via {{ .qubes.provisionVM }}"
-    qvm-run --pass-io "{{ .qubes.provisionVM }}" "curl -sSL "$TEMPLATE_URL" -o "/home/Downloads/$FILE""
+    qvm-run --pass-io "{{ .qubes.provisionVM }}" "curl -sSL '$TEMPLATE_URL' -o '/home/Downloads/$FILE'"
     gum log -sl info "Transferring the image to dom0"
     qvm-run --pass-io "{{ .qubes.provisionVM }}" "cat /home/Downloads/$FILE" > "/tmp/$FILE"
     gum log -sl info "Installing the TemplateVM via dnf"
@@ -66,7 +66,7 @@ updateTemplates() {
 }
 
 ### Ensure Qubes templates exist and download if they are not present
-for TEMPLATE of {{ .qubes.templates | toString | replace "[" "" | replace "]" "" }}; do
+for TEMPLATE in {{ .qubes.templates | toString | replace "[" "" | replace "]" "" }}; do
   if [ ! -f "/var/lib/qubes/vm-templates/$TEMPLATE" ]; then
     gum log -sl info "Installing $TEMPLATE"
     if [ -n "$DEBUG" ] || [ -n "$DEBUG_MODE" ]; then
@@ -78,7 +78,7 @@ for TEMPLATE of {{ .qubes.templates | toString | replace "[" "" | replace "]" ""
 done
 
 ### Ensure unofficial templates are installed
-for TEMPLATE_URL of {{ .qubes.templatesUnofficial | toString | replace "[" "" | replace "]" "" }}; do
+for TEMPLATE_URL in {{ .qubes.templatesUnofficial | toString | replace "[" "" | replace "]" "" }}; do
   if [ -n "$DEBUG" ] || [ -n "$DEBUG_MODE" ]; then
     installUnofficialTemplate "$TEMPLATE_URL"
   else

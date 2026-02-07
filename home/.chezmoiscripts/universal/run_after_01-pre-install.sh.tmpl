@@ -231,7 +231,7 @@ configureNetworkManagerVPNProfiles() {
     elif command -v dnf > /dev/null; then
       sudo dnf install -y openvpn NetworkManager*
     elif command -v pacman > /dev/null; then
-      sudo pacman -Syu openvpn networkmanager*
+      sudo pacman -Syu --noconfirm openvpn networkmanager*
     else
       gum log -sl warn 'Unknown package manager - install OpenVPN / WireGuard / NetworkManager plugins individually'
     fi
@@ -374,7 +374,7 @@ configureSSHD() {
               SERVICE_NAME="sshd"
               ;;
             *)
-              SERVCE_NAME="unknown"
+              SERVICE_NAME="unknown"
               ;;
           esac
         else

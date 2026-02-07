@@ -85,7 +85,7 @@ configureGPG() {
       curl -sSL --compressed "{{ .config.gpg }}" > "$HOME/.gnupg/gpg.conf"
       chmod 600 "$HOME/.gnupg/gpg.conf"
     fi
-    gum log -sl info 'Killing dirmngr instance and reloading daemon with standard-resolver' && sudo pkill dirmngr
+    gum log -sl info 'Killing dirmngr instance and reloading daemon with standard-resolver' && sudo pkill dirmngr || true
     dirmngr --daemon --standard-resolver
     KEYID_TRIMMED="$(echo "$KEYID" | sed 's/^0x//')"
     if ! gpg --list-secret-keys --keyid-format=long | grep "$KEYID_TRIMMED" > /dev/null; then
@@ -225,7 +225,7 @@ ensureUserGroup() {
       fi
 
       ### Add user to group
-      sudo dseditgroup -o edit -t user -a $USERNAME $GROUP
+      sudo dseditgroup -o edit -t user -a "$USERNAME" "$GROUP"
     else
       gum log -sl warn 'The USER environment variable is unavailable'
     fi

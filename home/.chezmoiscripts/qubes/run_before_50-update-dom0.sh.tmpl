@@ -31,7 +31,7 @@ gum log -sl info "Installing qubes-repo-contrib"
 sudo qubes-dom0-update -y qubes-repo-contrib
 
 ### Install dependencies
-for PACKAGE of {{ .qubes.dom0Packages | toString | replace "[" "" | replace "]" "" }}; do
+for PACKAGE in {{ .qubes.dom0Packages | toString | replace "[" "" | replace "]" "" }}; do
   gum log -sl info "Installing $PACKAGE"
   sudo qubes-dom0-update -y "$PACKAGE" || true
 done
