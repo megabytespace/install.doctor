@@ -64,8 +64,9 @@ macosx() {
 
 # Generate a random string of X length
 randomstring() {
-  if [ -z "$1" ]; then
+  if [ -n "$1" ]; then
     head /dev/urandom | tr -dc A-Za-z0-9 | head -c "$1"
+    echo
   else
     echo "Pass the number of characters you would like the string to be. Example: randomstring 14"
   fi

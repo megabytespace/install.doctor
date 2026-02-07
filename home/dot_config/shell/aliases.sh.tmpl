@@ -34,7 +34,7 @@ alias pacman='pacman --color=auto'
 if command -v glances > /dev/null; then
   alias top='glances'
 elif command -v htop > /dev/null; then
-  alias top='bashtop'
+  alias top='htop'
 fi
 
 ### batcat
@@ -55,7 +55,7 @@ fi
 
 ### Chezmoi
 alias chezmoihome='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home"'
-alias chezmoiscripts='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi//home/.chezmoiscripts"'
+alias chezmoiscripts='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/.chezmoiscripts"'
 alias chezmoisecrets='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/.chezmoitemplates/secrets"'
 
 ### curl-impersonate
@@ -93,22 +93,22 @@ if command -v gping > /dev/null; then
 fi
 
 # Setup rclone docker plugin permissions if docker group exists
-if [ -d /var/lib/docker-plugins/rclone ]; then
-  # Check if docker group exists (cross-platform)
-  if command -v getent > /dev/null 2>&1; then
-    # Linux/Unix systems
-    if getent group docker > /dev/null 2>&1; then
-      sudo chown -R root:docker /var/lib/docker-plugins/rclone
-      sudo chmod -R 755 /var/lib/docker-plugins/rclone
-    fi
-  elif [ -d /Applications ] && [ -d /Library ]; then
-    # macOS - check using dscl
-    if dscl . -read /Groups/docker > /dev/null 2>&1; then
-      sudo chown -R root:docker /var/lib/docker-plugins/rclone
-      sudo chmod -R 755 /var/lib/docker-plugins/rclone
+# Note: Only run this on-demand, not during shell startup (requires sudo which may prompt)
+fix-rclone-permissions() {
+  if [ -d /var/lib/docker-plugins/rclone ]; then
+    if command -v getent > /dev/null 2>&1; then
+      if getent group docker > /dev/null 2>&1; then
+        sudo chown -R root:docker /var/lib/docker-plugins/rclone
+        sudo chmod -R 755 /var/lib/docker-plugins/rclone
+      fi
+    elif [ -d /Applications ] && [ -d /Library ]; then
+      if dscl . -read /Groups/docker > /dev/null 2>&1; then
+        sudo chown -R root:docker /var/lib/docker-plugins/rclone
+        sudo chmod -R 755 /var/lib/docker-plugins/rclone
+      fi
     fi
   fi
-fi
+}
 ### safe-rm
 # TODO: Integrate this so it fails gracefully if folder does not exist (i.e. safe-rm -rf ~/Crunch should not return an error)
 # if command -v safe-rm > /dev/null; then
@@ -262,8 +262,8 @@ alias rclone-gui='rclone rcd --rc-web-gui --rc-user=admin --rc-pass=pass --rc-se
 # Reboot the computer
 alias reboot='sudo /sbin/reboot'
 
-# Launch the Python Simple HTTP Server
-alias serve='python -m SimpleHTTPServer'
+# Launch the Python HTTP Server
+alias serve='python3 -m http.server'
 
 # Generate a SHA1 digest
 alias sha1='openssl sha1'

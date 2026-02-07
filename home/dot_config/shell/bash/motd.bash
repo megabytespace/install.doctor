@@ -55,8 +55,8 @@ DOCKER_OTHER_COLOR="90"
 
 UPDATES_ZERO_ICON=""
 UPDATES_ZERO_COLOR="32"
-UPDATES_AVAILIABLE_ICON="ﮮ"
-UPDATES_AVAILIABLE_COLOR="33"
+UPDATES_AVAILABLE_ICON="ﮮ"
+UPDATES_AVAILABLE_COLOR="33"
 UPDATES_SECURITY_ICON="撚"
 UPDATES_SECURITY_COLOR="31"
 
@@ -112,10 +112,10 @@ generate_bar() {
   bar_percent=$(($3 * 100 / $2))
   bar_separator=$(($3 * 100 * 10 / $2 / 25))
 
-  if [ $bar_percent -ge "$BAR_WARNING_THRESHOLD" ]; then
-    bar_color=$BAR_WARNING_COLOR
-  elif [ $bar_percent -ge "$BAR_CRITICAL_THRESHOLD" ]; then
+  if [ $bar_percent -ge "$BAR_CRITICAL_THRESHOLD" ]; then
     bar_color=$BAR_CRITICAL_COLOR
+  elif [ $bar_percent -ge "$BAR_WARNING_THRESHOLD" ]; then
+    bar_color=$BAR_WARNING_COLOR
   else
     bar_color=$BAR_HEALTHY_COLOR
   fi
@@ -541,8 +541,8 @@ print_updates() {
         updates_color=$UPDATES_SECURITY_COLOR
         updates_message="$updates_count_regular packages can be updated, $updates_count_security are security updates."
       else
-        updates_icon=$UPDATES_AVAILIABLE_ICON
-        updates_color=$UPDATES_AVAILIABLE_COLOR
+        updates_icon=$UPDATES_AVAILABLE_ICON
+        updates_color=$UPDATES_AVAILABLE_COLOR
         updates_message="$updates_count_regular packages can be updated."
       fi
     else
@@ -552,7 +552,7 @@ print_updates() {
     fi
 
     printf "       \\033[%sm%s \\033[0m  %s\\n" "$updates_color" "$updates_icon" "$updates_message"
-  elif [ -f /usr/bin/dnfTODO ]; then
+  elif [ -f /usr/bin/dnf ]; then
     # TODO - Find way of quickly acquiring details
     mkdir -p "$HOME/.local/labs" > /dev/null
     (command dnf list updates | grep updates | wc -l > "$HOME/.local/labs/dnf-updates-reg" &)
@@ -572,9 +572,9 @@ print_updates() {
         updates_color=$UPDATES_SECURITY_COLOR
         updates_message="$(generate_space "$updates_count_regular" 5) packages can be updated, $updates_count_security are security updates."
       else
-        updates_icon=$UPDATES_AVAILIABLE_ICON
-        updates_color=$UPDATES_AVAILIABLE_COLOR
-        updates_message="$(generate_space "$bar_disk_used" 5) packages can be updated."
+        updates_icon=$UPDATES_AVAILABLE_ICON
+        updates_color=$UPDATES_AVAILABLE_COLOR
+        updates_message="$updates_count_regular packages can be updated."
       fi
     else
       updates_icon=$UPDATES_ZERO_ICON
@@ -591,10 +591,10 @@ print_updates() {
     if [ "$failed_services_count" -eq 0 ]; then
       printf "       \\033[%sm%s \\033[0m  All enabled services are running!\\n" "32" ""
     elif [ "$failed_services_count" -eq 1 ]; then
-      printf "       \\033[%sm%s \\033[0m  %s services are are currently running\\n" "32" "" "$running_services_count"
+      printf "       \\033[%sm%s \\033[0m  %s services are currently running\\n" "32" "" "$running_services_count"
       printf "       \\033[%sm%s \\033[0m  1 service failed to start (%s)\\n" "31" "" "$(systemctl --type=service --failed | grep 'failed failed' | sed 's/..\([^ ]*\).service.*/\1/')"
     elif [ "$failed_services_count" -gt 1 ]; then
-      printf "       \\033[%sm%s \\033[0m  %s services are are currently running\\n" "32" "" "$running_services_count"
+      printf "       \\033[%sm%s \\033[0m  %s services are currently running\\n" "32" "" "$running_services_count"
       printf "       \\033[%sm%s \\033[0m  %s services failed to start (see \`systemctl --type=service\`)\\n" "31" "" "$failed_services_count"
     fi
   fi
