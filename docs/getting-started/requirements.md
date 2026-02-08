@@ -4,58 +4,108 @@ description: Learn how to install bash and curl on Linux machines which are envi
 sidebar_label: Requirements
 slug: /getting-started/requirements
 ---
-Install Doctor has a minimal set of requirements since it is, by nature, a batteries-included provisioning script / framework. However, on some devices there may be some initial legwork required.
+Install Doctor is a batteries-included provisioning framework with minimal prerequisites. The bootstrap script handles installing everything else automatically. However, on some platforms there may be initial legwork required.
+
+## Requirements Summary
+
+| Platform | Prerequisites | Install Command | Notes |
+|---|---|---|---|
+| macOS (Ventura+) | Xcode CLI Tools (auto-prompted) | `bash <(curl -sSL https://install.doctor/start)` | Grant [Full Disk Access](/docs/terminal/full-disk-access) for full functionality |
+| Ubuntu / Debian | `bash`, `curl` (pre-installed) | `bash <(curl -sSL https://install.doctor/start)` | Sudo privileges required |
+| Fedora / CentOS | `bash`, `curl` (pre-installed) | `bash <(curl -sSL https://install.doctor/start)` | Sudo privileges required |
+| Arch Linux | `bash`, `curl` | `bash <(curl -sSL https://install.doctor/start)` | Install with `pacman -Syu --noconfirm bash curl` |
+| Alpine | `bash`, `curl` | `bash <(curl -sSL https://install.doctor/start)` | Install with `apk add bash curl` |
+| openSUSE | `bash`, `curl` (pre-installed) | `bash <(curl -sSL https://install.doctor/start)` | Sudo privileges required |
+| Windows 11 | Administrator PowerShell | `iex ((New-Object System.Net.WebClient).DownloadString('https://install.doctor/windows'))` | Run as Administrator |
+| Qubes OS | dom0 terminal access | See [Qubes docs](/docs/advanced/qubes) | Must run from dom0 |
+
+## Hardware Requirements
+
+| Resource | Minimum | Recommended |
+|---|---|---|
+| RAM | 4 GB | 8+ GB |
+| Disk Space | 20 GB free | 50+ GB free (Full software group) |
+| Internet | Required for all installs | Broadband for faster provisioning |
+| CPU | Any x86_64 or ARM64 | Multi-core for faster compilation |
 
 ## Linux
 
-On Linux, you need `bash` and `curl` installed. These are required since they are utilized by the one-line kickstarter script:
+On Linux, you need `bash` and `curl` installed. Most distributions ship with both pre-installed. If not:
+
+```shell
+# Arch Linux
+sudo pacman -Syu --noconfirm bash curl
+
+# CentOS / Fedora
+sudo dnf install -y bash curl
+
+# Debian / Ubuntu
+sudo apt-get install -y bash curl
+
+# Alpine
+apk add bash curl
+
+# openSUSE
+sudo zypper install -y bash curl
+```
+
+Then run the kickstart script:
 
 ```shell
 bash <(curl -sSL https://install.doctor/start)
 ```
 
-### Arch Linux
-
-```shell
-pacman -Syu bash curl
-```
-
-### CentOS / Fedora
-
-```shell
-sudo dnf install -y bash curl
-```
-
-### Debian / Ubuntu
-
-```shell
-sudo apt-get install -y bash curl
-```
-
 ## macOS
 
-### macFUSE Kernel Extensions
+### Xcode Command Line Tools
 
-[macFUSE](https://osxfuse.github.io/) requires kernel extensions which are not allowed by default. macFUSE is required for mounting various data sources as volumes (i.e. allowing you to mount an S3 as a disk). Before provisioning, enable kernel extensions by booting into the recovery environment. You can enable kernel extensions by:
+The Xcode Command Line Tools are automatically prompted for installation when the provisioning script runs. You can pre-install them with:
+
+```shell
+xcode-select --install
+```
+
+If you have the full Xcode app installed, accept the license first:
+
+```shell
+sudo xcodebuild -license accept
+```
+
+### Full Disk Access
+
+For full functionality (modifying system preferences, accessing protected directories), grant Full Disk Access to your terminal app. See the [Full Disk Access guide](/docs/terminal/full-disk-access) for step-by-step instructions.
+
+### macFUSE Kernel Extensions (Optional)
+
+[macFUSE](https://osxfuse.github.io/) enables mounting remote data sources as local volumes (e.g., S3 buckets as disks). It requires kernel extensions which must be explicitly enabled on Apple Silicon Macs:
 
 1. Shut down system
-2. Press and hold the Touch ID or power button to launch the Startup Security Utility
+2. Press and hold the Touch ID or power button to launch Startup Security Utility
 3. Select "Options"
-4. On the top menu bar, select, "Startup Security Utility"
-5. In the Startup Security Utility, enable kernel extensions from the Security Policy button
+4. On the top menu bar, select "Startup Security Utility"
+5. Enable kernel extensions from the Security Policy button
 6. Reboot into the main environment
-7. Open the System Settings
-8. Click on Privacy & Security
-9. Enable relevant System Extensions by clicking on "Enable System Extensions..." (Note: If you enable kernel extensions before installing macFUSE, then the option to enable the extensions will not be available yet. You can either manually install macFUSE before running the provisioning process or revisit the settings page and enable them after the kickstart script installs macFUSE)
+7. Open System Settings > Privacy & Security
+8. Click "Enable System Extensions..."
+
+> **Note:** If you enable kernel extensions before installing macFUSE, the option to enable extensions will not be available yet. Revisit this step after provisioning installs macFUSE.
 
 ## Qubes
 
-To provision Qubes, it is important that you begin the provisioning process from a `dom0` terminal session if you want to utilize the one-line kickstarter script:
+Begin the provisioning process from a **dom0** terminal session:
 
 ```shell
 qvm-run --pass-io sys-firewall "curl -sSL https://install.doctor/qubes" > ~/setup.sh && bash ~/setup.sh
 ```
 
+See the [Qubes documentation](/docs/advanced/qubes) for full details on template VMs, AppVM provisioning, and customization.
+
 ## Windows
 
-Windows 11 requires elevated administrator privileges so when you first run the one-line setup script, you should preferably run it from an Administrator PowerShell terminal window.
+Windows 11 requires elevated administrator privileges. Open an **Administrator PowerShell** terminal (right-click PowerShell > "Run as Administrator") and run:
+
+```powershell
+iex ((New-Object System.Net.WebClient).DownloadString('https://install.doctor/windows'))
+```
+
+The Windows provisioning process uses [Chocolatey](https://chocolatey.org/), [Scoop](https://scoop.sh/), and [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/) for package management.

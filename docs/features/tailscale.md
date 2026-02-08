@@ -5,18 +5,54 @@ sidebar_label: Tailscale
 slug: /integrations/tailscale
 ---
 
-Tailscale is used to create a WireGuard-based VPN network that connects all your devices to a shared LAN-like network. Tailscale is free for up to 20 devices. It is especially useful when connecting devices that are behind multiple firewalls and located in places where an internet connection is required for networking between devices.
+Tailscale creates a WireGuard-based VPN network that connects all your devices to a shared LAN-like network. It is free for up to 100 devices on the Personal plan and is especially useful for connecting devices behind firewalls, NATs, or across different physical networks.
+
+## How It Works
+
+Install Doctor automatically installs Tailscale and connects your device to your mesh VPN when the `TAILSCALE_AUTH_KEY` is provided.
+
+| Step | What Happens |
+|---|---|
+| 1 | Tailscale is installed via the system package manager or Homebrew |
+| 2 | `tailscale up --authkey $TAILSCALE_AUTH_KEY` is run to authenticate |
+| 3 | The device joins your Tailscale network and gets a `100.x.y.z` IP address |
+| 4 | All your Tailscale devices can now communicate directly |
 
 ## Configuration
 
-Install Doctor will automatically connect your devices to the same Tailscale mesh VPN network if Tailscale is installed and the appropriate variables are provided. These variables include:
+| Variable | Required | Description |
+|---|---|---|
+| `TAILSCALE_AUTH_KEY` | Yes | Reusable auth key from the [Tailscale admin dashboard](https://login.tailscale.com/admin/settings/keys) |
 
-* `TAILSCALE_AUTH_KEY` - You can acquire this key from the [Tailscale admin settings dashboard](https://login.tailscale.com/admin/settings/keys). When there, click, "Generate auth key...," and check, "Reusable," "Ephemeral," and, "Pre-approved." Once you have the key, you can integrate it into your Install Doctor fork by using one of the methods described in the [Secrets documentation](https://install.doctor/docs/customization/secrets).
+### Generating an Auth Key
 
-*Note: One caveat of Tailscale is that your API key must be rotated every 90 days since all keys have a maximum expiration date of 90 days after the key was created. If anyone knows how to automatically keep the Tailscale API key up-to-date, please reach out to us on one of our [Community pages](https://install.doctor/community).*
+1. Log in to the [Tailscale admin console](https://login.tailscale.com/admin/settings/keys)
+2. Click **"Generate auth key..."**
+3. Check the following options:
+   - **Reusable** - Allows the same key on multiple devices
+   - **Ephemeral** - Devices are automatically removed when they go offline
+   - **Pre-approved** - Devices join without manual approval
+4. Copy the generated key
+5. Store it as an encrypted secret (see [Secrets documentation](/docs/customization/secrets)):
 
-## CloudFlare Tunnel Comparison
+```shell
+echo -n "tskey-auth-xxxxxxxxxxxx" | chezmoi encrypt > home/.chezmoitemplates/secrets/TAILSCALE_AUTH_KEY
+```
 
-CloudFlare Teams / Argo is another free service that we leverage to provide enhanced internet connectivity to devices that are possibly behind firewalls. Originally, CloudFlare tunnel endpoints were made to provide publicly HTTPS endpoints that were hosted behind firewalls. More recently, CloudFlare Argo / Teams / tunnels have evolved to provide all the features that Tailscale supports plus a lot more, with one exception.
+> **Note:** Tailscale auth keys expire after 90 days maximum. You will need to generate a new key and re-encrypt it periodically. If anyone knows how to automatically keep the Tailscale API key up-to-date, please reach out on one of our [Community pages](https://install.doctor/community).
 
-In regards to connecting two devices to a mesh VPN, LAN-like network, Tailscale is still better than CloudFlare in regards to performance. CloudFlare tunnel traffic is all routed through CloudFlare's network (which gives you the ability to apply fancy security features and other interesting features). However, in many cases, Tailscale can establish direct peer-to-peer mesh VPN connections. This means, with Tailscale, your mesh VPN LAN network is faster.
+## Tailscale vs CloudFlare Tunnels
+
+Both Tailscale and CloudFlare Tunnels provide network connectivity for devices behind firewalls:
+
+| Feature | Tailscale | CloudFlare Tunnels |
+|---|---|---|
+| **Connection type** | Peer-to-peer mesh VPN (WireGuard) | Hub-and-spoke through CloudFlare's network |
+| **Performance** | Direct connections between devices (faster) | Routed through CloudFlare data centers |
+| **Best for** | Device-to-device communication | Public-facing services, SSO-protected access |
+| **Encryption** | WireGuard (always encrypted) | TLS via CloudFlare |
+| **Free tier** | 100 devices | Unlimited tunnels |
+| **DNS** | MagicDNS (device-name.tailnet) | Custom subdomains on your domain |
+| **Security features** | ACLs, exit nodes | Zero Trust policies, browser isolation, WAF |
+
+**Recommendation:** Use Tailscale for device-to-device communication (SSH, file sharing, internal services) and CloudFlare Tunnels for public-facing services that need SSO protection. Install Doctor supports both simultaneously.

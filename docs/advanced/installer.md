@@ -111,3 +111,47 @@ python:
   brew: python
   _post:brew: python3 -m pip install --upgrade setuptools && python3 -m pip install --upgrade pip
 ```
+
+## Complete Real-World Example
+
+Here's a full `software.yml` entry for Docker, showing multiple install methods and platform-specific handling:
+
+```yaml
+docker:
+  _name: Docker
+  _short: Container runtime for building and running applications
+  _desc: >
+    Docker is a platform for developing, shipping, and running applications
+    in containers. It enables consistent environments across development,
+    testing, and production.
+  _github: https://github.com/moby/moby
+  _home: https://www.docker.com
+  _bin: docker
+  apt: docker-ce
+  dnf: docker-ce
+  pacman: docker
+  brew: docker
+  cask: docker
+  choco: docker-desktop
+  _when:cask: '! test -d "/Applications/Docker.app"'
+  _post: |
+    if command -v docker > /dev/null; then
+      sudo usermod -aG docker "$(whoami)" 2>/dev/null || true
+    fi
+```
+
+## Software Definition Fields Reference
+
+| Field | Required | Description |
+|---|---|---|
+| `_name` | Recommended | Human-readable display name |
+| `_short` | Optional | Brief one-line description |
+| `_desc` | Optional | Detailed multi-line description |
+| `_github` | Optional | GitHub repository URL |
+| `_home` | Optional | Project homepage URL |
+| `_docs` | Optional | Documentation URL |
+| `_bin` | Recommended | Binary name to check if already installed |
+| `_when:<method>` | Optional | Shell condition that must be true before installing |
+| `_post` | Optional | Shell command to run after installation (any method) |
+| `_post:<method>` | Optional | Shell command to run after installation (specific method) |
+| `brew`, `apt`, etc. | At least one | Package name for each installation method |

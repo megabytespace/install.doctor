@@ -5,7 +5,7 @@ sidebar_label: Netdata
 slug: /integrations/netdata
 ---
 
-Install Doctor allows the user to monitor detailed system metrics by leveraging Netdata. The **free** web service provides a useful, slick, detailed interface where you can browse through charts that detail important metrics like the amount of RAM being used. The service manages to offer an amazing free service because they offer a paid upgrade that features extended log rentention (among a few other features).
+Install Doctor integrates [Netdata](https://www.netdata.cloud/) to provide real-time system monitoring with a detailed, interactive dashboard. The free cloud service lets you monitor all your provisioned devices from a single web interface.
 
 <figure>
   <picture>
@@ -16,21 +16,60 @@ Install Doctor allows the user to monitor detailed system metrics by leveraging 
   <figcaption>Screenshot of the localhost version of Netdata (i.e. http://localhost:19999)</figcaption>
 </figure>
 
+## What Gets Monitored
+
+Netdata collects hundreds of metrics out of the box:
+
+| Category | Metrics |
+|---|---|
+| **CPU** | Usage per core, load average, context switches, interrupts |
+| **Memory** | RAM usage, swap, page faults, kernel memory |
+| **Disk** | I/O throughput, latency, space usage per mount |
+| **Network** | Bandwidth per interface, packets, errors, drops |
+| **Processes** | Running, sleeping, zombie processes, fork rate |
+| **Services** | Docker containers, systemd units, web servers |
+| **Applications** | Per-application CPU, memory, and I/O usage |
+
 ## Configuration
 
-To automate the provisioning process of Netdata, you need to make several variables available for Install Doctor (otherwise, you will only be able to access the device's local Netdata dashboard at `http://localhost:19999` when the service is running). These variables include:
+| Variable | Required | Description |
+|---|---|---|
+| `NETDATA_TOKEN` | For cloud | The `--claim-token` value from [Netdata Cloud](https://app.netdata.cloud) |
+| `NETDATA_ROOM` | For cloud | The `--claim-rooms` value shown when creating a new room |
 
-* `NETDATA_TOKEN` - This is the `--claim-token` data value shown by the Netdata cloud service app start page when you first login to [Netdata Cloud](https://app.netdata.cloud)
-* `NETDATA_ROOM` - This is the `--claim-rooms` data value shown by the Netdata cloud service page that is displayed when you first create a new room
+Without these variables, Netdata still installs and runs locally at `http://localhost:19999`. With the variables, your device is automatically enrolled in Netdata Cloud for centralized monitoring.
 
-Using the methods described in the [Secrets documentation](https://install.doctor/docs/integrations/netdata), you can provide Install Doctor with these data points so that it can automatically configure and connect your local Netdata instances to the free Netdata Cloud service.
+### Setup Steps
+
+1. Create a free account at [Netdata Cloud](https://app.netdata.cloud)
+2. Create a new Room (or use the default)
+3. Click **"Connect Nodes"** and copy the `--claim-token` and `--claim-rooms` values
+4. Store them as encrypted secrets:
+
+```shell
+echo -n "YOUR_CLAIM_TOKEN" | chezmoi encrypt > home/.chezmoitemplates/secrets/NETDATA_TOKEN
+echo -n "YOUR_ROOM_ID" | chezmoi encrypt > home/.chezmoitemplates/secrets/NETDATA_ROOM
+```
+
+5. Re-provision or run `chezmoi apply` to connect
 
 ## Alerts
 
-The Netdata service can be configured to automatically dispatch alerts when system parameters match certain triggers. For more details, see [Netdata's documentation on setting up alerts](https://learn.netdata.cloud/docs/alerts-and-notifications/configure-alerts).
+Netdata supports automated alerts when system parameters exceed defined thresholds. Install Doctor includes a pre-configured [notification configuration](https://github.com/megabyte-labs/install.doctor/blob/master/home/dot_config/netdata/health_alarm_notify.conf.tmpl) that supports:
 
-A handful of cloud notification services, including e-mail, are integrated into the default configuration via the [Netdata notification configuration](https://github.com/megabyte-labs/install.doctor/blob/master/home/dot_config/netdata/health_alarm_notify.conf.tmpl). With this configuration and secrets specified in [`home/.chezmoitemplates/secrets`](https://github.com/megabyte-labs/install.doctor/tree/master/home/.chezmoitemplates/secrets), you can headlessly deploy Netdata coupled with notification systems.
+| Notification Method | Required Secret |
+|---|---|
+| Email (SMTP) | SMTP credentials in secrets |
+| Slack | `SLACK_API_TOKEN` |
+| PagerDuty | PagerDuty integration key |
+| Custom webhooks | Webhook URL |
 
-## TODO
+For full details on configuring alerts, see [Netdata's alert documentation](https://learn.netdata.cloud/docs/alerts-and-notifications/configure-alerts).
 
-* [GitHub feature request for sensible Netdata defaults](https://github.com/megabyte-labs/install.doctor/issues/18)
+## Access Methods
+
+| Method | URL | Description |
+|---|---|---|
+| Local dashboard | `http://localhost:19999` | Always available when Netdata is running |
+| Netdata Cloud | `https://app.netdata.cloud` | Centralized view of all enrolled devices |
+| Tailscale + local | `http://100.x.y.z:19999` | Access via Tailscale mesh VPN from any device |

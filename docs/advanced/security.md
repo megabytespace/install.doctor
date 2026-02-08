@@ -7,15 +7,30 @@ slug: /advanced/security
 
 Install Doctor takes a defense-in-depth approach to security by layering multiple protection mechanisms across the provisioned system. This page details the security features that are currently implemented and configured during provisioning.
 
+## Security Tools Overview
+
+| Tool | Category | Platforms | Installed Via |
+|---|---|---|---|
+| ClamAV | Antivirus | All | apt/dnf/pacman/brew |
+| Rkhunter | Rootkit detection | Linux | apt/dnf/pacman |
+| fail2ban | Intrusion prevention | Linux | apt/dnf/pacman |
+| Little Snitch | Application firewall | macOS | cask |
+| OpenSnitch | Application firewall | Linux | Package manager |
+| Portmaster | Application firewall | Linux/Windows | Binary download |
+| Cloudflare WARP | Encrypted DNS/VPN | All | Package manager |
+| Tailscale | Mesh VPN | All | Package manager |
+
 ## Antivirus and Malware Detection
 
 ### ClamAV
 
-Install Doctor installs and configures [ClamAV](https://www.clamav.net/), the open-source antivirus engine, across all supported platforms. ClamAV provides:
+Install Doctor installs and configures [ClamAV](https://www.clamav.net/), the open-source antivirus engine, across all supported platforms:
 
-- Real-time file scanning via `clamd`
-- Scheduled signature database updates via `freshclam`
-- On-demand scanning with `clamscan`
+| Component | Purpose | Command |
+|---|---|---|
+| `clamd` | Real-time file scanning daemon | `systemctl status clamav-daemon` |
+| `freshclam` | Automatic signature database updates | `systemctl status clamav-freshclam` |
+| `clamscan` | On-demand scanning | `clamscan -r ~/Downloads` |
 
 ClamAV is installed via the system package manager (`apt`, `dnf`, `pacman`) on Linux and via Homebrew on macOS.
 
@@ -28,18 +43,41 @@ ClamAV is installed via the system package manager (`apt`, `dnf`, `pacman`) on L
 - Hidden files in common locations
 - Suspicious kernel modules
 
+Run a manual scan with:
+
+```bash
+sudo rkhunter --check
+```
+
 ### Intrusion Prevention
 
 [fail2ban](https://www.fail2ban.org/) is installed on Linux systems to monitor log files and automatically ban IP addresses that show malicious signs such as repeated failed authentication attempts.
+
+```bash
+# Check fail2ban status
+sudo fail2ban-client status
+
+# View banned IPs for the SSH jail
+sudo fail2ban-client status sshd
+```
 
 ## SSH Hardening
 
 Install Doctor applies hardened SSH configurations during provisioning:
 
-- **Custom SSH port** - The SSH daemon can be configured to listen on a non-standard port (defined in `.chezmoi.yaml.tmpl`)
-- **SELinux integration** - On systems with SELinux (Fedora, CentOS, RHEL), the custom SSH port is registered via `semanage` to comply with SELinux policies
-- **Key-based authentication** - SSH key generation and import is handled during the provisioning process
-- **Service management** - The SSH service is automatically enabled and configured based on the distribution (e.g., `ssh` on Debian/Ubuntu, `sshd` on Fedora/Arch)
+| Hardening Measure | Description | Configuration |
+|---|---|---|
+| Custom SSH port | Non-standard port to reduce automated scanning | Defined in `.chezmoi.yaml.tmpl` |
+| SELinux integration | Registers custom port with SELinux policy | `semanage port -a -t ssh_port_t -p tcp $PORT` |
+| Key-based auth | SSH key generation and import | Handled during provisioning |
+| Service management | Auto-enable SSH service per distribution | `ssh` (Debian/Ubuntu), `sshd` (Fedora/Arch) |
+
+SSH service names vary by distribution:
+
+| Distribution | Service Name | Enable Command |
+|---|---|---|
+| Debian / Ubuntu | `ssh` | `sudo systemctl enable --now ssh` |
+| Fedora / CentOS / Arch | `sshd` | `sudo systemctl enable --now sshd` |
 
 ## GPG Key Management
 
@@ -56,18 +94,20 @@ All sensitive data (API keys, tokens, passwords) is encrypted at rest using [Age
 
 ## Application Firewalls
 
-Install Doctor includes support for application-level firewalls:
-
-- **Little Snitch** (macOS) - Network monitor and firewall that alerts you when applications attempt to make network connections
-- **OpenSnitch** (Linux) - Application-level firewall inspired by Little Snitch (package defined, active configuration pending)
-- **Portmaster** (Linux/Windows) - Privacy-focused application firewall (package defined, configuration pending)
+| Firewall | Platform | Description | Status |
+|---|---|---|---|
+| [Little Snitch](https://www.obdev.at/products/littlesnitch/) | macOS | Alerts when apps make network connections; rule-based filtering | Fully integrated |
+| [OpenSnitch](https://github.com/evilsocket/opensnitch) | Linux | Application-level firewall inspired by Little Snitch | Package defined |
+| [Portmaster](https://safing.io/portmaster/) | Linux/Windows | Privacy-focused firewall with built-in DNS filtering | Package defined |
 
 ## Network Security
 
-- **Cloudflare WARP** - Encrypted DNS and optional VPN tunneling via Cloudflare's network
-- **Tailscale** - Zero-config WireGuard mesh VPN for secure device-to-device communication
-- **WireGuard** - Modern VPN protocol with automated NetworkManager profile configuration
-- **OpenVPN** - Traditional VPN support with automated profile import from `~/.config/vpn/*.ovpn` files
+| Tool | Purpose | Configuration |
+|---|---|---|
+| [Cloudflare WARP](https://1.1.1.1/) | Encrypted DNS and optional VPN tunneling | `CLOUDFLARE_TEAMS_*` variables |
+| [Tailscale](https://tailscale.com/) | Zero-config WireGuard mesh VPN | `TAILSCALE_AUTH_KEY` |
+| [WireGuard](https://www.wireguard.com/) | Modern VPN protocol | NetworkManager profiles in `~/.config/vpn/` |
+| [OpenVPN](https://openvpn.net/) | Traditional VPN | `.ovpn` files in `~/.config/vpn/` |
 
 ## Security Philosophy
 

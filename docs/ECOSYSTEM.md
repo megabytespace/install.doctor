@@ -13,13 +13,16 @@ This project incorporates design patterns from the [Megabyte Labs](https://megab
 
 ## How Install Doctor Fits In
 
-Install Doctor is the cornerstone of the Megabyte Labs ecosystem. It provisions developer workstations with all the tools, configurations, and integrations needed to work effectively across the entire ecosystem. When you run Install Doctor, it configures:
+Install Doctor is the cornerstone of the Megabyte Labs ecosystem. It provisions developer workstations with all the tools, configurations, and integrations needed to work effectively across the entire ecosystem:
 
-- **Development tools** - Language runtimes, compilers, linters, formatters, and build systems
-- **Shell environment** - Customized Bash and ZSH configurations with productivity aliases, functions, and plugins
-- **Security tooling** - Antivirus, rootkit detection, VPN, and encrypted secrets management
-- **Infrastructure tools** - Docker, Vagrant, Terraform, Ansible, and Kubernetes CLI tools
-- **CI/CD integration** - GitHub Actions, GitLab CI, and related tooling
+| Category | What Install Doctor Configures | Example Tools |
+|---|---|---|
+| **Development tools** | Language runtimes, compilers, linters, formatters | Node.js, Go, Python, Rust, ShellCheck, ESLint |
+| **Shell environment** | Bash and ZSH with frameworks, aliases, functions | Oh-My-ZSH, Powerlevel10k, Bash-It, zoxide, fzf |
+| **Security tooling** | Antivirus, intrusion detection, VPN, encryption | ClamAV, fail2ban, Tailscale, Age |
+| **Infrastructure tools** | Containers, VMs, orchestration, IaC | Docker, Vagrant, Terraform, Ansible, kubectl |
+| **CI/CD integration** | Source control, CI runners, automation | GitHub CLI, GitLab CLI, Task runner |
+| **Editor setup** | IDE configuration, extensions, themes | VS Code, Neovim (NvChad), VIM |
 
 ## Shared Components
 

@@ -11,36 +11,66 @@ This document describes the coding conventions and best practices used throughou
 
 ## Variable Naming
 
-- **Environment variables and constants**: Use UPPERCASE with underscores (e.g., `SUDO_PASSWORD`, `SOFTWARE_GROUP`)
-- **Local variables**: Use lowercase or camelCase within functions (e.g., `exitCode`, `tmpDir`)
-- **Export variables** that need to be available to child processes
+| Pattern | Convention | Example |
+|---|---|---|
+| Environment variables / constants | UPPERCASE with underscores | `SUDO_PASSWORD`, `SOFTWARE_GROUP` |
+| Local variables | lowercase or camelCase | `exitCode`, `tmpDir` |
+| Exported variables | UPPERCASE, exported with `export` | `export PATH="..."` |
+| Loop variables | UPPERCASE (matching convention) | `for PACKAGE in $PACKAGES` |
+
+> **Critical:** Use `$HOME` not `~` in variable assignments. Tilde does not expand inside quotes.
 
 ## Error Handling
 
-- Use `set -eo pipefail` at the top of scripts to catch errors early
-- Capture exit codes with `|| EXIT_CODE=$?` when a command failure should not terminate the script
-- Always provide fallback behavior or meaningful error messages when commands fail
-- Use `timeout` to prevent commands from hanging indefinitely
+| Pattern | When to Use | Example |
+|---|---|---|
+| `set -eo pipefail` | Top of every script | Catch errors early |
+| `\|\| EXIT_CODE=$?` | When failure should not terminate | `command \|\| EXIT_CODE=$?` |
+| `\|\| true` | Commands that may legitimately fail | `pkill process \|\| true` |
+| `timeout 30` | Commands that might hang | `timeout 30 curl -sSL "$URL"` |
 
 ## Non-Interactive Execution
 
-All scripts must support fully automated, headless execution:
+All scripts must support fully automated, headless execution. Every interactive prompt **must** have a timeout (default: 30 seconds) or respect `HEADLESS_INSTALL`:
 
-- Every interactive prompt must have a timeout (default: 30 seconds)
-- Check for `HEADLESS_INSTALL` environment variable to skip prompts entirely
-- Use `--noconfirm` (pacman), `-y` (apt-get, dnf, yum), or equivalent flags for package managers
-- Pipe `echo |` to Homebrew install to bypass its confirmation prompt
+| Package Manager | Non-Interactive Flag | Example |
+|---|---|---|
+| apt-get | `-y` | `sudo apt-get install -y curl` |
+| dnf / yum | `-y` | `sudo dnf install -y curl` |
+| pacman | `--noconfirm` | `sudo pacman -S --noconfirm curl` |
+| zypper | `-y` | `sudo zypper install -y curl` |
+| makepkg | `--noconfirm` | `makepkg -si --noconfirm` |
+| Homebrew | `echo \|` piped | `echo \| /bin/bash -c "$(curl ...)"` |
+| snap | (non-interactive by default) | `sudo snap install package` |
+
+```bash
+# Example: Prompt with timeout and HEADLESS_INSTALL support
+if [ "$HEADLESS_INSTALL" != 'true' ]; then
+  read -t 30 -p "Continue? [Y/n] " REPLY || REPLY="Y"
+else
+  REPLY="Y"
+fi
+```
 
 ## Logging
 
-Use the `logg` function for all output:
+There are two logging systems. Use the correct one depending on the script context:
 
-- `logg info "message"` - Informational messages
-- `logg warn "message"` - Warning messages
-- `logg error "message"` - Error messages
-- `logg success "message"` - Success messages
-- `logg star "message"` - Highlighted messages
-- `logg md "file.md"` - Render markdown files
+| Context | Function | Example |
+|---|---|---|
+| `start.sh`, `provision.sh` | `logg` | `logg info "Installing Homebrew"` |
+| Chezmoi scripts (`run_before_*`, `run_after_*`) | `gum log -sl` | `gum log -sl info "Installing Homebrew"` |
+
+Available log levels:
+
+```bash
+logg info "Informational message"       # or: gum log -sl info "..."
+logg warn "Warning message"             # or: gum log -sl warn "..."
+logg error "Error message"              # or: gum log -sl error "..."
+logg success "Success message"
+logg star "Highlighted message"
+logg md "file.md"                       # Render markdown
+```
 
 ## Platform Detection
 
@@ -53,17 +83,30 @@ if [ -d /Applications ] && [ -d /System ]; then
 # Linux distribution detection
 if [ -f /etc/debian_version ]; then      # Debian/Ubuntu
 if [ -f /etc/redhat-release ]; then      # RHEL/CentOS/Fedora
-if [ -f /etc/arch-release ]; then        # Archlinux
+if [ -f /etc/arch-release ]; then        # Arch Linux
 if [ -f /etc/alpine-release ]; then      # Alpine
 
 # Package manager detection (fallback)
 if command -v apt-get > /dev/null; then
 if command -v dnf > /dev/null; then
+if command -v pacman > /dev/null; then
 ```
+
+## POSIX Compliance
+
+| Do | Don't | Why |
+|---|---|---|
+| `[ $? -ne 0 ]` | `[ $? != 0 ]` | `-ne` is the POSIX numeric comparison |
+| `command -v binary` | `which binary` | `which` is not POSIX; `command -v` is portable |
+| `$HOME` | `~` in quotes | Tilde does not expand inside double quotes |
+| `eval "$(...)"` | `eval "(...)"` | Command substitution requires `$()` |
 
 ## Documentation
 
-- Use `# @file`, `# @brief`, `# @description` JSDoc-style comments for file headers
-- Use `# @description` for function documentation
-- Document environment variables with `@envvar`
-- Document parameters with `@arg`
+| Tag | Purpose | Example |
+|---|---|---|
+| `# @file` | File title | `# @file Homebrew Installation` |
+| `# @brief` | One-line summary | `# @brief Installs Homebrew on macOS and Linux` |
+| `# @description` | Multi-line description | `# @description\n#     This script...` |
+| `# @envvar` | Environment variable | `# @envvar SUDO_PASSWORD The sudo password` |
+| `# @arg` | Function parameter | `# @arg $1 string The package name` |

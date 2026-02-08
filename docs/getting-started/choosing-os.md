@@ -7,6 +7,19 @@ slug: /getting-started/choosing-os
 
 Install Doctor is regularly tested on the x86-64 variants of Arch Linux, CentOS, Debian, Fedora, macOS, Qubes, Ubuntu, and Windows. If you are planning on using or already using Install Doctor, you might re-think what operating system you want to use. Qubes is perhaps the most interesting operating system to choose but there is a learning curve involved. To help you in your journey, information about what makes each supported operating system unique and why you would want to use it is provided below.
 
+## Quick Comparison
+
+| OS | Best For | Package Manager | Difficulty | Install Doctor Support |
+|---|---|---|---|---|
+| **macOS** | Apple hardware users, creative pros | Homebrew, mas | Easy | Fully supported |
+| **Ubuntu** | Beginners, wide hardware support | apt, snap | Easy | Fully supported |
+| **Fedora** | Developers wanting latest packages | dnf, flatpak | Medium | Fully supported |
+| **Debian** | Stability-focused servers/desktops | apt | Medium | Fully supported |
+| **Arch Linux** | Power users, customization | pacman, yay | Hard | Fully supported |
+| **CentOS** | Enterprise/server environments | dnf | Medium | Supported |
+| **Qubes OS** | Security-focused users | Xen-based VMs | Hard | Beta |
+| **Windows 11** | Gaming, enterprise .NET development | choco, scoop, winget | Easy | Beta |
+
 ## Arch Linux
 
 <figure>
