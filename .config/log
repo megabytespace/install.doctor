@@ -43,7 +43,7 @@ installGlow() {
           GLOW_PATH="$HOME/.local/bin/glow"
         else
           GLOW_PATH="$(dirname "${BASH_SOURCE[0]}")/glow"
-          mv "$TMP_DIR/gum" "$GLOW_PATH"
+          mv "$TMP_DIR/glow" "$GLOW_PATH"
         fi
         chmod +x "$GLOW_PATH"
       else
@@ -59,13 +59,13 @@ installGlow() {
 installGum() {
   # TODO: Add support for other architecture types
   if [ -d '/Applications' ] && [ -d '/Library' ] && [ -d '/Users' ]; then
-    if [ "$(uname -r)" == "arm64" ]; then
+    if [ "$(uname -m)" == "arm64" ]; then
       GUM_DOWNLOAD_URL="https://github.com/charmbracelet/gum/releases/download/v0.14.5/gum_0.14.5_Darwin_arm64.tar.gz"
     else
       GUM_DOWNLOAD_URL="https://github.com/charmbracelet/gum/releases/download/v0.14.5/gum_0.14.5_Darwin_x86_64.tar.gz"
     fi
   elif [ -f '/etc/ubuntu-release' ] || [ -f '/etc/debian_version' ] || [ -f '/etc/redhat-release' ] || [ -f '/etc/SuSE-release' ] || [ -f '/etc/arch-release' ] || [ -f '/etc/alpine-release' ]; then
-    if [ "$(uname -r)" == "arm64" ]; then
+    if [ "$(uname -m)" == "arm64" ]; then
       GUM_DOWNLOAD_URL="https://github.com/charmbracelet/gum/releases/download/v0.14.5/gum_0.14.5_Linux_arm64.tar.gz"
     else
       GUM_DOWNLOAD_URL="https://github.com/charmbracelet/gum/releases/download/v0.14.5/gum_0.14.5_Linux_x86_64.tar.gz"
@@ -82,7 +82,7 @@ installGum() {
           GUM_PATH="$HOME/.local/bin/gum"
         else
           GUM_PATH="$(dirname "${BASH_SOURCE[0]}")/gum"
-          mv "$TMP_DIR/gum" "$GLOW_PATH"
+          mv "$TMP_DIR/gum" "$GUM_PATH"
         fi
         chmod +x "$GUM_PATH"
       else

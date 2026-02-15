@@ -24,7 +24,7 @@
 #
 #   Documentation on Taskfile.yml syntax can be found [here](https://taskfile.dev/).
 git config url."https://gitlab.com/".insteadOf git@gitlab.com:
-          git config url."https://github.com/".insteadOf git@github.com:
+git config url."https://github.com/".insteadOf git@github.com:
 set -eo pipefail
 
 # @description Initialize variables
@@ -372,10 +372,10 @@ function installTask() {
     sudo mkdir -p "$TARGET_BIN_DIR"
     sudo mv "$TMP_DIR/task/task" "$TARGET_DEST"
   else
-          echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
-          if [ -d "/opt/homebrew" ]; then
-            logger info "Setting owner of /opt/homebrew to '$USER'" && sudo chown -R "$USER" /opt/homebrew || logger warn "Failed to chown /opt/homebrew to '$USER'"
-          fi
+    echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
+    if [ -d "/opt/homebrew" ]; then
+      logger info "Setting owner of /opt/homebrew to '$USER'" && sudo chown -R "$USER" /opt/homebrew || logger warn "Failed to chown /opt/homebrew to '$USER'"
+    fi
     mv "$TMP_DIR/task/task" "$TARGET_DEST"
   fi
   logger success "Installed Task to $TARGET_DEST"

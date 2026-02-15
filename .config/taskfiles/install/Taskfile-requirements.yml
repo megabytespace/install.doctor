@@ -140,7 +140,7 @@ tasks:
       - curl -sSL https://github.com/trustcrypto/OnlyKey-App/releases/download/v5.3.6/OnlyKey_5.3.6_amd64.deb > ~/Downloads/OnlyKey_5.3.6_amd64.deb
       - |
         if type apt &> /dev/null; then
-          sudo apt install debsig-verify
+          sudo apt install -y debsig-verify
         fi
 
   yubikey:

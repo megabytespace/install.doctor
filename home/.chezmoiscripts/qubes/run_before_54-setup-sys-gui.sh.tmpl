@@ -19,7 +19,7 @@ enableSysGUIGPU() {
 }
 
 ### Enable appropriate sys-gui
-if qvm-pci list | grep 'VGA compatible controller' | grep 'Intel'; else
+if qvm-pci list | grep 'VGA compatible controller' | grep 'Intel'; then
   gum log -sl info 'An Intel GPU was detected'
   enableSysGUIGPU
   gum log -sl info 'Attaching Intel GPU PCI devices to sys-gui-gpu'

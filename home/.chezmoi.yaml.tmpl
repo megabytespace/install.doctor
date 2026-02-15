@@ -82,10 +82,10 @@
     {{- $withToolchain := env (list "WITH" (upper $toolchain) | join "_") -}}
     {{- if and (or $withoutToolchains $withoutToolchain) (not $withToolchain) -}}
       {{- writeToStdout (list "Disabled" $toolchain "toolchain.\n" | join " ")  -}}
-      {{- $_ := set $toolchainsEnabled $toolchain true }}
+      {{- $_ := set $toolchainsEnabled $toolchain false }}
     {{- else }}
       {{- $_ := set $toolchainsEnabled $toolchain true }}
-    {{- end}}
+    {{- end -}}
 {{- end }}
 
 {{- if stdinIsATTY -}}
@@ -194,7 +194,7 @@ data:
       username: "{{ $githubUsername }}"
     gitomatic:
       - git: "{{ default "git@github.com:megabyte-labs/install.doctor.git" (env "START_REPO") }}"
-        path: "~/.local/share/chezmoi"
+        path: "{{ .chezmoi.homeDir }}/.local/share/chezmoi"
     gmail:
       username: "{{ $gmailAddress }}"
     gpg:

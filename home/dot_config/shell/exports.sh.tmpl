@@ -607,7 +607,7 @@ fi
 export BROWSER="{{ .user.defaultBrowser }}"
 
 ### WSL
-if [ -d /proc ] && [[ "$(grep Microsoft /proc/version > /dev/null)" ]]; then
+if [ -d /proc ] && grep -q Microsoft /proc/version 2>/dev/null; then
   # Source: https://stackoverflow.com/questions/61110603/how-to-set-up-working-x11-forwarding-on-wsl2
   export LIBGL_ALWAYS_INDIRECT="1"
   export DISPLAY=$(ip route list default | awk '{print $3}'):0

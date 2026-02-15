@@ -412,7 +412,7 @@ print_diskspace() {
 }
 
 print_services() {
-  if [ -f $SERVICES_FILE ] && [ "$(wc -l <$SERVICES_FILE)" != 0 ]; then
+  if [ -f "$SERVICES_FILE" ] && [ "$(wc -l < "$SERVICES_FILE")" != 0 ]; then
     printf "\\n"
     printf "    \\033[1;37mServices:\\033[0m                              \\033[1;37mVersion:\\033[0m\\n"
 
@@ -601,11 +601,11 @@ print_updates() {
 }
 
 print_letsencrypt() {
-  if [ -d $LETSENCRYPT_CERTPATH ] && [ "$(ls -a $LETSENCRYPT_CERTPATH)" ]; then
+  if [ -d "$LETSENCRYPT_CERTPATH" ] && [ "$(ls -a "$LETSENCRYPT_CERTPATH")" ]; then
     printf "\\n"
     printf "    \\033[1;37mSSL / let’s encrypt:\\033[0m\\n"
 
-    cert_list=$(sudo find $LETSENCRYPT_CERTPATH -name cert.pem)
+    cert_list=$(sudo find "$LETSENCRYPT_CERTPATH" -name cert.pem)
 
     for cert_file in $cert_list; do
       sudo openssl x509 -checkend $((25 * 86400)) -noout -in "$cert_file" >>/dev/null
