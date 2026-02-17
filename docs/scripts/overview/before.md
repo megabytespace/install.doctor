@@ -5,13 +5,54 @@ sidebar_label: Before Scripts
 slug: /scripts/before
 ---
 
-Certain scripts included in the Install Doctor project have to run before the configuration files have been generated and applied to the system. These scripts prepare the system by ensuring private keys used for encryption are available and that the required provisioning programs are available on the system. All of these files include `before_` in their filename and are located in the `home/.chezmoiscripts/universal/` folder. The majority of the scripts leveraged by Install Doctor are kept in the `universal/` folder so that the script execution order can be controlled.
+Before Scripts run prior to Chezmoi applying dotfiles and configuration files. They prepare the system by installing core dependencies, decrypting secrets, and applying system-level tweaks. All Before Scripts are located in `home/.chezmoiscripts/universal/` and use the `run_before_` prefix.
 
-## Script Execution Order
+## Script Inventory
 
-Just like the [After Scripts](https://install.doctor/docs/scripts/after), the *Before Scripts* run synchronously in order of file name. This is why all of the files include a two-digit numerical identifier after their file name directives. This two-digit numerical identifier provides a way of controlling the order that the scripts execute.
+| Order | Filename | Purpose |
+|---|---|---|
+| 01 | `run_before_01-prepare.sh.tmpl` | Pre-provisioning preparation: disconnects WARP, checks Full Disk Access on macOS, creates secret symlinks, sources temporary includes |
+| 02 | `run_before_02-homebrew.sh.tmpl` | Installs Xcode Command Line Tools (macOS) and Homebrew (macOS/Linux). Configures Homebrew environment variables and PATH |
+| 03 | `run_before_03-decrypt-age-key.sh.tmpl` | Installs [Age](https://github.com/FiloSottile/age) encryption tool and decrypts `home/key.txt.age` so Chezmoi can access encrypted templates |
+| 04 | `run_before_04-requirements.sh.tmpl` | Installs system packages required as dependencies by other software. Package lists are defined per-distro in `home/.chezmoitemplates/` |
+| 05 | `run_before_05-system.sh.tmpl` | Applies system tweaks: sets hostname, configures timezone, creates user/group, sets file permissions on `~/.gnupg` |
 
-For example, the file `home/.chezmoiscripts/universal/run_before_01-decrypt-age-key.sh.tmpl` has a numerical identifier of `01`. This identifier causes the script to be listed alphabetically before other scripts with higher numerical identifiers.
+## Execution Order
+
+Scripts run synchronously in filename order. The two-digit number after `run_before_` controls the sequence:
+
+```
+run_before_01-prepare.sh        → System preparation
+run_before_02-homebrew.sh       → Package manager setup
+run_before_03-decrypt-age-key.sh → Secret decryption
+run_before_04-requirements.sh   → System dependencies
+run_before_05-system.sh         → System configuration
+[Chezmoi applies dotfiles]      → Dotfiles deployed to home directory
+```
+
+## Template Structure
+
+Each Before Script follows a common structure:
+
+```bash
+#!/usr/bin/env bash
+# @file Script Title
+# @brief One-line description
+# @description
+#     Detailed multi-line description...
+
+{{- if ne .host.distro.family "windows" -}}     # Skip on Windows
+{{ includeTemplate "universal/profile" }}         # Load PATH and environment
+{{ includeTemplate "universal/logg" }}            # Load logging functions
+
+# Script logic here...
+{{ end -}}
+```
+
+Key elements:
+- **`{{ if ne .host.distro.family "windows" }}`** - Skips the script on Windows (PowerShell is used instead)
+- **`{{ includeTemplate "universal/profile" }}`** - Sources PATH configuration from `home/.chezmoitemplates/universal/profile`
+- **`{{ includeTemplate "universal/logg" }}`** - Sources the `gum log` logging wrapper
 
 ## Links
 

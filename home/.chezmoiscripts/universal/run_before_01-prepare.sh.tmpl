@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 # @file Prepare
-# @brief Ensures commonly used system packages that are common dependencies of other packages are installed
+# @brief Pre-provisioning preparation: temporary includes, WARP disconnect, full disk access, and secret symlinks.
 # @description
-#     This script installs required system packages. Each system's required packages are defined in `home/.chezmoitemplates/$DISTRO_ID`,
-#     where `$DISTRO_ID` is equal to the Linux distribution ID found in `/etc/os-release`.
-
-# @description
-#     This script pipes environment variables and a logger function to a temporary file that is included by other scripts.
-#     It is included as a temporary external file to aid in debugging since if the included files were inlined in scripts
-#     the scripts would be verbose when debugging.
+#     This script runs as the first Chezmoi `run_before` script during provisioning. It performs:
+#
+#     1. **Temporary includes**: Creates `/tmp/tmp-profile` and `/tmp/tmp-logg` with shared functions
+#        for use by other scripts (avoids inlining verbose helper code in every script)
+#     2. **macOS mobileconfig installation**: Installs configuration profiles from `~/.config/macos/mobileconfig/`
+#     3. **Full disk access check**: Verifies the terminal has full disk access on macOS
+#        (skips in headless mode with a warning instead of blocking)
+#     4. **CloudFlare certificate import**: Imports CloudFlare Teams certificate into system keychain (macOS only)
+#     5. **WARP disconnect**: Disconnects from CloudFlare WARP to prevent conflicts with tools like Volta
+#     6. **Secret symlinks**: Creates hostname-specific secret template symlinks for Chezmoi
+#
+#     Steps 4-6 run in parallel when not in debug mode for faster execution.
+#
+#     @envvar HEADLESS_INSTALL  If set, skips interactive prompts (full disk access, certificates)
+#     @envvar DEBUG / DEBUG_MODE  If set, runs tasks sequentially for easier debugging
 
 addTemporaryIncludes() {
     ### Ensure /tmp/tmp-profile is created
@@ -60,10 +68,14 @@ printFullDiskAccessNotice() {
 ensureFullDiskAccess() {
   if [ -d /Applications ] && [ -d /System ]; then
     if ! plutil -lint /Library/Preferences/com.apple.TimeMachine.plist > /dev/null ; then
+      if [ -n "$HEADLESS_INSTALL" ]; then
+        gum log -sl warn 'Full disk access not available. Some macOS operations may fail in headless mode.'
+        return 0
+      fi
       printFullDiskAccessNotice
       logg star 'Opening Full Disk Access preference pane.. Grant full-disk access for the terminal you would like to run the provisioning process with.' && open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
       gum log -sl info 'You may have to force quit the terminal and have it reload.'
-      if [ ! -f "$HOME/.zshrc" ] || ! cat "$HOME/.zshrc" | grep '# TEMPORARY FOR INSTALL DOCTOR MACOS' > /dev/null; then
+      if [ ! -f "$HOME/.zshrc" ] || ! grep -q '# TEMPORARY FOR INSTALL DOCTOR MACOS' "$HOME/.zshrc"; then
         echo 'bash <(curl -sSL https://install.doctor/start) # TEMPORARY FOR INSTALL DOCTOR MACOS' >> "$HOME/.zshrc"
       fi
       exit 0

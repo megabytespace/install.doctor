@@ -23,7 +23,7 @@ Optionally, if the documentation is lengthy or would be better served as multipl
 
 All of our flagship projects are accompanied by a documentation portal. This page is part of a documentation portal. The documentation portals should contain in-depth information and guides on how to use the given project. If there is any information that could possibly be useful to end-users then that information should be stored in the documentation portal.
 
-Making changes to the documentation portal is easy. All of the documentation pages contain a link that says, "Edit on GitHub." You can use these links to be directed to the markdown file that powers the page that you are editting. There, you can make changes to the documentation and then open a pull request which will then be used to create the page the next time the documentation portal's production files are uploaded to the portal's hosting provider.
+Making changes to the documentation portal is easy. All of the documentation pages contain a link that says, "Edit on GitHub." You can use these links to be directed to the markdown file that powers the page that you are editing. There, you can make changes to the documentation and then open a pull request which will then be used to create the page the next time the documentation portal's production files are uploaded to the portal's hosting provider.
 
 ### Building the Documentation Portal
 

@@ -1,15 +1,19 @@
 #!/bin/bash
-# @file macos-script.sh
-# @brief Run a user-specified command inside a macOS GitHub runner.
+# @file test-macos.sh
+# @brief Run an Install Doctor provisioning test inside a macOS GitHub Actions runner.
 # @description
-#     This script runs inside a macOS GitHub Actions runner and executes
-#     a user-provided command.
+#     This script runs inside a macOS GitHub Actions runner and executes the
+#     Install Doctor start script with CI environment variables set for headless operation.
+#
+#     It automatically sets CI=true and HEADLESS_INSTALL=true to ensure all prompts
+#     auto-proceed with defaults.
 #
 # @usage
-#   ./macos-script.sh "your-command-here"
+#   ./test-macos.sh
 #
-# @requires
-#   - macOS GitHub runner
+# @envvar CI  Automatically set to true
+# @envvar HEADLESS_INSTALL  Automatically set to true
+# @envvar TEST_INSTALL  Automatically set to true
 #
 # @exitcode 0 If successful.
 # @exitcode 1 If an error occurs.
@@ -21,39 +25,29 @@ LOG_FILE="macos-script.log"
 exec > >(tee -i "$LOG_FILE") 2>&1
 
 # ==============================================================================
-# GLOBAL VARIABLES
-# ==============================================================================
-USER_COMMAND="$1"
-
-# ==============================================================================
-# @description Print macOS system information.
-#
-# @stdout System details.
+# @description Print macOS system information for debugging.
 # ==============================================================================
 printSystemInfo() {
   echo "### macOS System Information ###"
   sw_vers
   uname -a
   sysctl -n machdep.cpu.brand_string
+  echo "Disk space:"
+  df -h /
+  echo ""
 }
 
 # ==============================================================================
-# @description Run a user-specified command inside the macOS runner.
-#
-# @stdout Command output.
-#
-# @exitcode 0 If successful.
-# @exitcode 1 If the command fails.
+# @description Run the Install Doctor start script in headless CI mode.
 # ==============================================================================
-runUserCommand() {
-  if [[ -z "$USER_COMMAND" ]]; then
-    echo "Error: No command provided."
-    exit 1
-  fi
+runInstallDoctor() {
+  echo "### Running Install Doctor in CI mode ###"
+  export CI=true
+  export TEST_INSTALL=true
+  export HEADLESS_INSTALL=true
+  export NO_RESTART=true
 
-  echo "### Running User Command ###"
-  echo "Executing: $USER_COMMAND"
-  eval "$USER_COMMAND"
+  bash <(curl -sSL https://install.doctor/start)
 }
 
 # ==============================================================================
@@ -61,7 +55,7 @@ runUserCommand() {
 # ==============================================================================
 main() {
   printSystemInfo
-  runUserCommand
+  runInstallDoctor
 }
 
 main

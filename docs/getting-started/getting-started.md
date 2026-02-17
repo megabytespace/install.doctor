@@ -17,6 +17,25 @@ On macOS/Linux, the only requirements are that `bash` and `curl` are installed.
 bash <(curl -sSL https://install.doctor/start)
 ```
 
+### Headless / Non-Interactive Mode
+
+All prompts have 30-second timeouts and auto-proceed with sensible defaults. For fully unattended installs:
+
+```shell
+HEADLESS_INSTALL=true bash <(curl -sSL https://install.doctor/start)
+```
+
+For complete control over headless installations:
+
+```shell
+HEADLESS_INSTALL=true \
+  SOFTWARE_GROUP=Full \
+  SUDO_PASSWORD=your_password \
+  FULL_NAME="Your Name" \
+  PRIMARY_EMAIL="you@example.com" \
+  bash <(curl -sSL https://install.doctor/start)
+```
+
 ### Windows
 
 On Windows, you can run the following from an administrator PowerShell terminal:
@@ -39,3 +58,67 @@ The one-liner installation methods above will interactively prompt for a few det
 
 * The type of installation (i.e. a minimal set of software or all the software Install Doctor supports - see the [Customization Overview](/docs/customization) for more details)
 * Your name / e-mail address (to pre-populate things like the Git configuration)
+
+All prompts include timeouts (typically 30 seconds) and will auto-proceed with default values if no input is provided. This ensures the installation process never hangs, even when running unattended.
+
+## Environment Variables
+
+You can customize the provisioning process by setting environment variables before running the script:
+
+| Variable | Description | Default |
+|---|---|---|
+| `START_REPO` | Git repo URL or GitHub `user/repo` shorthand | `megabyte-labs/install.doctor` |
+| `HEADLESS_INSTALL` | Skip all interactive prompts | unset |
+| `SOFTWARE_GROUP` | Software group: `Basic`, `Server`, `Standard`, `Full` | `Full` |
+| `SUDO_PASSWORD` | Sudo password for automated setup | unset |
+| `CI` or `TEST_INSTALL` | Enable CI mode with test defaults | unset |
+| `NO_RESTART` | Prevent automatic reboots | unset |
+| `AGE_PASSWORD` | Passphrase for Age-encrypted secrets | unset |
+| `DEBUG_MODE` | Enable verbose logging | unset |
+
+See the full [Environment Variables](/docs/cli/variables) documentation for more details.
+
+## Software Groups
+
+The `SOFTWARE_GROUP` variable determines which set of packages to install:
+
+| Group | Package Count | Description | Use Case |
+|---|---|---|---|
+| `Minimal` | ~50 | Core CLI tools, shell configuration, basic utilities | Servers, containers, minimal setups |
+| `Standard` | ~200 | Minimal + development tools, editors, common GUI apps | Development workstations |
+| `Full` | ~500+ | Standard + specialized tools, extra integrations, all GUI apps | Full-featured power-user setups |
+
+You can browse and customize software groups by editing `home/.chezmoidata.yaml` in your fork. See [Software Customization](/docs/customization/software) for details.
+
+## What Happens During Provisioning
+
+Here's a high-level overview of each provisioning step:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 1. start.sh                                             │
+│    ├── Installs Task runner                             │
+│    ├── Installs basic dependencies (git, curl)          │
+│    └── Runs provision.sh                                │
+├─────────────────────────────────────────────────────────┤
+│ 2. provision.sh                                         │
+│    ├── Prompts for user info (or reads env vars)        │
+│    ├── Installs Homebrew                                │
+│    ├── Installs Chezmoi                                 │
+│    └── Runs chezmoi init && chezmoi apply               │
+├─────────────────────────────────────────────────────────┤
+│ 3. Before Scripts (run_before_01 → run_before_05)       │
+│    ├── Decrypts Age secrets                             │
+│    ├── Installs system dependencies                     │
+│    └── Applies system tweaks (hostname, timezone)       │
+├─────────────────────────────────────────────────────────┤
+│ 4. Chezmoi Apply                                        │
+│    └── Deploys all dotfiles and config templates        │
+├─────────────────────────────────────────────────────────┤
+│ 5. After Scripts (run_after_01 → run_after_24)          │
+│    ├── Installs all software packages                   │
+│    ├── Configures services (Docker, Tailscale, etc.)    │
+│    ├── Applies macOS defaults / Linux dconf settings    │
+│    └── Cleans up temporary files                        │
+└─────────────────────────────────────────────────────────┘
+```

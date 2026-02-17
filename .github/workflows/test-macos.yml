@@ -1,29 +1,80 @@
-name: Run Bash Command on macOS CI
+name: Test Install Doctor on macOS
 
 on:
   push:
     branches:
       - main
+      - master
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  run-macos-command:
-    runs-on: macos-latest  # Uses GitHub-hosted macOS runner
-    timeout-minutes: 30
+  test-macos:
+    name: "macOS ${{ matrix.os }}"
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS on Apple Silicon (M1)
+          - os: "14 (Sonoma ARM64)"
+            runner: macos-14
+          # macOS on Apple Silicon (latest)
+          - os: "15 (Sequoia ARM64)"
+            runner: macos-15
+          # macOS on Intel
+          - os: "13 (Ventura x64)"
+            runner: macos-13
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Make Script Executable
-        run: chmod +x scripts/test-macos.sh
+      - name: Print System Information
+        run: |
+          echo "=== macOS System Information ==="
+          sw_vers
+          uname -a
+          sysctl -n machdep.cpu.brand_string
+          echo "Architecture: $(uname -m)"
+          echo "Disk space:"
+          df -h /
+          echo "Available memory:"
+          sysctl -n hw.memsize | awk '{print $0/1024/1024/1024 " GB"}'
+          echo ""
 
-      - name: Run Bash Script on macOS with Command
-        run: scripts/test-macos.sh "echo 'bash <(curl -sSL https://install.doctor/start)'"
+      - name: Run Install Doctor (headless)
+        run: |
+          export CI=true
+          export TEST_INSTALL=true
+          export HEADLESS_INSTALL=true
+          export NO_RESTART=true
+          export SOFTWARE_GROUP=Basic
+          bash <(curl -sSL https://install.doctor/start)
+        timeout-minutes: 90
 
-      - name: Upload Logs for Debugging
+      - name: Verify key tools installed
         if: always()
-        uses: actions/upload-artifact@v3
+        run: |
+          echo "=== Verification ==="
+          command -v chezmoi && echo "chezmoi: OK" || echo "chezmoi: MISSING"
+          command -v brew && echo "brew: OK" || echo "brew: MISSING"
+          command -v task && echo "task: OK" || echo "task: MISSING"
+          command -v node && echo "node: OK" || echo "node: MISSING"
+          command -v gum && echo "gum: OK" || echo "gum: MISSING"
+          echo "=== Done ==="
+
+      - name: Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: macos-script-logs
-          path: macos-script.log
+          name: macos-logs-${{ matrix.runner }}
+          path: |
+            macos-script.log
+            ${{ github.workspace }}/.local/var/log/install.doctor/
+          retention-days: 7

@@ -231,7 +231,7 @@ configureNetworkManagerVPNProfiles() {
     elif command -v dnf > /dev/null; then
       sudo dnf install -y openvpn NetworkManager*
     elif command -v pacman > /dev/null; then
-      sudo pacman -Syu openvpn networkmanager*
+      sudo pacman -Syu --noconfirm openvpn networkmanager*
     else
       gum log -sl warn 'Unknown package manager - install OpenVPN / WireGuard / NetworkManager plugins individually'
     fi
@@ -374,7 +374,7 @@ configureSSHD() {
               SERVICE_NAME="sshd"
               ;;
             *)
-              SERVCE_NAME="unknown"
+              SERVICE_NAME="unknown"
               ;;
           esac
         else
@@ -454,7 +454,7 @@ dconfSettings() {
 ensureSSHKey() {
   ### Ensure id_rsa is present and create one if it does not exist
   if [ ! -f "$HOME/.ssh/id_rsa" ]; then
-    logg 'Generating missing default private key / public key (~/.ssh/id_rsa)'
+    gum log -sl info 'Generating missing default private key / public key (~/.ssh/id_rsa)'
     ssh-keygen -b 4096 -t rsa -f "$HOME/.ssh/id_rsa" -q -N ""
     chmod 600 "$HOME/.ssh/id_rsa"
   fi
@@ -529,7 +529,7 @@ ensureSystemGemUpdated() {
 #     also ensures ZSH is available at `/usr/local/bin/zsh` on ARM64 systems by symlinking the Homebrew ZSH shell
 #     to `/usr/local/bin/zsh` if it is missing.
 ensureZshShell() {
-  logg 'Ensuring ZSH is set as the default shell'
+  gum log -sl info 'Ensuring ZSH is set as the default shell'
   if ! grep -qc "/usr/local/bin/zsh" /etc/shells; then
     echo "/usr/local/bin/zsh" | sudo tee -a /etc/shells > /dev/null
   fi

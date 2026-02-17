@@ -2,7 +2,7 @@
 # @file Chezmoi-Age Secret Decryption
 # @brief Ensures `age` is installed and then decrypts the `home/key.txt.age` file so that Chezmoi can utilize encrypted files
 # @description
-#     This script begins by ensuring `age` is installed, the defualt program Chezmoi utilizes for handling encryption.
+#     This script begins by ensuring `age` is installed, the default program Chezmoi utilizes for handling encryption.
 #     The script then allows you to generate the decrypted `~/.config/age/chezmoi.txt` file by prompting you for the password
 #     to `home/key.txt.age` which is the encrypted encryption key file for using Chezmoi to add encrypted files to your Install
 #     Doctor fork. If no password is passed to the decryption password prompt, then all of the `encrypted_` files in the fork
@@ -66,8 +66,14 @@ decryptKey() {
     if [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" ]; then
       mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/age"
       if [ -z "$AGE_PASSWORD" ]; then
-        logg star 'PRESS ENTER if you have not set up your encryption token yet'
-        age --decrypt --output "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" "{{ .chezmoi.sourceDir }}/key.txt.age" || EXIT_CODE=$?
+        logg star 'PRESS ENTER if you have not set up your encryption token yet (auto-skipping in 30 seconds)'
+        if command -v timeout > /dev/null; then
+          timeout 30 age --decrypt --output "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" "{{ .chezmoi.sourceDir }}/key.txt.age" || EXIT_CODE=$?
+        elif command -v gtimeout > /dev/null; then
+          gtimeout 30 age --decrypt --output "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" "{{ .chezmoi.sourceDir }}/key.txt.age" || EXIT_CODE=$?
+        else
+          age --decrypt --output "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" "{{ .chezmoi.sourceDir }}/key.txt.age" || EXIT_CODE=$?
+        fi
         if [ -n "$EXIT_CODE" ]; then
           decryptionFailure
         else

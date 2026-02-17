@@ -5,7 +5,27 @@ sidebar_label: Overview
 slug: /features
 ---
 
-Install Doctor bundles together thousands of open-source projects into a single configuration that you can bring with you to nearly any operating system. The feature set will vary based on your configuration. The framework will intelligently apply optimizations and run setup routines based on which pieces of software you decide to include in your stack. Install Doctor turns your devices into open-source powerhouses that integrate all the nice-to-haves into a *cannot-live-without-it* operating system.
+Install Doctor bundles together thousands of open-source projects into a single configuration that you can bring with you to nearly any operating system. The feature set will vary based on your configuration. The framework will intelligently apply optimizations and run setup routines based on which pieces of software you decide to include in your stack.
+
+## Feature Matrix
+
+| Feature | macOS | Ubuntu/Debian | Fedora/CentOS | Arch | Windows | Qubes |
+|---|---|---|---|---|---|---|
+| Software installation | Yes | Yes | Yes | Yes | Yes | Yes |
+| Dotfile management | Yes | Yes | Yes | Yes | Yes | Yes |
+| Shell configuration (ZSH/Bash) | Yes | Yes | Yes | Yes | PowerShell | Yes |
+| Secret management (Age) | Yes | Yes | Yes | Yes | Yes | Yes |
+| Homebrew packages | Yes | Yes | Yes | Yes | No | No |
+| System package manager | mas | apt | dnf | pacman | choco/scoop | dnf |
+| Tailscale mesh VPN | Yes | Yes | Yes | Yes | Yes | Beta |
+| CloudFlare integration | Yes | Yes | Yes | Yes | Partial | Beta |
+| Netdata monitoring | Yes | Yes | Yes | Yes | No | No |
+| ClamAV antivirus | Yes | Yes | Yes | Yes | No | No |
+| fail2ban intrusion prevention | No | Yes | Yes | Yes | No | No |
+| Docker | Desktop | CE | CE | CE | Desktop | No |
+| System theming (Betelgeuse) | No | GNOME/KDE | GNOME/KDE | GNOME/KDE | No | No |
+| macOS `defaults write` tweaks | Yes | N/A | N/A | N/A | N/A | N/A |
+| Plugin auto-install (VS Code, VIM) | Yes | Yes | Yes | Yes | Yes | Yes |
 
 ## Background
 
@@ -52,22 +72,30 @@ Install Doctor is proud to include many different (optional) capabilities that c
 
 ## Terminal Features
 
-There are so many useful frameworks, tools, and applications that can enhance CLI productivity and ease-of-use. Our team has spent years browsing through GitHub and trialing the tools that are most well-received by the open-source community. We then meticulously crafted `~/.bashrc`, `~/.zshrc`, and PowerShell configurations that are well-organized and fully integrate all the optimal settings for all the best CLI tools without hindering CLI performance. The finished product is a major pillar stone of the Install Doctor feature set. All of our terminals include:
+Install Doctor provides meticulously crafted terminal configurations that integrate hundreds of CLI tools into a cohesive, high-productivity environment.
 
-* System `PATH` definitions come pre-configured so that all the package managers like Go, Cargo, [ASDF](https://asdf-vm.com/), and more work without any modification necessary to your `~/.bashrc` or `~/.zshrc`. There is no need to spend a half hour trying to figure out how to get `adb` to work.
-* Well-thought ZSH, Bash, and PowerShell configurations that reference organized, modular profile source files
-* Automatic Node.js version switching based on project via [Volta](https://volta.sh/)
-* [direnv](https://github.com/direnv/direnv) to automatically load `.env` files
-* Dozens of different terminals like GNOME terminal, iTerm2, and Tabby are all styled to be consistent with the [Sweet](https://github.com/EliverLara/Sweet)-based theme
-* Default terminal application profiles so you can easily navigate between a Bash and ZSH instance
-* A smarter version of `cd`, powered by [zoxide](https://github.com/ajeetdsouza/zoxide), that remembers which directories you use most frequently so you can *jump* to them in just a few keystrokes
-* Directories and files are colored based on what type folder or file they are by integrating [LS_COLORS](https://github.com/trapd00r/LS_COLORS)
-* A custom MOTD with important system information
-* Implementation of the XDG Spec which decreases the amount of noise in the home directory by specifying where files should go. This is combined with a lot of nit-picking and even a handful of PRs made to open-source projects that we implement, all so the home directory has as little clutter as possible.
-* Integration of all the best VIM plugins, resulting in a VIM instance that looks great and includes power-user features like in-editor linting and code intellisense (see the [Software Customization](/docs/customization/software) page for details on how to customize the list of VIM plugins that are automatically provisioned)
-* Integration of NVIM for a terminal text editor experience that parallels Visual Studio Code by utilizing the [NvChad](https://github.com/NvChad/NvChad) project along with some customizations
-* Aliases all organized into `~/.config/shell/aliases.sh` and functions all organized into `~/.config/shell/functions.sh`
-* Hundreds of micro-optimizations that do things like style manpages, incorporate fonts with icons used by the terminal themes, and many, many more
+### Key Terminal Integrations
+
+| Tool | Purpose | Integration |
+|---|---|---|
+| [zoxide](https://github.com/ajeetdsouza/zoxide) | Smart `cd` replacement | Remembers frequently used directories for quick jumping |
+| [fzf](https://github.com/junegunn/fzf) | Fuzzy finder | Integrated with Ctrl+R history search, file search |
+| [Volta](https://volta.sh/) | Node.js version manager | Auto-switches Node.js version per project |
+| [direnv](https://github.com/direnv/direnv) | Environment variable loader | Automatically loads `.env` files when entering directories |
+| [delta](https://github.com/dandavison/delta) | Git diff viewer | Syntax-highlighted, side-by-side diffs |
+| [bat](https://github.com/sharkdp/bat) | `cat` replacement | Syntax highlighting, line numbers, git integration |
+| [LS_COLORS](https://github.com/trapd00r/LS_COLORS) | Colored directory listings | Files and directories colored by type |
+| [NvChad](https://github.com/NvChad/NvChad) | Neovim configuration | VS Code-like experience in the terminal |
+| [.tmux](https://github.com/gpakosz/.tmux) | tmux configuration | Beautiful, extensible tmux setup |
+
+### Additional Terminal Features
+
+* Pre-configured `PATH` definitions for Go, Cargo, ASDF, and all package managers
+* Well-organized modular profile scripts in `~/.config/shell/`
+* Consistent theming across iTerm2, GNOME Terminal, Tabby, and more via [Sweet](https://github.com/EliverLara/Sweet)
+* XDG Base Directory compliance for a clean home directory
+* Custom MOTD with system information
+* Styled manpages, Nerd Font icon support, and hundreds of micro-optimizations
 
 ### ZSH
 

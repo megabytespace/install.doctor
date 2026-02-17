@@ -5,13 +5,24 @@ sidebar_label: CloudFlare
 slug: /integrations/cloudflare
 ---
 
-CloudFlare integration provides the following:
+CloudFlare integration provides a comprehensive set of networking and security features:
 
-* Single Sign-On (SSO) protected web services hosted on your devices
-* Short-lived SSH certificates
-* Browser isolation
-* Automatic configuration of sub-domains to point to web services
-* Cloud S3-compliant mounts mapped to folders on your devices (used primarily for encrypted backups)
+| Feature | Description |
+|---|---|
+| **SSO-protected services** | Web services hosted on your devices, protected by Single Sign-On |
+| **Short-lived SSH certificates** | SSH access via CloudFlare Teams with auto-rotating certificates |
+| **Browser isolation** | Remote browser rendering via CloudFlare's network (paid add-on) |
+| **Automatic DNS** | Sub-domains automatically pointed to services via CloudFlare tunnels |
+| **S3-compliant storage** | Cloud mounts mapped to local folders for encrypted backups |
+
+## Required Variables
+
+| Variable | Purpose |
+|---|---|
+| `CLOUDFLARE_TEAMS_CLIENT_ID` | Client ID for Zero Trust / WARP configuration |
+| `CLOUDFLARE_TEAMS_CLIENT_SECRET` | Client secret for Zero Trust / WARP configuration |
+| `CLOUDFLARE_TEAMS_ORG` | Organization slug for your Zero Trust account |
+| `cert.pem` (encrypted) | Authorization certificate for creating tunnels headlessly |
 
 ## CloudFlare WARP
 

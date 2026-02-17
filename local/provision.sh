@@ -169,8 +169,8 @@ ensureBasicDeps() {
       logg info 'Running sudo yum install -y curl expect git moreutils rsync procps-ng file' && sudo yum install -y curl expect git moreutils rsync procps-ng file
     elif command -v pacman > /dev/null; then
       ### Archlinux
-      logg info 'Running sudo pacman update' && sudo pacman update
-      logg info 'Running sudo pacman -Syu base-devel curl expect git moreutils rsync procps-ng file' && sudo pacman -Syu base-devel curl expect git moreutils rsync procps-ng file
+      logg info 'Running sudo pacman -Sy --noconfirm' && sudo pacman -Sy --noconfirm
+      logg info 'Running sudo pacman -Syu --noconfirm base-devel curl expect git moreutils rsync procps-ng file' && sudo pacman -Syu --noconfirm base-devel curl expect git moreutils rsync procps-ng file
     elif command -v zypper > /dev/null; then
       ### OpenSUSE
       logg info 'Running sudo zypper install -yt pattern devel_basis' && sudo zypper install -yt pattern devel_basis
@@ -452,7 +452,7 @@ setupPasswordlessSudo() {
   fi
   if [ -n "$SUDO_PASSWORD" ]; then
     logg info 'Using the acquired sudo password to automatically grant the user passwordless sudo privileges for the duration of the script'
-    echo "$SUDO_PASSWORD" | sudo -S sh -c "echo '$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR' | sudo -S tee -a /etc/sudoers > /dev/null"
+    echo "$SUDO_PASSWORD" | sudo -S sh -c "echo '$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR' | tee -a /etc/sudoers > /dev/null"
     echo ""
     # Old method below does not work on macOS due to multiple sudo prompts
     # printf '%s\n%s\n' "$SUDO_PASSWORD" | sudo -S echo "$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR" | sudo -S tee -a /etc/sudoers > /dev/null
@@ -568,7 +568,7 @@ handleQubesDom0() {
 #     first checking if it is already available on the system.
 installBrewPackage() {
   if ! command -v "$1" > /dev/null; then
-    logg 'Installing '"$1"''
+    logg info 'Installing '"$1"''
     brew install --quiet "$1"
   fi
 }
@@ -685,7 +685,7 @@ runChezmoi() {
     FORCE_MODIFIER="--force"
   fi
   # TODO: https://github.com/twpayne/chezmoi/discussions/3448
-  KEEP_GOING_MODIFIER="-k"
+  KEEP_GOING_MODIFIER=""
   if [ -n "$KEEP_GOING" ]; then
     logg info 'Instructing chezmoi to keep going in the case of errors because KEEP_GOING is set'
     KEEP_GOING_MODIFIER="-k"
@@ -744,7 +744,7 @@ runChezmoi() {
 
   ### Handle actual process exit code
   if [ -n "$CHEZMOI_EXIT_CODE" ]; then
-    logg error "Chezmoi encountered an error and exitted with an exit code of $CHEZMOI_EXIT_CODE"
+    logg error "Chezmoi encountered an error and exited with an exit code of $CHEZMOI_EXIT_CODE"
   else
     logg info 'Finished provisioning the system'
   fi
@@ -809,7 +809,8 @@ function ensureAppleUser() {
         # For macOS
         dscl . -create /Users/apple
         dscl . -create /Users/apple UserShell /bin/bash
-        dscl . -create /Users/apple UniqueID "$(dscl . -list /Users UniqueID | awk '{print $2}' | sort -n | tail -1 | xargs -I{} echo {} + 1)"
+        NEW_UID="$(dscl . -list /Users UniqueID | awk '{print $2}' | sort -n | tail -1)"
+        dscl . -create /Users/apple UniqueID "$((NEW_UID + 1))"
         dscl . -create /Users/apple PrimaryGroupID 20
         dscl . -create /Users/apple NFSHomeDirectory /Users/apple
         mkdir -p /Users/apple

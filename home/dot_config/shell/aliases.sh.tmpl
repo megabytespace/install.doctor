@@ -34,7 +34,7 @@ alias pacman='pacman --color=auto'
 if command -v glances > /dev/null; then
   alias top='glances'
 elif command -v htop > /dev/null; then
-  alias top='bashtop'
+  alias top='htop'
 fi
 
 ### batcat
@@ -55,7 +55,7 @@ fi
 
 ### Chezmoi
 alias chezmoihome='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home"'
-alias chezmoiscripts='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi//home/.chezmoiscripts"'
+alias chezmoiscripts='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/.chezmoiscripts"'
 alias chezmoisecrets='cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/.chezmoitemplates/secrets"'
 
 ### curl-impersonate
@@ -93,22 +93,22 @@ if command -v gping > /dev/null; then
 fi
 
 # Setup rclone docker plugin permissions if docker group exists
-if [ -d /var/lib/docker-plugins/rclone ]; then
-  # Check if docker group exists (cross-platform)
-  if command -v getent > /dev/null 2>&1; then
-    # Linux/Unix systems
-    if getent group docker > /dev/null 2>&1; then
-      sudo chown -R root:docker /var/lib/docker-plugins/rclone
-      sudo chmod -R 755 /var/lib/docker-plugins/rclone
-    fi
-  elif [ -d /Applications ] && [ -d /Library ]; then
-    # macOS - check using dscl
-    if dscl . -read /Groups/docker > /dev/null 2>&1; then
-      sudo chown -R root:docker /var/lib/docker-plugins/rclone
-      sudo chmod -R 755 /var/lib/docker-plugins/rclone
+# Note: Only run this on-demand, not during shell startup (requires sudo which may prompt)
+fix-rclone-permissions() {
+  if [ -d /var/lib/docker-plugins/rclone ]; then
+    if command -v getent > /dev/null 2>&1; then
+      if getent group docker > /dev/null 2>&1; then
+        sudo chown -R root:docker /var/lib/docker-plugins/rclone
+        sudo chmod -R 755 /var/lib/docker-plugins/rclone
+      fi
+    elif [ -d /Applications ] && [ -d /Library ]; then
+      if dscl . -read /Groups/docker > /dev/null 2>&1; then
+        sudo chown -R root:docker /var/lib/docker-plugins/rclone
+        sudo chmod -R 755 /var/lib/docker-plugins/rclone
+      fi
     fi
   fi
-fi
+}
 ### safe-rm
 # TODO: Integrate this so it fails gracefully if folder does not exist (i.e. safe-rm -rf ~/Crunch should not return an error)
 # if command -v safe-rm > /dev/null; then
@@ -192,7 +192,7 @@ alias fontbook="open -b com.apple.FontBook"
 alias grub-resolutions='sudo hwinfo --framebuffer'
 
 # Execute git command with sudo priviledges while retaining .gitconfig
-alias gsudo='sudo git -c "include.path="${XDG_CONFIG_DIR:-$HOME/.config}/git/config\" -c \"include.path=$HOME/.gitconfig\"'
+alias gsudo='sudo git -c "include.path=${XDG_CONFIG_HOME:-$HOME/.config}/git/config" -c "include.path=$HOME/.gitconfig"'
 
 # Create hashed password for Ansible user creation
 alias hash-password='mkpasswd --method=sha-512'
@@ -244,7 +244,7 @@ alias perftest='mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/perftest" && curl
 # @description Adds an alias to use Docker to run [pfFocus](https://github.com/TKCERT/pfFocus) which is a Python package that
 #     allows you to convert a pfSense export into a readable markdown file. Example: `pf-format < input.xml > output.md`
 function pf-format() {
-  docker run --rm -i ghcr.io/tkcert/pffocus "$*"
+  docker run --rm -i ghcr.io/tkcert/pffocus "$@"
 }
 
 # Output plist in readable format
@@ -262,8 +262,8 @@ alias rclone-gui='rclone rcd --rc-web-gui --rc-user=admin --rc-pass=pass --rc-se
 # Reboot the computer
 alias reboot='sudo /sbin/reboot'
 
-# Launch the Python Simple HTTP Server
-alias serve='python -m SimpleHTTPServer'
+# Launch the Python HTTP Server
+alias serve='python3 -m http.server'
 
 # Generate a SHA1 digest
 alias sha1='openssl sha1'
@@ -278,7 +278,7 @@ alias shutdown='sudo /sbin/shutdown'
 alias speedtest='wget -O /dev/null http://speedtest.wdc01.softlayer.com/downloads/test10.zip'
 
 # Shortcut for config file
-alias ssh-config='${EDITOR:code} ~/.ssh/config'
+alias ssh-config='${EDITOR:-code} ~/.ssh/config'
 
 # Pastebin
 alias sprunge='curl -F "sprunge=<-" http://sprunge.us'

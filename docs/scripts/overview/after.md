@@ -5,17 +5,51 @@ sidebar_label: After Scripts
 slug: /scripts/after
 ---
 
-Certain scripts included in the Install Doctor project have to run after the configuration files have been generated and applied to the system. Some of these scripts copy configurations from the project to a specific system location and then enable / restart a service, for instance. All of these files include `after_` in their filename and are located in the `home/.chezmoiscripts/universal/` folder. The majority of the scripts leveraged by Install Doctor are kept in the `universal/` folder so that the script execution order can be controlled.
+After Scripts run once Chezmoi has finished applying dotfiles and configuration files to the system. They handle the bulk of the provisioning work: installing software packages, applying system-level configuration files, configuring services, and cleaning up. All After Scripts are located in `home/.chezmoiscripts/universal/` and use the `run_after_` prefix.
 
-## Script Execution Order
+## Script Inventory
 
-Just like the [Before Scripts](https://install.doctor/docs/scripts/before), the scripts run synchronously in order of file name. This is why all of the files include a two-digit numerical identifier after their file name directives. This two-digit numerical identifier provides a way of controlling the order that the scripts execute.
+| Order | Filename | Purpose |
+|---|---|---|
+| 01 | `run_after_01-pre-install.sh.tmpl` | Early bootstrapping: runs scripts that can safely execute before the main software installation (e.g., GPG key import, SSH key setup) |
+| 10 | `run_after_10-install.sh.tmpl` | **Main software installation**: invokes the ZX-based installer to install all packages for the selected `SOFTWARE_GROUP`. This is the longest-running script |
+| 15 | `run_after_15-chezmoi-system.sh.tmpl` | Copies system-level config files from `~/.config/system/` to their target locations on the filesystem (e.g., `/etc/`, `/usr/local/etc/`) |
+| 20 | `run_after_20-post-install.sh.tmpl` | Post-install tasks: configures installed services (Tailscale, Netdata, Docker, etc.), sets up integrations, applies macOS `defaults write` settings |
+| 24 | `run_after_24-cleanup.sh.tmpl` | Removes temporary files, cleans up dotfiles clutter from the home directory, final housekeeping |
 
-For example, the file `home/.chezmoiscripts/universal/run_before_01-decrypt-age-key.sh.tmpl` has a numerical identifier of `01`. This identifier causes the script to be listed alphabetically before other scripts with higher numerical identifiers.
+## Execution Order
+
+Scripts run synchronously in filename order. The numbering gaps (01, 10, 15, 20, 24) leave room for adding custom scripts:
+
+```
+[Chezmoi applies dotfiles]          → Dotfiles deployed to home directory
+run_after_01-pre-install.sh         → Early bootstrapping (GPG, SSH)
+run_after_10-install.sh             → Main software installation (longest step)
+run_after_15-chezmoi-system.sh      → System config file deployment
+run_after_20-post-install.sh        → Service configuration and integrations
+run_after_24-cleanup.sh             → Cleanup and final housekeeping
+```
+
+## Adding Custom After Scripts
+
+To add your own script that runs between existing steps, create a file with a number between the existing scripts:
+
+```bash
+# Example: run_after_12-my-custom-setup.sh.tmpl
+# This runs after software installation (10) but before system files (15)
+{{- if ne .host.distro.family "windows" -}}
+{{ includeTemplate "universal/profile" }}
+{{ includeTemplate "universal/logg" }}
+
+gum log -sl info 'Running custom setup...'
+# Your custom logic here
+
+{{ end -}}
+```
 
 ## Provision Completion
 
-After all of the *After Scripts* have executed, the Chezmoi-based provisioning process has finished. However, depending on how you initialized the provisioning process, there might be some logic that runs after these scripts. For example, if you launched the provisioning process by running `bash <(curl -sSL https://install.doctor/start)`, then some clean up logic run after the scripts and instructions / logs will be printed.
+After all After Scripts have executed, the Chezmoi-based provisioning process is finished. If you launched via `bash <(curl -sSL https://install.doctor/start)`, the `provision.sh` wrapper performs additional cleanup, prints log file locations, and may trigger a reboot.
 
 ## Links
 

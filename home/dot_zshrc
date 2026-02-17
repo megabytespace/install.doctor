@@ -65,7 +65,7 @@ setopt SHARE_HISTORY
 [ -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh" ] || mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 
 zstyle ':completion:*:*:*:*:*' menu select
-zstyle ':completion:*' cache-path "$XDG_CACHE_HOME/zsh/zcompcache"
+zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' auto-description 'specify: %d'
@@ -200,7 +200,6 @@ if ! [[ $(tty) = /dev/tty* ]]; then
 		POWERLEVEL9K_VCS_INCOMING_CHANGES_ICON=↓
 		POWERLEVEL9K_VCS_OUTGOING_CHANGES_ICON=↑
 		POWERLEVEL9K_VCS_COMMIT_ICON=$s
-		POWERLEVEL9K_STATUS_VERBOSE=false
 		POWERLEVEL9K_STATUS_VERBOSE=false
 		POWERLEVEL9K_STATUS_OK_IN_NON_VERBOSE=true
 		POWERLEVEL9K_EXECUTION_TIME_ICON=$s
@@ -432,7 +431,7 @@ fi
 [ ! -f "$HOMEBREW_PREFIX/share/google-cloud-sdk/completion.zsh.inc" ] || source "$HOMEBREW_PREFIX/share/google-cloud-sdk/completion.zsh.inc"
 
 ### Goto
-[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh"
+[ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh"
 
 ### hiSHtory
 # Hishtory Config:

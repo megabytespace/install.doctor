@@ -50,7 +50,7 @@ case $- in
 esac
 
 ### History
-export HISTFILE="$XDG_STATE_HOME/bash/history"
+export HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/bash/history"
 if command -v hstr > /dev/null; then
   ### Append new history items to .bash_history
   shopt -s histappend
@@ -86,7 +86,7 @@ if [ "$BASH_SUPPORT" = 'true' ] && [ -n "$BASH" ]; then
     fi
   else
     # Minimal session
-    ! command -v oh-my-posh > /dev/null || eval "$(oh-my-posh init bash --config "${XDG_CONFIG_HOME/.config}/oh-my-posh/Betelgeuse-minimal.omp.json")"
+    ! command -v oh-my-posh > /dev/null || eval "$(oh-my-posh init bash --config "${XDG_CONFIG_HOME:-$HOME/.config}/oh-my-posh/Betelgeuse-minimal.omp.json")"
   fi
 
   ### Bash Completion (Homebrew)
@@ -133,7 +133,7 @@ if [ "$BASH_SUPPORT" = 'true' ] && [ -n "$BASH" ]; then
   ! command -v emplace > /dev/null || source <(emplace init bash)
 
   ### Goto
-  [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh"
+  [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh" ] || source "${XDG_CONFIG_HOME:-$HOME/.config}/shell/goto.sh"
 
   ### hiSHtory
   # Hishtory Config:

@@ -9,7 +9,7 @@ Whenever you have changes that you would like to contribute to either [Install D
 
 ## Pull Request Branch
 
-When creating a pull request, you will have to create a branch. The branch's name should be prefixed by `pullrequest/` so we can identify branches that are intended to be merged and so we can potentially include CI/CD pipelines that are specific to pull request branches. If you are editting the code directly on GitHub, you will be prompted for the branch name while committing your code. If you want to create a pull request (also known as a merge request on GitLab) from the terminal, you can:
+When creating a pull request, you will have to create a branch. The branch's name should be prefixed by `pullrequest/` so we can identify branches that are intended to be merged and so we can potentially include CI/CD pipelines that are specific to pull request branches. If you are editing the code directly on GitHub, you will be prompted for the branch name while committing your code. If you want to create a pull request (also known as a merge request on GitLab) from the terminal, you can:
 
 1. Clone the master branch
 2. Make changes to the master branch (and test them, obviously)

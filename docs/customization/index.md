@@ -11,11 +11,11 @@ There are many ways you can customize Install Doctor so that your device is prov
 
 The Install Doctor project leverages dozens of technologies but, at its core, it is ultimately a Chezmoi project. This allows us to leverage Chezmoi's script execution abilities, encryption handlers, and diff feature (which allows you to display the changes that will be made before applying them).
 
-If you decide that our built-in prompt system does not accomodate your needs, we highly recommend you sift through [Chezmoi's documentation](https://www.chezmoi.io/). By reading the documentation, you will learn why some files and folders start with `dot_`, how files ending with `.tmpl` are rendered, and additional features you can leverage.
+If you decide that our built-in prompt system does not accommodate your needs, we highly recommend you sift through [Chezmoi's documentation](https://www.chezmoi.io/). By reading the documentation, you will learn why some files and folders start with `dot_`, how files ending with `.tmpl` are rendered, and additional features you can leverage.
 
 That said, if you do not feel like taking a deep dive and learning a new technology, then you can leverage our built-in prompt system. Better yet, if you want to customize Install Doctor, you can customize the repository to your liking without having to learn the inner workings and features of Chezmoi.
 
-Our project is the most ellaborate and full-featured implementation of Chezmoi we have come across. If you come across another project that parallels the full-featuredness of ours then please let our team and community know about it by posting in one of our social media sites / chat rooms which are all linked to on the [Community page](https://install.doctor/community).
+Our project is the most elaborate and full-featured implementation of Chezmoi we have come across. If you come across another project that parallels the full-featuredness of ours then please let our team and community know about it by posting in one of our social media sites / chat rooms which are all linked to on the [Community page](https://install.doctor/community).
 
 ## Prompts
 
@@ -27,14 +27,20 @@ One of the first things you will be prompted for is to select the type of softwa
 2. **Standard** - Includes all the software installed by the *Basic* setting as well as other *stable* CLIs and applications that will most likely be useful to the standard user.
 3. **Full** - A full installation installs the majority of the software that we have tested and included in the software definitions file. It includes all the software installed by selecting *Basic* or *Standard*.
 
-The built-in prompts will ask for a small handful of other important pieces of data like:
+The built-in prompts will ask for a small handful of other important pieces of data:
 
-* A **sudo password** for installing software like Homebrew or installing software via the system's built-in package manager
-* **Your name** and **e-mail address** (for populating files like the git config)
-* **Corporate environment** - Set to `true` if the device is a corporate asset. The installer will skip installing software like Tor or other software that might be flagged by corporate policies.
-* **Restricted environment** - Set to `true` if it is an environment where you do not have elevated permissions (i.e. sudo access or administrator privileges). *Note: Sudoless installations are an experimental feature and have not been implemented yet.*
-* **Domain name** - The domain name is required for launching web services. Assuming you also provide a CloudFlare API key, the script will automatically provision a configurable list of web services hosted on your machine, protected by CloudFlare Zero-Trust Teams. So, if you pass in a value of `mydomain.com` then `ssh.hostnameId.mydomain.com` will be the endpoint you use to connect via SSH, for instance. You can also enter a domain that you do not own like `mypc.local` and access web services Install Doctor provisions only locally via the `mypc.local` domain.
-* **Hostname ID** - The hostname ID should be unique for every device you provision with Install Doctor. It is utilized along with the domain name to create CloudFlare endpoints (if you provide an API key) for web services. It can also be leveraged to customize the list of software you want to install on the target host. Instead of using the *Basic*, *Standard*, or *Full* software definitions, you can automatically select the software to install on a machine by creating a definition specifically for a device with a certain hostname ID (more on that below). The hostname ID, by default, will be the hostname of the machine but is referred to as the "hostname ID" because there are certain situations where you may want to keep your devices hostname while using a different ID for Install Doctor purposes.
+| Prompt | Environment Variable | Description |
+|---|---|---|
+| Sudo password | `SUDO_PASSWORD` | For installing Homebrew and system packages |
+| Full name | `FULL_NAME` | Populates git config and other identity files |
+| Email address | `PRIMARY_EMAIL` | Populates git config and GPG identity |
+| Software group | `SOFTWARE_GROUP` | `Minimal`, `Standard`, or `Full` |
+| Corporate environment | `CORPORATE_ENVIRONMENT` | Set `true` to skip software that might violate corporate policies (e.g., Tor) |
+| Restricted environment | `RESTRICTED_ENVIRONMENT` | Set `true` for environments without sudo access (experimental) |
+| Domain name | `PUBLIC_SERVICES_DOMAIN` | Used for CloudFlare tunnel endpoints (e.g., `ssh.hostname.mydomain.com`) |
+| Hostname ID | `HOSTNAME_ID` | Unique per-device identifier for hostname-based software definitions |
+
+All prompts have a 30-second timeout and auto-proceed with sensible defaults. Set `HEADLESS_INSTALL=true` to skip all prompts entirely.
 
 ## Software Definitions
 
@@ -104,8 +110,7 @@ installerPreference:
 
 ### Full Example
 
-**Note: The softwarePackages method is no longer being used. You will have to modify software.yml to change the default software installations. However, almost all of the
-software is lazy-loaded on the fly so unless you want software pre-loaded, there should not be an issue so you can skip this section in the documentation.**
+> **Note:** The `softwarePackages` key in `software-custom.yml` is the current method for adding custom packages. Modify `software.yml` directly (or use `software-custom.yml` for overrides) to change default software installations.
 
 If you wanted to customize the *Standard* install (mentioned above) to also include a package named `mypackage` and then automatically install that group of software on devices with the hostname of `sirius`, you would first create the package manager instruction file in `software-custom.yml` which would look like this:
 
