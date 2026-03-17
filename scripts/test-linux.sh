@@ -83,7 +83,7 @@ downloadImage() {
       IMAGE_URL="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
       ;;
     fedora)
-      IMAGE_URL="https://download.fedoraproject.org/pub/fedora/linux/releases/39/Cloud/x86_64/images/Fedora-Cloud-Base-39-1.5.x86_64.qcow2"
+      IMAGE_URL="https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/x86_64/images/Fedora-Cloud-Base-Generic.x86_64-40-1.14.qcow2"
       ;;
     centos)
       IMAGE_URL="https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
@@ -206,7 +206,7 @@ runCommandInVm() {
 # ==============================================================================
 stopVm() {
   echo "Stopping VM..."
-  pkill qemu-system-x86_64 || echo "Warning: VM process may not have been running."
+  pkill -f qemu-system-x86_64 || echo "Warning: VM process may not have been running."
 }
 
 # ==============================================================================

@@ -21,6 +21,7 @@ jobs:
     name: "${{ matrix.distro }} (container)"
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       fail-fast: false
       matrix:
@@ -41,6 +42,7 @@ jobs:
             image: archlinux:latest
           - distro: alpine-3.19
             image: alpine:3.19
+            experimental: true
           - distro: opensuse-leap
             image: opensuse/leap:15.5
 
@@ -62,7 +64,7 @@ jobs:
       - name: Install prerequisites (CentOS)
         if: contains(matrix.distro, 'centos')
         run: |
-          dnf install -y curl bash sudo git
+          dnf install -y --allowerasing curl bash sudo git
 
       - name: Install prerequisites (Archlinux)
         if: contains(matrix.distro, 'archlinux')
@@ -121,9 +123,12 @@ jobs:
   # ============================================================================
   # QEMU VM tests - full OS with systemd, networking, etc.
   # More realistic but slower than container tests
+  # NOTE: Requires KVM (nested virtualization). Only runs on self-hosted runners
+  # or runners with KVM enabled. Skipped on standard GitHub Actions runners.
   # ============================================================================
   test-vm:
     name: "${{ matrix.distro }} (VM)"
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:

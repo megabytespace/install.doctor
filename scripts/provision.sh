@@ -408,6 +408,10 @@ ensureHomebrew() {
 #     After determining whether or not a reboot is required, the script will attempt to automatically
 #     reboot the machine.
 handleRequiredReboot() {
+  if [ -n "$NO_RESTART" ]; then
+    logg info 'NO_RESTART is set — skipping reboot check'
+    return 0
+  fi
   if [ -d /Applications ] && [ -d /System ]; then
     ### macOS
     if ! defaults read /Library/Updates/index.plist InstallAtLogout 2>&1 | grep 'does not exist' > /dev/null; then
