@@ -854,17 +854,19 @@ runChezmoi() {
     export DEBUG_MODIFIER="-vvv --debug --verbose"
   fi
 
-  ### Run chezmoi apply
+  ### Run chezmoi apply — determine if we have a display AND a tty for tee
   HAS_DISPLAY=false
-  if [ -d /System ] && [ -d /Applications ]; then
-    # macOS: Check if display information is available
-    if system_profiler SPDisplaysDataType > /dev/null 2>&1; then
-      HAS_DISPLAY=true
-    fi
-  else
-    # Linux: Check if xrandr can list monitors
-    if xrandr --listmonitors > /dev/null 2>&1; then
-      HAS_DISPLAY=true
+  if [ -t 1 ] && [ -e /dev/tty ]; then
+    if [ -d /System ] && [ -d /Applications ]; then
+      # macOS: Check if display information is available
+      if system_profiler SPDisplaysDataType > /dev/null 2>&1; then
+        HAS_DISPLAY=true
+      fi
+    else
+      # Linux: Check if xrandr can list monitors
+      if xrandr --listmonitors > /dev/null 2>&1; then
+        HAS_DISPLAY=true
+      fi
     fi
   fi
 
