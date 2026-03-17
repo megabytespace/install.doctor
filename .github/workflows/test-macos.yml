@@ -55,7 +55,7 @@ jobs:
           export HEADLESS_INSTALL=true
           export NO_RESTART=true
           export SOFTWARE_GROUP=Basic
-          bash <(curl -sSL https://install.doctor/start)
+          bash scripts/provision.sh
         timeout-minutes: 90
 
       - name: Verify key tools installed
@@ -75,6 +75,6 @@ jobs:
         with:
           name: macos-logs-${{ matrix.runner }}
           path: |
-            macos-script.log
             ${{ github.workspace }}/.local/var/log/install.doctor/
+            ~/Library/Logs/Install Doctor/
           retention-days: 7

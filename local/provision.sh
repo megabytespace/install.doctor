@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -o pipefail
 # @file Quick Start Provision Script
 # @brief Main entry point for Install Doctor that ensures Homebrew and a few dependencies are installed before cloning the repository and running Chezmoi.
 # @description
@@ -123,6 +124,14 @@ logg() {
     fi
   fi
 }
+
+# @description Cleanup function to ensure temporary passwordless sudo is removed on exit or interruption
+cleanup() {
+  if grep -q '# TEMPORARY FOR INSTALL DOCTOR' /etc/sudoers 2>/dev/null; then
+    removePasswordlessSudo
+  fi
+}
+trap cleanup EXIT INT TERM
 
 # @description Ensure Ubuntu / Debian run in `noninteractive` mode. Detect `START_REPO` format and determine appropriate git address,
 #     otherwise use the master Install Doctor branch
@@ -416,26 +425,29 @@ importCloudFlareCert() {
 # @description Load default settings if it is in a CI setting
 setCIEnvironmentVariables() {
   if [ -n "$CI" ] || [ -n "$TEST_INSTALL" ]; then
-    logg info "Automatically setting environment variables since the CI environment variable is defined"
-    logg info "Setting NO_RESTART to true" && export NO_RESTART=true
-    logg info "Setting HEADLESS_INSTALL to true " && export HEADLESS_INSTALL=true
-    logg info "Setting SOFTWARE_GROUP to Full-Desktop" && export SOFTWARE_GROUP="Full-Desktop"
-    logg info "Setting FULL_NAME to Brian Zalewski" && export FULL_NAME="Brian Zalewski"
-    logg info "Setting PRIMARY_EMAIL to brian@megabyte.space" && export PRIMARY_EMAIL="brian@megabyte.space"
-    logg info "Setting PUBLIC_SERVICES_DOMAIN to lab.megabyte.space" && export PUBLIC_SERVICES_DOMAIN="lab.megabyte.space"
-    logg info "Setting RESTRICTED_ENVIRONMENT to false" && export RESTRICTED_ENVIRONMENT=false
-    logg info "Setting WORK_ENVIRONMENT to false" && export WORK_ENVIRONMENT=false
-    logg info "Setting HOST to $(hostname -s)" && export HOST="$(hostname -s)"
+    logg info "Automatically setting environment variables for CI/headless mode"
+    export NO_RESTART=true
+    export HEADLESS_INSTALL=true
+    export SOFTWARE_GROUP="${SOFTWARE_GROUP:-Full-Desktop}"
+    export FULL_NAME="${FULL_NAME:-Brian Zalewski}"
+    export PRIMARY_EMAIL="${PRIMARY_EMAIL:-brian@megabyte.space}"
+    export PUBLIC_SERVICES_DOMAIN="${PUBLIC_SERVICES_DOMAIN:-lab.megabyte.space}"
+    export RESTRICTED_ENVIRONMENT="${RESTRICTED_ENVIRONMENT:-false}"
+    export WORK_ENVIRONMENT="${WORK_ENVIRONMENT:-false}"
+    export HOST="${HOST:-$(hostname -s)}"
+    logg info "CI environment configured: SOFTWARE_GROUP=$SOFTWARE_GROUP, HEADLESS_INSTALL=$HEADLESS_INSTALL"
   fi
 }
 
 # @description Disconnect from WARP, if connected
 ensureWarpDisconnected() {
-  if [ -z "$DEBUG" ]; then
-    if command -v warp-cli > /dev/null; then
-      if warp-cli status | grep 'Connected' > /dev/null; then
-        logg info "Disconnecting from WARP" && warp-cli disconnect && logg info "Disconnected WARP to prevent conflicts"
-      fi
+  if [ -n "$DEBUG_MODE" ] || [ -n "$DEBUG" ]; then
+    logg info 'Skipping WARP disconnect in debug mode'
+    return 0
+  fi
+  if command -v warp-cli > /dev/null; then
+    if warp-cli status | grep 'Connected' > /dev/null; then
+      logg info "Disconnecting from WARP" && warp-cli disconnect && logg info "Disconnected WARP to prevent conflicts"
     fi
   fi
 }
@@ -444,53 +456,65 @@ ensureWarpDisconnected() {
 #     Additionally, this function will add the current user to `/etc/sudoers` so that headless automation is possible.
 setupPasswordlessSudo() {
   sudo -n true || SUDO_EXIT_CODE=$?
+  if [ -z "$SUDO_EXIT_CODE" ]; then
+    logg info 'Passwordless sudo is already available'
+    return 0
+  fi
   logg info 'Your user will temporarily be granted passwordless sudo for the duration of the script'
   if [ -n "$SUDO_EXIT_CODE" ] && [ -z "$SUDO_PASSWORD" ] && command -v chezmoi > /dev/null && [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/.chezmoitemplates/secrets-$(hostname -s)/SUDO_PASSWORD" ] && [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" ]; then
     logg info "Acquiring SUDO_PASSWORD by using Chezmoi to decrypt ${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/.chezmoitemplates/secrets-$(hostname -s)/SUDO_PASSWORD"
     SUDO_PASSWORD="$(cat "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/.chezmoitemplates/secrets-$(hostname -s)/SUDO_PASSWORD" | chezmoi decrypt)"
     export SUDO_PASSWORD
   fi
+  SUDOERS_ENTRY="$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR"
   if [ -n "$SUDO_PASSWORD" ]; then
     logg info 'Using the acquired sudo password to automatically grant the user passwordless sudo privileges for the duration of the script'
-    echo "$SUDO_PASSWORD" | sudo -S sh -c "echo '$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR' | tee -a /etc/sudoers > /dev/null"
-    echo ""
-    # Old method below does not work on macOS due to multiple sudo prompts
-    # printf '%s\n%s\n' "$SUDO_PASSWORD" | sudo -S echo "$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR" | sudo -S tee -a /etc/sudoers > /dev/null
+    printf '%s\n' "$SUDO_PASSWORD" | sudo -S -- sh -c 'echo "$1" >> /etc/sudoers' _ "$SUDOERS_ENTRY"
   else
-    logg info 'Press CTRL+C to bypass this prompt to either enter your password when needed or perform a non-privileged installation'
-    logg info 'Note: Non-privileged installations are not yet supported'
-    echo "$(whoami) ALL=(ALL:ALL) NOPASSWD: ALL # TEMPORARY FOR INSTALL DOCTOR" | sudo tee -a /etc/sudoers > /dev/null
+    if [ -n "$HEADLESS_INSTALL" ]; then
+      logg warn 'HEADLESS_INSTALL is set but no SUDO_PASSWORD is available. Attempting to continue without passwordless sudo.'
+      return 0
+    fi
+    logg info 'Sudo password required. You have 30 seconds to enter your password (auto-skips on timeout).'
+    logg info 'To bypass this prompt, set the SUDO_PASSWORD environment variable or use HEADLESS_INSTALL=true.'
+    if timeout 30 sudo -- sh -c 'echo "$1" >> /etc/sudoers' _ "$SUDOERS_ENTRY" 2>/dev/null; then
+      logg success 'Passwordless sudo granted successfully'
+    else
+      logg warn 'Sudo prompt timed out or failed. Continuing without passwordless sudo - some operations may prompt for a password.'
+    fi
   fi
 }
 
 # @description Ensure sys-whonix is configured (for Qubes dom0)
-ensureSysWhonix() {
-  CONFIG_WIZARD_COUNT=0
-  function configureWizard() {
-    if xwininfo -root -tree | grep "Anon Connection Wizard"; then
-      WINDOW_ID="$(xwininfo -root -tree | grep "Anon Connection Wizard" | sed 's/^ *\([^ ]*\) .*/\1/')"
-      xdotool windowactivate "$WINDOW_ID" && sleep 1 && xdotool key 'Enter' && sleep 1 && xdotool key 'Tab Tab Enter' && sleep 24 && xdotool windowactivate "$WINDOW_ID" && sleep 1 && xdotool key 'Enter' && sleep 300
-      qvm-shutdown --wait sys-whonix
-      sleep 3
-      qvm-start sys-whonix
-      if xwininfo -root -tree | grep "systemcheck | Whonix" > /dev/null; then
-        WINDOW_ID_SYS_CHECK="$(xwininfo -root -tree | grep "systemcheck | Whonix" | sed 's/^ *\([^ ]*\) .*/\1/')"
-        if xdotool windowactivate "$WINDOW_ID_SYS_CHECK"; then
-          sleep 1
-          xdotool key 'Enter'
-        fi
-      fi
-    else
-      sleep 3
-      CONFIG_WIZARD_COUNT=$((CONFIG_WIZARD_COUNT + 1))
-      if [[ "$CONFIG_WIZARD_COUNT" == '4' ]]; then
-        echo "The sys-whonix anon-connection-wizard utility did not open."
-      else
-        echo "Checking for anon-connection-wizard again.."
-        configureWizard
+CONFIG_WIZARD_COUNT=0
+configureWizard() {
+  if xwininfo -root -tree | grep "Anon Connection Wizard"; then
+    WINDOW_ID="$(xwininfo -root -tree | grep "Anon Connection Wizard" | sed 's/^ *\([^ ]*\) .*/\1/')"
+    xdotool windowactivate "$WINDOW_ID" && sleep 1 && xdotool key 'Enter' && sleep 1 && xdotool key 'Tab Tab Enter' && sleep 24 && xdotool windowactivate "$WINDOW_ID" && sleep 1 && xdotool key 'Enter' && sleep 300
+    qvm-shutdown --wait sys-whonix
+    sleep 3
+    qvm-start sys-whonix
+    if xwininfo -root -tree | grep "systemcheck | Whonix" > /dev/null; then
+      WINDOW_ID_SYS_CHECK="$(xwininfo -root -tree | grep "systemcheck | Whonix" | sed 's/^ *\([^ ]*\) .*/\1/')"
+      if xdotool windowactivate "$WINDOW_ID_SYS_CHECK"; then
+        sleep 1
+        xdotool key 'Enter'
       fi
     fi
-  }
+  else
+    sleep 3
+    CONFIG_WIZARD_COUNT=$((CONFIG_WIZARD_COUNT + 1))
+    if [[ "$CONFIG_WIZARD_COUNT" == '4' ]]; then
+      echo "The sys-whonix anon-connection-wizard utility did not open."
+    else
+      echo "Checking for anon-connection-wizard again.."
+      configureWizard
+    fi
+  fi
+}
+
+ensureSysWhonix() {
+  CONFIG_WIZARD_COUNT=0
 }
 
 # @description Ensure dom0 is updated
@@ -619,17 +643,17 @@ cloneChezmoiSourceRepo() {
     fi
   fi
 
-  if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/.git" ]; then
-    logg info "Changing directory to ${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi" && cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi"
-    if ! git config --get http.postBuffer > /dev/null; then
-      logg info 'Setting git http.postBuffer value high for large source repository' && git config http.postBuffer 524288000
-    fi
-    logg info "Pulling the latest changes in ${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi" && git pull origin master
+  CHEZMOI_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi"
+  if [ -d "$CHEZMOI_DIR/.git" ]; then
+    logg info "Updating existing repo at $CHEZMOI_DIR"
+    git -C "$CHEZMOI_DIR" config http.postBuffer 524288000 2>/dev/null || true
+    DEFAULT_BRANCH="$(git -C "$CHEZMOI_DIR" remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d' ' -f5)"
+    DEFAULT_BRANCH="${DEFAULT_BRANCH:-master}"
+    logg info "Pulling the latest changes from $DEFAULT_BRANCH" && git -C "$CHEZMOI_DIR" pull origin "$DEFAULT_BRANCH" || logg warn "git pull failed — continuing with existing checkout"
   else
     logg info "Ensuring ${XDG_DATA_HOME:-$HOME/.local/share} is a folder" && mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}"
-    logg info "Cloning ${START_REPO} to ${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi" && git clone "${START_REPO}" "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi"
-    logg info "Changing directory to ${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi" && cd "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi"
-    logg info 'Setting git http.postBuffer value high for large source repository' && git config http.postBuffer 524288000
+    logg info "Cloning ${START_REPO} to $CHEZMOI_DIR" && git clone "${START_REPO}" "$CHEZMOI_DIR"
+    git -C "$CHEZMOI_DIR" config http.postBuffer 524288000
   fi
 }
 
@@ -645,22 +669,29 @@ initChezmoiAndPrompt() {
   fi
 
   ### Prompt for the software group if the `SOFTWARE_GROUP` variable is not defined
-  if command -v gum > /dev/null; then
-    if [ -z "$SOFTWARE_GROUP" ]; then
-      # logg prompt 'Select the software group you would like to install. If your environment is a macOS, Windows, or environment with the DISPLAY environment variable then desktop software will be installed too. The software groups are in the '"${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.yaml"' file.'
-      SOFTWARE_GROUP="Full"
-      # TODO - Uncomment this when other SOFTWARE_GROUP types are implemented properly
-      # SOFTWARE_GROUP="$(gum choose "Basic" "Server" "Standard" "Full")"
-      export SOFTWARE_GROUP
+  if [ -z "$SOFTWARE_GROUP" ]; then
+    SOFTWARE_GROUP="Full"
+    export SOFTWARE_GROUP
+  fi
+  logg info "Software group set to: $SOFTWARE_GROUP"
+
+  if ! command -v gum > /dev/null; then
+    logg warn 'Gum is not installed. Attempting to install via Homebrew.'
+    if command -v brew > /dev/null; then
+      brew install --quiet gum || logg warn 'Failed to install gum via Homebrew'
+    else
+      logg warn 'Homebrew is not available. Some interactive features may be unavailable.'
     fi
-  else
-    logg error 'Woops! Gum needs to be installed for the guided installation. Try running brew install gum' && exit 1
   fi
 
   if [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.yaml" ]; then
     ### Run `chezmoi init` when the Chezmoi configuration is missing
-    logg info 'Running chezmoi init since the '"${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.yaml"' is not present'
-    chezmoi init
+    logg info "Running chezmoi init since ${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.yaml is not present"
+    if [ -n "$HEADLESS_INSTALL" ]; then
+      chezmoi init --force
+    else
+      chezmoi init
+    fi
   fi
 }
 
@@ -697,45 +728,42 @@ runChezmoi() {
   fi
 
   ### Run chezmoi apply
+  HAS_DISPLAY=false
   if [ -d /System ] && [ -d /Applications ]; then
-    # macOS: Check if display information is available
-    system_profiler SPDisplaysDataType > /dev/null 2>&1
+    if system_profiler SPDisplaysDataType > /dev/null 2>&1; then
+      HAS_DISPLAY=true
+    fi
   else
-    # Linux: Check if xrandr can list monitors
-    xrandr --listmonitors > /dev/null 2>&1
+    if xrandr --listmonitors > /dev/null 2>&1; then
+      HAS_DISPLAY=true
+    fi
   fi
 
-  # Check if the last command failed
-  if [ $? -ne 0 ]; then
+  CMD_PREFIX=()
+  if [ "$HAS_DISPLAY" = "true" ] && command -v unbuffer > /dev/null; then
+    CMD_PREFIX+=(unbuffer -p)
+  fi
+  if [ "$HAS_DISPLAY" = "true" ] && command -v caffeinate > /dev/null; then
+    CMD_PREFIX+=(caffeinate)
+  fi
+
+  CHEZMOI_CMD=("${CMD_PREFIX[@]}" chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER)
+
+  if [ "$HAS_DISPLAY" = "false" ]; then
     logg info "Fallback: Running in headless mode"
-    chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER
+    chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER || CHEZMOI_EXIT_CODE=$?
   else
-    logg info "Running with a display"
+    logg info "Running: ${CHEZMOI_CMD[*]}"
+    "${CHEZMOI_CMD[@]}" 2>&1 | tee /dev/tty | ts '[%Y-%m-%d %H:%M:%S]' > "$LOG_FILE" || CHEZMOI_EXIT_CODE=$?
     if command -v unbuffer > /dev/null; then
-      if command -v caffeinate > /dev/null; then
-        logg info "Running: unbuffer -p caffeinate chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER"
-        unbuffer -p caffeinate chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER 2>&1 | tee /dev/tty | ts '[%Y-%m-%d %H:%M:%S]' > "$LOG_FILE" || CHEZMOI_EXIT_CODE=$?
-      else
-        logg info "Running: unbuffer -p chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER"
-        unbuffer -p chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER 2>&1 | tee /dev/tty | ts '[%Y-%m-%d %H:%M:%S]' > "$LOG_FILE" || CHEZMOI_EXIT_CODE=$?
-      fi
-      logg info "Unbuffering log file $LOG_FILE"
       UNBUFFER_TMP="$(mktemp)"
       unbuffer cat "$LOG_FILE" > "$UNBUFFER_TMP"
       mv -f "$UNBUFFER_TMP" "$LOG_FILE"
-    else
-      if command -v caffeinate > /dev/null; then
-        logg info "Running: caffeinate chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER"
-        caffeinate chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER 2>&1 | tee /dev/tty | ts '[%Y-%m-%d %H:%M:%S]' > "$LOG_FILE" || CHEZMOI_EXIT_CODE=$?
-      else
-        logg info "Running: chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER"
-        chezmoi apply $COMMON_MODIFIERS $DEBUG_MODIFIER $KEEP_GOING_MODIFIER $FORCE_MODIFIER 2>&1 | tee /dev/tty | ts '[%Y-%m-%d %H:%M:%S]' > "$LOG_FILE" || CHEZMOI_EXIT_CODE=$?
-      fi
     fi
   fi
 
   ### Handle exit codes in log
-  if [ -f "$LOG_FILE" ] && cat "$LOG_FILE" | grep 'chezmoi: exit status 140' > /dev/null; then
+  if [ -f "$LOG_FILE" ] && grep -q 'chezmoi: exit status 140' "$LOG_FILE"; then
     beforeRebootDarwin
     logg info "Chezmoi signalled that a reboot is necessary to apply a system update"
     logg info "Running softwareupdate with the reboot flag"
@@ -758,6 +786,8 @@ removePasswordlessSudo() {
   fi
   if command -v gsed > /dev/null; then
     sudo gsed -i '/# TEMPORARY FOR INSTALL DOCTOR/d' /etc/sudoers || logg warn 'Failed to remove passwordless sudo from the /etc/sudoers file'
+  elif [[ "$OSTYPE" == 'darwin'* ]]; then
+    sudo sed -i '' '/# TEMPORARY FOR INSTALL DOCTOR/d' /etc/sudoers || logg warn 'Failed to remove passwordless sudo from the /etc/sudoers file'
   else
     sudo sed -i '/# TEMPORARY FOR INSTALL DOCTOR/d' /etc/sudoers || logg warn 'Failed to remove passwordless sudo from the /etc/sudoers file'
   fi
@@ -782,18 +812,18 @@ vimPlugins() {
   fi
 }
 
-# @description Creates apple user if user is running this script as root and continues the script execution with the new `apple` user
-#     by creating the `apple` user with a password equal to the `SUDO_PASSWORD` environment variable or "bananas" if no `SUDO_PASSWORD`
-#     variable is present.
+# @description Creates apple user if user is running this script as root and continues the script execution with the new `apple` user.
+#     Requires `SUDO_PASSWORD` to be set when running as root (will not default to an insecure password).
 function ensureAppleUser() {
   # Check if the script is running as root
   if [ "$(id -u)" -eq 0 ]; then
     logg info "You are running as root. Proceeding with user creation."
 
-    # Check if SUDO_PASSWORD is set, if not, set it to "bananas" and export
+    # Require SUDO_PASSWORD to be explicitly set when running as root
     if [ -z "$SUDO_PASSWORD" ]; then
-      logg info "SUDO_PASSWORD is not set. Setting it to 'bananas'."
-      export SUDO_PASSWORD="bananas"
+      logg error "SUDO_PASSWORD must be set when running as root. Cannot create user with an insecure default password."
+      logg info "Usage: SUDO_PASSWORD=yourpassword bash <(curl -sSL https://install.doctor/start)"
+      exit 1
     fi
 
     # Check if 'apple' user exists
@@ -824,7 +854,7 @@ function ensureAppleUser() {
       logg info "Setting a password for 'apple'..."
       echo "apple:$SUDO_PASSWORD" | chpasswd 2>/dev/null || \
       (echo "$SUDO_PASSWORD" | passwd --stdin apple 2>/dev/null || \
-      (echo "$SUDO_PASSWORD" | dscl . -passwd /Users/apple $SUDO_PASSWORD 2>/dev/null))
+      (echo "$SUDO_PASSWORD" | dscl . -passwd /Users/apple "$SUDO_PASSWORD" 2>/dev/null))
 
       # Grant sudo privileges to 'apple'
       logg info "Granting sudo privileges to 'apple'..."
@@ -838,11 +868,12 @@ function ensureAppleUser() {
     fi
 
     # Switch to 'apple' user to continue the script
-    logg warn "Exporting environment variables to /tmp/env_vars.sh"
-    export -p > /tmp/env_vars.sh
-    chown apple /tmp/env_vars.sh
-    logg info "Running source /tmp/env_vars.sh && rm -f /tmp/env_vars.sh && bash <(curl -sSL https://install.doctor/start) with the apple user"
-    su - apple -c "source /tmp/env_vars.sh && rm -f /tmp/env_vars.sh && export HOME='/home/apple' && export USER='apple' && cd /home/apple && bash <(curl -sSL https://install.doctor/start)"
+    ENV_VARS_FILE="$(mktemp /tmp/env_vars.XXXXXX)"
+    chmod 600 "$ENV_VARS_FILE"
+    export -p > "$ENV_VARS_FILE"
+    chown apple "$ENV_VARS_FILE"
+    logg info "Running install.doctor/start with the apple user"
+    su - apple -c "source '$ENV_VARS_FILE' && rm -f '$ENV_VARS_FILE' && export HOME='/home/apple' && export USER='apple' && cd /home/apple && bash <(curl -sSL https://install.doctor/start)"
     exit 0
   else
     logg info "You are not running as root. Proceeding with the current user."

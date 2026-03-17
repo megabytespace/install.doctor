@@ -65,28 +65,33 @@ decryptKey() {
   if command -v age > /dev/null; then
     if [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" ]; then
       mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/age"
+      AGE_KEY_OUT="${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt"
+      AGE_KEY_ENC="{{ .chezmoi.sourceDir }}/key.txt.age"
+      DECRYPT_EXIT=0
       if [ -z "$AGE_PASSWORD" ]; then
         logg star 'PRESS ENTER if you have not set up your encryption token yet (auto-skipping in 30 seconds)'
         if command -v timeout > /dev/null; then
-          timeout 30 age --decrypt --output "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" "{{ .chezmoi.sourceDir }}/key.txt.age" || EXIT_CODE=$?
+          timeout 30 age --decrypt --output "$AGE_KEY_OUT" "$AGE_KEY_ENC" || DECRYPT_EXIT=$?
         elif command -v gtimeout > /dev/null; then
-          gtimeout 30 age --decrypt --output "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" "{{ .chezmoi.sourceDir }}/key.txt.age" || EXIT_CODE=$?
+          gtimeout 30 age --decrypt --output "$AGE_KEY_OUT" "$AGE_KEY_ENC" || DECRYPT_EXIT=$?
         else
-          age --decrypt --output "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" "{{ .chezmoi.sourceDir }}/key.txt.age" || EXIT_CODE=$?
+          age --decrypt --output "$AGE_KEY_OUT" "$AGE_KEY_ENC" || DECRYPT_EXIT=$?
         fi
-        if [ -n "$EXIT_CODE" ]; then
+        if [ "$DECRYPT_EXIT" -ne 0 ]; then
           decryptionFailure
         else
           gum log -sl info 'The encryption key was successfully decrypted'
         fi
       else
         installExpect
+        export AGE_KEY_OUT AGE_KEY_ENC
         expect -c "set timeout -1
-        spawn age --decrypt --output "${XDG_CONFIG_HOME:-$HOME/.config}/age/chezmoi.txt" "${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/home/key.txt.age"
+        spawn age --decrypt --output \$env(AGE_KEY_OUT) \$env(AGE_KEY_ENC)
         expect \"Enter passphrase:\"
-        send \"${AGE_PASSWORD}\r\"
-        expect eof" &> /dev/null || EXIT_CODE=$?
-        if [ -n "$EXIT_CODE" ]; then
+        send [lindex \$argv 0]
+        send \"\r\"
+        expect eof" "$AGE_PASSWORD" &> /dev/null || DECRYPT_EXIT=$?
+        if [ "$DECRYPT_EXIT" -ne 0 ]; then
           gum log -sl info 'There was an issue decrypting the key.txt.age file with the provided AGE_PASSWORD'
           decryptionFailure
         else

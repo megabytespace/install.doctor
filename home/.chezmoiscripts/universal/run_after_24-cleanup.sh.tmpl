@@ -46,9 +46,8 @@ if [ -f "$HOME/.wget-hsts" ]; then
 fi
 
 ### Remove .viminfo
-# No idea how this is being created
 if [ -f "$HOME/.viminfo" ]; then
-    sudo rm -f "$HOME/.viminfo"
+    rm -f "$HOME/.viminfo"
 fi
 
 ### Remove .wrangler
@@ -64,9 +63,13 @@ if [ -d /Applications ] && [ -d /System ]; then
     fi
 fi
 
+CLEANUP_FAILED=0
 removeDotVolta &
 cleanAptGet &
 cleanupBrew &
-wait
+wait || CLEANUP_FAILED=$?
+if [ "$CLEANUP_FAILED" -ne 0 ]; then
+  gum log -sl warn 'One or more cleanup tasks encountered errors'
+fi
 
-gum log -sl info 'Finished cleanup process' && exit 0
+gum log -sl info 'Finished cleanup process'

@@ -55,7 +55,8 @@ allocateSwap() {
       if [ -f /swapfile ]; then
         gum log -sl info 'Running sudo swapon /swapfile'
         sudo swapon /swapfile
-        if cat /etc/fstab | grep "/swapfile"; then
+        if grep -q "/swapfile" /etc/fstab; then
+          sudo cp /etc/fstab /etc/fstab.bak
           sudo sed -i 's|.*/swapfile.*|/swapfile none swap defaults 0 0|' /etc/fstab
         else
           echo "/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab > /dev/null
@@ -249,7 +250,8 @@ increaseMapCount() {
 function gVisorPreBuilt() {
   gum log -sl info 'Installing gVisor using method recommended on official website'
   set -e
-  mkdir /tmp/gvisor && cd /tmp/gvisor
+  GVISOR_TMP="$(mktemp -d)"
+  cd "$GVISOR_TMP"
   ARCH=$(uname -m)
   URL="https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}"
   gum log -sl info 'Downloading gVisor runsc and containerd-shim-runsc-v1 SHA signatures'
@@ -266,12 +268,15 @@ function gVisorPreBuilt() {
 function gVisorGo() {
   # Official build timed out - use Go method
   gum log -sl info 'Installing gVisor using the Go fallback method'
+  sudo mkdir -p /usr/local/src/gvisor
   sudo chown -Rf "$(whoami)" /usr/local/src/gvisor
-  cd /usr/local/src/gvisor
-  echo "module runsc" > go.mod
-  GO111MODULE=on go get gvisor.dev/gvisor/runsc@go
-  CGO_ENABLED=0 GO111MODULE=on sudo -E go build -o /usr/local/bin/runsc gvisor.dev/gvisor/runsc
-  GO111MODULE=on sudo -E go build -o /usr/local/bin/containerd-shim-runsc-v1 gvisor.dev/gvisor/shim
+  (
+    cd /usr/local/src/gvisor
+    echo "module runsc" > go.mod
+    GO111MODULE=on go get gvisor.dev/gvisor/runsc@go
+    CGO_ENABLED=0 GO111MODULE=on sudo -E go build -o /usr/local/bin/runsc gvisor.dev/gvisor/runsc
+    GO111MODULE=on sudo -E go build -o /usr/local/bin/containerd-shim-runsc-v1 gvisor.dev/gvisor/shim
+  )
 }
 
 # @description Helper function for installDocker that installs gVisor using the [GitHub developer page method](https://github.com/google/gvisor#installing-from-source). This method requires Docker to be installed
@@ -696,7 +701,7 @@ installBrewPackages() {
   ensureNodeInstalled
   ensureDeltaInstalled
   ensureBrewPackageInstalled "volta"
-  volta install node@latest &
+  volta install node@latest
   volta install yarn@latest &
   npm install --no-progress -g npm@latest &
   ensureBrewPackageInstalled "pipx"

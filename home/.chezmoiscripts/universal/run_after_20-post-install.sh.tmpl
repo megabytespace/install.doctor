@@ -340,16 +340,16 @@ setDefaultBrowser() {
     fi
   else
     gum log -sl info 'Setting default browser for text/html to {{ .user.defaultBrowser }}'
-    xdg-mime default {{ .user.defaultBrowser }}.desktop text/html
+    xdg-mime default "{{ .user.defaultBrowser }}.desktop" text/html
     gum log -sl info 'Setting default browser for x-scheme-handler/http to {{ .user.defaultBrowser }}'
-    xdg-mime default {{ .user.defaultBrowser }}.desktop x-scheme-handler/http
+    xdg-mime default "{{ .user.defaultBrowser }}.desktop" x-scheme-handler/http
     gum log -sl info 'Setting default browser for x-scheme-handler/https to {{ .user.defaultBrowser }}'
-    xdg-mime default {{ .user.defaultBrowser }}.desktop x-scheme-handler/https
+    xdg-mime default "{{ .user.defaultBrowser }}.desktop" x-scheme-handler/https
     gum log -sl info 'Setting default browser for x-scheme-handler/about to {{ .user.defaultBrowser }}'
-    xdg-mime default {{ .user.defaultBrowser }}.desktop x-scheme-handler/about
+    xdg-mime default "{{ .user.defaultBrowser }}.desktop" x-scheme-handler/about
     gum log -sl info 'Setting default browser with xdg-settings to {{ .user.defaultBrowser }}'
     unset BROWSER
-    xdg-settings set default-web-browser {{ .user.defaultBrowser }}.desktop
+    xdg-settings set default-web-browser "{{ .user.defaultBrowser }}.desktop"
   fi
 }
 

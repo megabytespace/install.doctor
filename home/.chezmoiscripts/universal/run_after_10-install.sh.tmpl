@@ -13,8 +13,8 @@ systemFiles() {
     gum log -sl info 'Ensuring /etc/profile is writable by root user'
     sudo chmod +w /etc/profile
   fi
-  gum log -sl info 'Running rsync -artuE --chown=root: --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rwX,Fg=rX,Fo=rX --inplace --exclude .git/ "${XDG_CONFIG_HOME:-$HOME/.config}/system/" /'
-  sudo rsync -artuE --chown=root: --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rwX,Fg=rX,Fo=rX --inplace --exclude .git/ "${XDG_CONFIG_HOME:-$HOME/.config}/system/" / > /dev/null
+  gum log -sl info 'Applying system configuration files from ${XDG_CONFIG_HOME:-$HOME/.config}/system/ to /'
+  sudo rsync -artuE --chown=root: --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rwX,Fg=rX,Fo=rX --exclude .git/ "${XDG_CONFIG_HOME:-$HOME/.config}/system/" / > /dev/null
   gum log -sl info 'Finished applying system configuration files'
 }
 

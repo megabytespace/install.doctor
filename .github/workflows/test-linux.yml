@@ -52,32 +52,35 @@ jobs:
         if: contains(matrix.distro, 'ubuntu') || contains(matrix.distro, 'debian')
         run: |
           apt-get update
-          apt-get install -y curl bash sudo
+          apt-get install -y curl bash sudo git
 
       - name: Install prerequisites (Fedora)
         if: contains(matrix.distro, 'fedora')
         run: |
-          dnf install -y curl bash sudo
+          dnf install -y curl bash sudo git
 
       - name: Install prerequisites (CentOS)
         if: contains(matrix.distro, 'centos')
         run: |
-          dnf install -y curl bash sudo
+          dnf install -y curl bash sudo git
 
       - name: Install prerequisites (Archlinux)
         if: contains(matrix.distro, 'archlinux')
         run: |
-          pacman -Sy --noconfirm curl bash sudo
+          pacman -Sy --noconfirm curl bash sudo git
 
       - name: Install prerequisites (Alpine)
         if: contains(matrix.distro, 'alpine')
         run: |
-          apk add --update curl bash sudo shadow
+          apk add --update curl bash sudo shadow git
 
       - name: Install prerequisites (OpenSUSE)
         if: contains(matrix.distro, 'opensuse')
         run: |
-          zypper install -y curl bash sudo
+          zypper install -y curl bash sudo git
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Create non-root user
         run: |
@@ -90,17 +93,21 @@ jobs:
 
       - name: Run Install Doctor bootstrap (headless)
         run: |
+          # Copy the checked-out script to a location the testuser can access
+          cp scripts/provision.sh /tmp/provision.sh
+          chmod +x /tmp/provision.sh
           su - testuser -c '
             export CI=true
             export TEST_INSTALL=true
             export HEADLESS_INSTALL=true
             export NO_RESTART=true
             export SOFTWARE_GROUP=Basic
-            bash <(curl -sSL https://install.doctor/start)
+            bash /tmp/provision.sh
           '
         timeout-minutes: 60
 
       - name: Verify key tools installed
+        if: always()
         run: |
           su - testuser -c '
             echo "=== Verification ==="
@@ -131,15 +138,31 @@ jobs:
       - name: Install QEMU and Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils genisoimage wget netcat-openbsd
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils genisoimage wget netcat-openbsd python3-minimal
+
+      - name: Start HTTP server to serve local scripts
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          python3 -m http.server 8199 &
+          echo $! > /tmp/http-server.pid
+          sleep 1
+          echo "HTTP server started on port 8199"
 
       - name: Make Script Executable
         run: chmod +x scripts/test-linux.sh
 
       - name: Run ${{ matrix.distro }} VM and Execute Install Doctor
         run: |
-          scripts/test-linux.sh ${{ matrix.distro }} "bash <(curl -sSL https://install.doctor/start)"
+          # VM fetches provision.sh from the local HTTP server instead of production
+          scripts/test-linux.sh ${{ matrix.distro }} "bash <(curl -sSL http://10.0.2.2:8199/scripts/provision.sh)"
         timeout-minutes: 90
+
+      - name: Stop HTTP server
+        if: always()
+        run: |
+          if [ -f /tmp/http-server.pid ]; then
+            kill "$(cat /tmp/http-server.pid)" 2>/dev/null || true
+          fi
 
       - name: Upload Logs
         if: always()

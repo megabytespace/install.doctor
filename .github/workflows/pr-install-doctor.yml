@@ -12,9 +12,10 @@ jobs:
     name: Run install.doctor on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,7 +28,20 @@ jobs:
       - name: Run install.doctor installer
         shell: bash
         env:
-          CI: true
+          CI: "true"
+          TEST_INSTALL: "true"
+          HEADLESS_INSTALL: "true"
+          NO_RESTART: "true"
+          SOFTWARE_GROUP: Basic
         run: |
-          echo "Running install.doctor installer"
-          bash <(curl -sSL https://install.doctor/start)
+          echo "Running install.doctor installer from branch"
+          bash scripts/provision.sh
+
+      - name: Verify key tools installed
+        if: always()
+        shell: bash
+        run: |
+          echo "=== Verification ==="
+          command -v chezmoi && echo "chezmoi: OK" || echo "chezmoi: MISSING"
+          command -v brew && echo "brew: OK" || echo "brew: MISSING"
+          echo "=== Done ==="

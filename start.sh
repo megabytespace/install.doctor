@@ -182,7 +182,9 @@ function ensureRootPackageInstalled() {
 if [ -z "$NO_INSTALL_HOMEBREW" ] && [ "$USER" == "root" ] && [ -z "$INIT_CWD" ] && type useradd &> /dev/null; then
   # shellcheck disable=SC2016
   logger info 'Running as root - creating separate user named megabyte to run script with'
-  echo "megabyte ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+  if ! grep -q "^megabyte ALL=(ALL) NOPASSWD: ALL$" /etc/sudoers 2>/dev/null; then
+    echo "megabyte ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+  fi
   useradd -m -s "$(which bash)" --gecos "" --disabled-login -c "Megabyte Labs" megabyte > /dev/null || ROOT_EXIT_CODE=$?
   if [ -n "$ROOT_EXIT_CODE" ]; then
     # shellcheck disable=SC2016
@@ -208,8 +210,8 @@ function ensureLocalPath() {
     # shellcheck disable=SC2016
     PATH_STRING='export PATH="$HOME/.local/bin:$PATH"'
     mkdir -p "$HOME/.local/bin"
-    if ! grep "$PATH_STRING" < "$HOME/.profile" > /dev/null; then
-      echo -e "${PATH_STRING}\n" >> "$HOME/.profile"
+    if ! grep -F "$PATH_STRING" < "$HOME/.profile" > /dev/null; then
+      echo "${PATH_STRING}" >> "$HOME/.profile"
       logger info "Updated the PATH variable to include ~/.local/bin in $HOME/.profile"
     fi
   elif [[ "$OSTYPE" == 'cygwin' ]] || [[ "$OSTYPE" == 'msys' ]] || [[ "$OSTYPE" == 'win32' ]]; then
@@ -338,10 +340,14 @@ function installTask() {
   DOWNLOAD_DESTINATION=/tmp/megabytelabs/task.tar.gz
   TMP_DIR=/tmp/megabytelabs
   logger info "Checking if install target is macOS or Linux"
+  ARCH="amd64"
+  if [ "$(uname -m)" = "arm64" ] || [ "$(uname -m)" = "aarch64" ]; then
+    ARCH="arm64"
+  fi
   if [[ "$OSTYPE" == 'darwin'* ]]; then
-    DOWNLOAD_URL="$TASK_RELEASE_URL/download/task_darwin_amd64.tar.gz"
+    DOWNLOAD_URL="$TASK_RELEASE_URL/download/task_darwin_${ARCH}.tar.gz"
   else
-    DOWNLOAD_URL="$TASK_RELEASE_URL/download/task_linux_amd64.tar.gz"
+    DOWNLOAD_URL="$TASK_RELEASE_URL/download/task_linux_${ARCH}.tar.gz"
   fi
   logger info "Creating folder for Task download"
   mkdir -p "$(dirname "$DOWNLOAD_DESTINATION")"
@@ -372,10 +378,7 @@ function installTask() {
     sudo mkdir -p "$TARGET_BIN_DIR"
     sudo mv "$TMP_DIR/task/task" "$TARGET_DEST"
   else
-    echo | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || BREW_EXIT_CODE="$?"
-    if [ -d "/opt/homebrew" ]; then
-      logger info "Setting owner of /opt/homebrew to '$USER'" && sudo chown -R "$USER" /opt/homebrew || logger warn "Failed to chown /opt/homebrew to '$USER'"
-    fi
+    mkdir -p "$TARGET_BIN_DIR"
     mv "$TMP_DIR/task/task" "$TARGET_DEST"
   fi
   logger success "Installed Task to $TARGET_DEST"
@@ -401,15 +404,17 @@ function sha256() {
       PATH="$(brew --prefix)/opt/coreutils/libexec/gnubin:$PATH"
     fi
     if type sha256sum &> /dev/null; then
-      echo "$2 $1" | sha256sum -c
+      echo "$2  $1" | sha256sum -c
     else
       logger warn "Checksum validation is being skipped for $1 because the sha256sum program is not available"
     fi
   elif [[ "$OSTYPE" == 'linux-gnu'* ]]; then
-    if ! type shasum &> /dev/null; then
-      logger warn "Checksum validation is being skipped for $1 because the shasum program is not installed"
-    else
+    if type sha256sum &> /dev/null; then
+      echo "$2  $1" | sha256sum -c
+    elif type shasum &> /dev/null; then
       echo "$2  $1" | shasum -s -a 256 -c
+    else
+      logger warn "Checksum validation is being skipped for $1 because neither sha256sum nor shasum is installed"
     fi
   elif [[ "$OSTYPE" == 'linux-musl' ]]; then
     if ! type sha256sum &> /dev/null; then
@@ -655,7 +660,7 @@ if [ -d .git ] && type git &> /dev/null; then
       fi
     elif [ "$GIT_POS" == 'HEAD' ]; then
       if [ -n "$GITLAB_CI" ]; then
-        printenv
+        logger info "Detached HEAD in CI — branch: ${CI_COMMIT_REF_NAME:-unknown}, commit: ${CI_COMMIT_SHA:-unknown}"
       fi
     fi
     git pull --force origin master --ff-only || GIT_PULL_FAIL="$?"

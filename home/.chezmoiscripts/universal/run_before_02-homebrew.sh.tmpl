@@ -182,14 +182,15 @@ upgradeDarwin() {
       gum log -sl info 'There are available OS upgrades'
       echo "$UPDATE_CHECK"
       gum log -sl info 'Applying OS upgrades (if available). This may take awhile..'
+      EXPECT_EXIT=0
       expect -c "set timeout -1
       spawn sudo softwareupdate -i -a --agree-to-license
       expect \"Password:\"
-      send \"${SUDO_PASSWORD}\r\"
-      expect eof" &> /dev/null || EXIT_CODE=$?
-      if [ -n "$EXIT_CODE" ]; then
+      send [lindex \$argv 0]
+      send \"\r\"
+      expect eof" "$SUDO_PASSWORD" &> /dev/null || EXPECT_EXIT=$?
+      if [ "$EXPECT_EXIT" -ne 0 ]; then
         gum log -sl warn 'Error running softwareupdate'
-        unset EXIT_CODE
       fi
       # sudo sh -c "sudo softwareupdate -i -a --agree-to-license" || gum log -sl error 'Failed to trigger a system update via sudo softwareupdate -i -a --agree-to-license'
 
@@ -198,7 +199,7 @@ upgradeDarwin() {
       gum log -sl info 'Checking if softwareupdate requires a reboot'
       if softwareupdate -l | grep restart > /dev/null; then
         ### Add kickstart script to .zshrc so it triggers automatically
-        if [ ! -f "$HOME/.zshrc" ] || ! cat "$HOME/.zshrc" | grep '# TEMPORARY FOR INSTALL DOCTOR MACOS' > /dev/null; then
+        if [ ! -f "$HOME/.zshrc" ] || ! grep -q '# TEMPORARY FOR INSTALL DOCTOR MACOS' "$HOME/.zshrc"; then
           gum log -sl info 'Adding kickstart script to ~/.zshrc so script continues automatically if reboot is necessary'
           echo 'bash <(curl -sSL --compressed https://install.doctor/start) # TEMPORARY FOR INSTALL DOCTOR MACOS' >> "$HOME/.zshrc"
         fi
