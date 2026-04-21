@@ -1,0 +1,155 @@
+{
+  "name": "Install Doctor: Provision your workstation automatically",
+  "short_name": "Install Doctor",
+  "description": "Setup your workstation automatically with the best, free open-source software using Install Doctor, an open-source, multi-OS provisioning system.",
+  "lang": "en-US",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/img/manifest/manifest-icon-192.maskable.png",
+      "sizes": "177x196",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/img/manifest/manifest-icon-512.maskable.png",
+      "sizes": "497x516",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["business", "personalization", "productivity", "security", "utilities"],
+  "theme_color": "#FFFFFF",
+  "background_color": "#FFFFFF",
+  "start_url": "https://install.doctor",
+  "display": "standalone",
+  "screenshots": [
+    {
+      "src": "/assets/img/screenshots/og-1520x3040.png",
+      "sizes": "1520x3040",
+      "form_factor": "narrow",
+      "type": "image/png",
+      "label": "Meet Install Doctor: The free open-source, multi-OS provisioning system"
+    },
+    {
+      "src": "/assets/img/screenshots/home-1520x3040.png",
+      "sizes": "1520x3040",
+      "form_factor": "narrow",
+      "type": "image/png",
+      "label": "Batteries-included, AI-included. Start using Install Doctor today!"
+    },
+    {
+      "src": "/assets/img/screenshots/documentation-1520x3040.png",
+      "sizes": "1520x3040",
+      "form_factor": "narrow",
+      "type": "image/png",
+      "label": "Easy, full documentation portal"
+    },
+    {
+      "src": "/assets/img/screenshots/community-1520x3040.png",
+      "sizes": "1520x3040",
+      "form_factor": "narrow",
+      "type": "image/png",
+      "label": "Vibrant community, multiple platforms"
+    },
+    {
+      "src": "/assets/img/screenshots/enterprise-1520x3040.png",
+      "sizes": "1520x3040",
+      "form_factor": "narrow",
+      "type": "image/png",
+      "label": "Enterprise-level support options available"
+    },
+    {
+      "src": "/assets/img/screenshots/og-1536x2048.png",
+      "sizes": "1536x2048",
+      "form_factor": "wide",
+      "type": "image/png",
+      "label": "Meet Install Doctor: The free open-source, multi-OS provisioning system"
+    },
+    {
+      "src": "/assets/img/screenshots/home-1536x2048.png",
+      "sizes": "1536x2048",
+      "form_factor": "wide",
+      "type": "image/png",
+      "label": "Batteries-included, AI-included. Start using Install Doctor today!"
+    },
+    {
+      "src": "/assets/img/screenshots/documentation-1536x2048.png",
+      "sizes": "1536x2048",
+      "form_factor": "wide",
+      "type": "image/png",
+      "label": "Easy, full documentation portal"
+    },
+    {
+      "src": "/assets/img/screenshots/community-1536x2048.png",
+      "sizes": "1536x2048",
+      "form_factor": "wide",
+      "type": "image/png",
+      "label": "Vibrant community, multiple platforms"
+    },
+    {
+      "src": "/assets/img/screenshots/enterprise-1536x2048.png",
+      "sizes": "1536x2048",
+      "form_factor": "wide",
+      "type": "image/png",
+      "label": "Enterprise-level support options available"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Go To Homepage",
+      "short_name": "Home",
+      "url": "https://install.doctor",
+      "description": "Homepage of Install Doctor, the best free, open-source, multi-OS desktop provisioning system",
+      "icons": [{ "src": "/assets/img/manifest/home.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Read Documentation",
+      "short_name": "Documentation",
+      "url": "https://install.doctor/docs",
+      "description": "The official documentation portal for Install Doctor",
+      "icons": [{ "src": "/assets/img/manifest/documentation.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Learn About Enterprise Support",
+      "short_name": "Enterprise Support",
+      "url": "https://install.doctor/enterprise",
+      "description": "Request enterprise support for your business",
+      "icons": [{ "src": "/assets/img/manifest/enterprise.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Join Community",
+      "short_name": "Community",
+      "url": "https://install.doctor/community",
+      "description": "Join our vibrant community",
+      "icons": [{ "src": "/assets/img/manifest/community.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Read Blog",
+      "short_name": "Blog",
+      "url": "https://install.doctor/blog",
+      "description": "Read our blog and discover tips & tricks",
+      "icons": [{ "src": "/assets/img/manifest/blog.png", "sizes": "192x192" }]
+    }
+  ],
+  "id": "/?pwa=1",
+  "dir": "ltr",
+  "scope": "https://install.doctor",
+  "orientation": "any",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 480
+  }
+}

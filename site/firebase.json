@@ -1,0 +1,124 @@
+{
+  "hosting": {
+    "public": "www",
+    "trailingSlash": false,
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "**/*",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=0, must-revalidate"
+          },
+          {
+            "key": "Content-Security-Policy-Report-Only",
+            "value": "default-src 'self'; connect-src 'self' *.ingest.us.sentry.io *.megabyte.space www.google-analytics.com onesignal.com *.algolia.net; font-src 'self' fonts.gstatic.com; form-action 'self'; frame-src *.megabyte.space www.googletagmanager.com; img-src 'self' data: www.facebook.com www.googletagmanager.com media.onesignal.com; manifest-src 'self'; script-src-elem 'self' 'unsafe-inline' browser.sentry-cdn.com js.sentry-cdn.com install-doctor.disqus.com *.megabyte.space connect.facebook.net www.googletagmanager.com storage.googleapis.com cdn.onesignal.com onesignal.com; script-src 'unsafe-eval' 'self'; style-src-attr 'unsafe-inline'; style-src-elem 'self' 'unsafe-inline' fonts.googleapis.com onesignal.com; worker-src 'self' blob: *.megabyte.space; media-src 'self'; style-src 'self'; frame-ancestors 'none'; report-uri https://megabytelabs.report-uri.com/r/d/csp/wizard"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "X-UA-Compatible",
+            "value": "ie=edge"
+          },
+          {
+            "key": "X-XSS-Protection",
+            "value": "1; mode=block"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(eot|otf|ttf|ttc|woff|css|js|png|webp|jpg|jpeg|ico|svg)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000"
+          }
+        ]
+      },
+      {
+        "source": "blog/rss.xml",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/rss+xml"
+          }
+        ]
+      },
+      {
+        "source": "manifest.json",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/manifest+json"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/docs/opensearch.xml",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/opensearchdescription+xml"
+          }
+        ]
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/start",
+        "destination": "https://raw.githubusercontent.com/megabyte-labs/install.doctor/master/scripts/provision.sh",
+        "type": 301
+      },
+      {
+        "source": "/windows",
+        "destination": "https://raw.githubusercontent.com/megabyte-labs/install.doctor/master/scripts/provision.ps1",
+        "type": 301
+      },
+      {
+        "source": "/vagrant",
+        "destination": "https://raw.githubusercontent.com/megabyte-labs/install.doctor/master/scripts/vagrant.sh",
+        "type": 301
+      },
+      {
+        "source": "/vagrant-windows",
+        "destination": "https://raw.githubusercontent.com/megabyte-labs/install.doctor/master/scripts/vagrant.ps1",
+        "type": 301
+      },
+      {
+        "source": "/opensearch.xml",
+        "destination": "/docs/opensearch.xml",
+        "type": 301
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/blog/rss.xml",
+        "destination": "https://rss.manhattan.workers.dev"
+      },
+      {
+        "source": "/api/email",
+        "destination": "https://email.manhattan.workers.dev"
+      }
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+more-button {
+  height: 32px;
+  width: 32px;
+
+  button {
+    height: 100%;
+    width: 100%;
+
+    font-size: 20px;
+
+    background: transparent;
+    border: none;
+    outline: none;
+
+    cursor: pointer;
+
+    transition: opacity 0.2s ease-out;
+
+    svg {
+      fill: var(--color, black);
+      height: 20px !important;
+      width: 20px !important;
+    }
+
+    &:hover {
+      opacity: 0.4;
+    }
+
+    &:active {
+      opacity: 0.32;
+    }
+  }
+}

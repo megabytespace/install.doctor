@@ -1,0 +1,76 @@
+newsletter-signup-parallax {
+  position: absolute;
+  height: 50px;
+  width: 180px;
+  left: calc(50% - 188px);
+  width: 180px;
+  transition: all 1s ease-in-out;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+  margin-top: 8px;
+
+  .error-message,
+  .form-message-p {
+    color: var(--c-indigo-0);
+    margin-top: 10px;
+    line-height: 1.2;
+  }
+
+  .hs-submit {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .hs-button {
+    letter-spacing: 0;
+    font-weight: bold;
+    margin-inline-start: 0.5em;
+    height: 50px;
+    width: 50px;
+    border-radius: 50px;
+  }
+
+  input {
+    padding-inline-start: 16px;
+    width: 100%;
+    height: 50px;
+    border: 0;
+    border-radius: 50px;
+    transition: border 0.2s ease-out, box-shadow 0.2s ease-out;
+  }
+
+  .form-message > p {
+    position: relative;
+    top: 60px;
+    color: white;
+  }
+
+  input.hs-button.large.primary.ui-button {
+    margin-right: 0 !important;
+  }
+
+  #parallax-input {
+    background-color: white;
+  }
+}
+
+newsletter-signup-parallax.open {
+  width: 374px;
+  opacity: 1;
+  pointer-events: all;
+  z-index: 1;
+}
+
+newsletter-signup-parallax.nopointer {
+  pointer-events: none;
+
+  .form-group {
+    display: none;
+  }
+
+  .hs-form {
+    display: none;
+  }
+}

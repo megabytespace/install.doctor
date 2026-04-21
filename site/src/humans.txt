@@ -1,0 +1,9 @@
+/* TEAM */
+Name: Brian Zalewski
+Site: https://megabyte.space
+Twitter: https://twitter.com/HillBillyHack3r
+LinkedIn: https://www.linkedin.com/in/blzalewski
+Location: NJ, USA
+
+/* SITE */
+Original design cloned from: https://github.com/ionic-team/stencil-site (modified heavily)

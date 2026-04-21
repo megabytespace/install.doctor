@@ -3,6 +3,8 @@ name: "Run install.doctor on Pull Requests"
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - "site/**"
 
 permissions:
   contents: read

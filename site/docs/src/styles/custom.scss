@@ -1,0 +1,695 @@
+/* stylelint-disable docusaurus/copyright-header */
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+
+@use './components/admonition';
+@use './components/back-to-top-button';
+@use './components/code';
+@use './components/doc-item';
+@use './components/doc-page';
+@use './components/doc-sidebar';
+@use './components/edit-this-page';
+@use './components/markdown';
+@use './components/navbar';
+@use './components/navbar-sidebar';
+@use './components/pagination';
+@use './components/search';
+@use './components/table';
+@use './components/tabs';
+@use './components/theme-toggle';
+@use './components/toc';
+
+:root {
+  --f-display: Inter, 'Inter UI', Helvetica, Arial, sans-serif;
+  --f-text: Inter, 'Inter UI', Helvetica, Arial, sans-serif;
+  --f-system: Inter, 'Inter UI', Helvetica, Arial, sans-serif;
+  --f-monospace: 'Roboto Mono', Menlo, monospace;
+  --f-serif: Inter, 'Inter UI', Helvetica, Arial, sans-serif;
+  --f-pro: Inter, 'Inter UI', Helvetica, Arial, sans-serif;
+  --f-pro-mono: 'Roboto Mono', 'SF Mono', Menlo, monospace;
+  --f-weight-light: 300;
+  --f-weight-regular: 400;
+  --f-weight-medium: 500;
+  --f-weight-semibold: 600;
+  --f-weight-bold: 700;
+  --f-size-10: 0.625rem;
+  --f-size-11: 0.6875rem;
+  --f-size-12: 0.75rem;
+  --f-size-13: 0.8125rem;
+  --f-size-14: 0.875rem;
+  --f-size-16: 1rem;
+  --f-size-20: 1.25rem;
+  --f-size-24: 1.5rem;
+  --f-size-28: 1.75rem;
+  --f-size-32: 2rem;
+  --f-size-40: 2.5rem;
+  --f-size-48: 3rem;
+  --f-size-56: 3.5rem;
+  --f-size-64: 4rem;
+  --f-size-72: 4.5rem;
+  --f-size-80: 5rem;
+  --f-size-88: 5.5rem;
+  --f-size-96: 6rem;
+  --line-height-solid: 1;
+  --line-height-title: 1.12;
+  --line-height-body: 1.6;
+  --line-height-prose: 1.8;
+  --letter-spacing-dense: -0.04em;
+  --letter-spacing-tight: -0.02em;
+  --letter-spacing-solid: 0em;
+  --letter-spacing-wide: 0.04em;
+  --letter-spacing-super: 0.08em;
+  --letter-spacing-extra: 0.16em;
+  --space-0: 0rem;
+  --space-4: 0.25rem;
+  --space-8: 0.5rem;
+  --space-12: 0.75rem;
+  --space-16: 1rem;
+  --space-20: 1.25rem;
+  --space-24: 1.5rem;
+  --space-32: 2rem;
+  --space-40: 2.5rem;
+  --space-48: 3rem;
+  --space-64: 4rem;
+  --space-80: 5rem;
+  --space-96: 6rem;
+  --space-128: 8rem;
+  --space-160: 10rem;
+  --space-192: 12rem;
+  --space-224: 14rem;
+  --space-256: 16rem;
+  --breakpoint-0: 40em;
+  --breakpoint-1: 48em;
+  --breakpoint-2: 64em;
+  --breakpoint-3: 80em;
+  --radius-0: 0px;
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-16: 16px;
+  --radius-24: 24px;
+  --radius-x: 1000px;
+  --border-regular: 1px solid;
+  --border-dashed: 1px dashed;
+  --border-heavy: 2px solid;
+  --shadow-0: 0 0 0 1px rgba(0, 0, 0, 0);
+  --shadow-1: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-2: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 1px 0 rgba(0, 0, 0, 0.04);
+  --shadow-3: 0 2px 4px 0 rgba(0, 0, 0, 0.1), 0 0 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-4: 0 4px 8px 0 rgba(0, 0, 0, 0.1), 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  --shadow-5: 0 8px 16px 0 rgba(0, 0, 0, 0.08), 0 4px 8px 0 rgba(0, 0, 0, 0.06);
+  --shadow-6: 0 16px 32px -2px rgba(0, 0, 0, 0.1), 0 8px 16px -2px rgba(0, 0, 0, 0.08);
+  --shadow-7: 0 32px 64px -4px rgba(0, 0, 0, 0.12), 0 12px 24px -2px rgba(0, 0, 0, 0.06);
+  --shadow-8: 0 48px 96px -8px rgba(0, 0, 0, 0.16), 0 24px 48px -4px rgba(0, 0, 0, 0.08);
+  --duration-instantly: 0s;
+  --duration-quickly: 0.15s;
+  --c-black: #000000;
+  --c-white: #ffffff;
+  --c-blue-0: #f0f6ff;
+  --c-blue-10: #e3edff;
+  --c-blue-20: #cddfff;
+  --c-blue-30: #b2ceff;
+  --c-blue-40: #97bdff;
+  --c-blue-50: #7cabff;
+  --c-blue-60: #639bff;
+  --c-blue-70: #4d8dff;
+  --c-blue-80: #3880ff;
+  --c-blue-90: #1b6dff;
+  --c-blue-100: #0054e9;
+  --c-gray-0: #f3f3f3;
+  --c-gray-10: #e4e4e4;
+  --c-gray-20: #c8c8c8;
+  --c-gray-30: #aeaeae;
+  --c-gray-40: #959595;
+  --c-gray-50: #818181;
+  --c-gray-60: #6d6d6d;
+  --c-gray-70: #5f5f5f;
+  --c-gray-80: #474747;
+  --c-gray-90: #2f2f2f;
+  --c-gray-100: #141414;
+  --c-carbon-0: #eef1f3;
+  --c-carbon-10: #d7dde2;
+  --c-carbon-20: #b4bcc6;
+  --c-carbon-30: #98a2ad;
+  --c-carbon-40: #7d8894;
+  --c-carbon-50: #677483;
+  --c-carbon-60: #556170;
+  --c-carbon-70: #434f5e;
+  --c-carbon-80: #35404e;
+  --c-carbon-90: #222d3a;
+  --c-carbon-100: #03060b;
+  --c-indigo-0: #fbfbfd;
+  --c-indigo-10: #f6f8fc;
+  --c-indigo-20: #e9edf3;
+  --c-indigo-30: #dee3ea;
+  --c-indigo-40: #ced6e0;
+  --c-indigo-50: #b2becd;
+  --c-indigo-60: #92a0b3;
+  --c-indigo-70: #73849a;
+  --c-indigo-80: #445b78;
+  --c-indigo-90: #2d4665;
+  --c-indigo-100: #001a3a;
+  --c-green-0: #f1fdf5;
+  --c-green-10: #deffe7;
+  --c-green-20: #c7fbd5;
+  --c-green-30: #a7f1bb;
+  --c-green-40: #80e89d;
+  --c-green-50: #62e085;
+  --c-green-60: #4ada71;
+  --c-green-70: #2dd55b;
+  --c-green-80: #17c948;
+  --c-green-90: #00ba33;
+  --c-green-100: #00a52d;
+  --c-lime-0: #f5fff0;
+  --c-lime-10: #ebfee3;
+  --c-lime-20: #ddfcd0;
+  --c-lime-30: #cffbbc;
+  --c-lime-40: #bbf9a2;
+  --c-lime-50: #a3f581;
+  --c-lime-60: #8bf35f;
+  --c-lime-70: #64ec44;
+  --c-lime-80: #4ddf2b;
+  --c-lime-90: #3ad515;
+  --c-lime-100: #27c100;
+  --c-lavender-0: #f7f8ff;
+  --c-lavender-10: #e6ebff;
+  --c-lavender-20: #ced9ff;
+  --c-lavender-30: #b6c6ff;
+  --c-lavender-40: #9fb5ff;
+  --c-lavender-50: #8aa4ff;
+  --c-lavender-60: #7493ff;
+  --c-lavender-70: #597eff;
+  --c-lavender-80: #3c67ff;
+  --c-lavender-90: #194bfd;
+  --c-lavender-100: #0033e8;
+  --c-purple-0: #f4f4ff;
+  --c-purple-10: #e9eaff;
+  --c-purple-20: #d0d2ff;
+  --c-purple-30: #b6b9f9;
+  --c-purple-40: #9a99fc;
+  --c-purple-50: #8482fb;
+  --c-purple-60: #786df9;
+  --c-purple-70: #6e5afd;
+  --c-purple-80: #6030ff;
+  --c-purple-90: #4712fb;
+  --c-purple-100: #3400e6;
+  --c-pink-0: #ffeff5;
+  --c-pink-10: #ffe3ed;
+  --c-pink-20: #ffd8e5;
+  --c-pink-30: #ffc9db;
+  --c-pink-40: #ffb6d0;
+  --c-pink-50: #ff99bd;
+  --c-pink-60: #ff80ac;
+  --c-pink-70: #ff6098;
+  --c-pink-80: #fb4082;
+  --c-pink-90: #ec216a;
+  --c-pink-100: #da0d56;
+  --c-red-0: #fff1f3;
+  --c-red-10: #ffe6e8;
+  --c-red-20: #ffcfd3;
+  --c-red-30: #feb7bc;
+  --c-red-40: #fc9aa2;
+  --c-red-50: #f9838c;
+  --c-red-60: #f56570;
+  --c-red-70: #f24c58;
+  --c-red-80: #ef3442;
+  --c-red-90: #e21827;
+  --c-red-100: #d0000f;
+  --c-orange-0: #fff5f0;
+  --c-orange-10: #ffede6;
+  --c-orange-20: #ffdfd1;
+  --c-orange-30: #ffd0bc;
+  --c-orange-40: #ffc0a5;
+  --c-orange-50: #ffaf8c;
+  --c-orange-60: #ff9b70;
+  --c-orange-70: #ff8753;
+  --c-orange-80: #ff7336;
+  --c-orange-90: #ff5b13;
+  --c-orange-100: #eb4700;
+  --c-yellow-0: #fffbef;
+  --c-yellow-10: #fff8e2;
+  --c-yellow-20: #fff4d1;
+  --c-yellow-30: #ffefbd;
+  --c-yellow-40: #ffe9a3;
+  --c-yellow-50: #ffe080;
+  --c-yellow-60: #ffd75a;
+  --c-yellow-70: #ffce31;
+  --c-yellow-80: #ffc409;
+  --c-yellow-90: #f4b100;
+  --c-yellow-100: #eaa100;
+  --c-aqua-0: #f0fff9;
+  --c-aqua-10: #e6fff6;
+  --c-aqua-20: #ceffed;
+  --c-aqua-30: #b7fce3;
+  --c-aqua-40: #93f9d5;
+  --c-aqua-50: #79f5c9;
+  --c-aqua-60: #59f0ba;
+  --c-aqua-70: #38e9aa;
+  --c-aqua-80: #1ae19a;
+  --c-aqua-90: #00d287;
+  --c-aqua-100: #00ba78;
+  --c-teal-0: #eefeff;
+  --c-teal-10: #dffdff;
+  --c-teal-20: #d0fdff;
+  --c-teal-30: #bbfcff;
+  --c-teal-40: #a2fcff;
+  --c-teal-50: #8bfbff;
+  --c-teal-60: #73f6fb;
+  --c-teal-70: #55ecf2;
+  --c-teal-80: #35e2e9;
+  --c-teal-90: #1bd2d9;
+  --c-teal-100: #00b9c0;
+  --c-cyan-0: #f3faff;
+  --c-cyan-10: #e8f5ff;
+  --c-cyan-20: #d3ecff;
+  --c-cyan-30: #bfe4ff;
+  --c-cyan-40: #a7daff;
+  --c-cyan-50: #8dcfff;
+  --c-cyan-60: #77c6ff;
+  --c-cyan-70: #62bdff;
+  --c-cyan-80: #46b1ff;
+  --c-cyan-90: #24a3ff;
+  --c-cyan-100: #0091fa;
+  --ifm-background-color: var(--token-primary-bg-c);
+
+  --ifm-navbar-link-hover-color: initial;
+  --ifm-navbar-padding-vertical: 0;
+  --ifm-navbar-item-padding-vertical: 0;
+
+  --ifm-font-family-base: Inter, 'Inter UI', Helvetica, Arial, sans-serif;
+  --ifm-font-family-monospace: Inter, 'Inter UI', Helvetica, Arial, sans-serif;
+
+  --ifm-menu-link-sublist-icon: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iNiIgdmlld0JveD0iMCAwIDEwIDYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik04Ljk5OTg4IDVMNC45OTk4OCAxTDAuOTk5ODc4IDUiIHN0cm9rZT0iIzAzMDYwQiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K');
+
+  //#region ----------- Z Indices ------------
+  --z-sidebar: 2000;
+  --z-backdrop: 1100;
+  //#endregion
+}
+
+html[data-theme='light'] {
+  --token-primary-bg-c: #fff;
+  --token-secondary-bg-c: #fff;
+
+  --ifm-link-color: #119eff;
+  //rgb value is c-blue-90
+  --ifm-link-hover-color: rgba(27, 109, 255, 0.8);
+
+  --ifm-background-surface-color: var(--token-primary-bg-c);
+
+  --ifm-navbar-background-color: var(--token-primary-bg-c);
+  --ifm-navbar-shadow: 0 1px 0 0 var(--c-gray-0);
+
+  --ifm-heading-color: rgb(3, 6, 11);
+  --ifm-code-background: var(--c-indigo-10);
+  --ifm-font-color-base: rgb(45, 70, 101);
+}
+
+html[data-theme='dark'] {
+  --token-primary-bg-c: #03060b;
+  --token-secondary-bg-c: #13171c;
+
+  --ifm-link-color: #119eff;
+  //rgb value is c-blue-70
+  --ifm-link-hover-color: rgba(77, 141, 255, 0.8);
+
+  --ifm-background-surface-color: var(--token-primary-bg-c);
+
+  --ifm-navbar-background-color: var(--token-primary-bg-c);
+  --ifm-navbar-shadow: 0 1px 0 0 var(--c-gray-90);
+
+  --ifm-heading-color: #fff;
+  --ifm-font-color-base: var(--c-carbon-10);
+  --ifm-background-color: var(--token-primary-bg-c);
+  --ifm-dropdown-background-color: var(--token-secondary-bg-c);
+
+  --ifm-menu-link-sublist-icon-filter: invert(100%);
+}
+
+html {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-smoothing: antialiased;
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--ifm-navbar-height) + 16px);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a {
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+.theme-doc-version-banner {
+  display: none;
+}
+
+.theme-doc-version-badge {
+  display: none;
+}
+
+ion-grid {
+  margin: 1em 0;
+}
+
+figure {
+  margin: 0;
+}
+
+figure > * {
+  display: block;
+  margin: 0 auto;
+}
+
+figure.device {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+figcaption {
+  text-align: center;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+iframe {
+  background-color: rgba(0, 0, 0, 0.02);
+  box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.git-link svg {
+  height: 1em;
+  width: 1em;
+  vertical-align: -0.1em;
+}
+
+.git-link path {
+  fill: currentColor;
+}
+
+.cordova-ee-card {
+  max-width: 100%;
+}
+
+.cordova-ee-img {
+  width: 50px;
+  float: left;
+  margin-right: 20px;
+}
+
+.native-ee-detail {
+  float: right;
+  cursor: pointer;
+}
+
+.cordova-ee-card p {
+  margin: 1rem 0 0;
+}
+
+.page-banner {
+  margin: 0;
+  width: 100%;
+
+  .page-banner-col {
+    padding: 0;
+  }
+}
+
+.main-wrapper > div > aside > a > img {
+  position: relative;
+  position: relative;
+  top: 2px;
+  left: -4px;
+  width: 180px;
+}
+
+.navbar__logo > img {
+  position: relative;
+  top: 2px;
+  left: 4px;
+  width: 180px;
+}
+
+.navbar {
+  border-block: 1px solid rgba(0, 21, 58, 0.06);
+  height: 62px;
+  box-shadow: none;
+}
+
+.dropdown--hoverable svg {
+  display: none;
+}
+
+.navbar-sidebar .menu__list-item svg {
+  display: none;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+main article {
+  animation: fadeIn 0.333s ease-in-out forwards;
+  opacity: 0;
+}
+
+@media (max-width: 996px) {
+  .navbar__logo > img {
+    left: 0;
+  }
+}
+
+.internal-ad {
+  transition: all 0.333s ease-in-out;
+}
+
+.internal-ad:hover {
+  opacity: 0.81;
+}
+
+.internal-ad:active {
+  opacity: 0.69;
+}
+
+.internal-ad a:focus {
+  box-shadow: none !important;
+}
+
+.markdown h2 > a,
+.markdown h3 > a,
+.markdown h4 > a,
+.theme-doc-footer a,
+.markdown p a,
+.markdown li a,
+.markdown table a,
+.toc-wrapper .table-of-contents a,
+.toc-wrapper a.theme-edit-this-page {
+  position: relative;
+  // line-height: 1.4;
+  transition: opacity 0.2s ease-out;
+}
+
+.markdown h2 > a::after,
+.markdown h3 > a::after,
+.markdown h4 > a::after,
+.theme-doc-footer a::after,
+.markdown li a::after,
+.markdown table a::after,
+.markdown p a::after,
+.toc-wrapper .table-of-contents a::after,
+.toc-wrapper a.theme-edit-this-page::after {
+  content: '';
+  position: absolute;
+  display: inline-block;
+  z-index: 1;
+  left: 51%;
+  right: 51%;
+  bottom: 0;
+  background: #119eff !important;
+  height: 1px;
+  transition-property: left, right;
+  transition-duration: 0.3s;
+  transition-timing-function: ease-out;
+}
+
+.markdown h2 > a:hover,
+.markdown h3 > a:hover,
+.markdown h4 > a:hover,
+.markdown li a:hover,
+.markdown p a:hover,
+.markdown table a:hover,
+.theme-doc-footer a:hover,
+.toc-wrapper .table-of-contents a:hover,
+.toc-wrapper a.theme-edit-this-page:hover {
+  opacity: 0.7;
+}
+
+.markdown h2 > a:active,
+.markdown h3 > a:active,
+.markdown h4 > a:active,
+.markdown p a:active,
+.markdown li a:active,
+.markdown table a:active,
+.theme-doc-footer a:active,
+.toc-wrapper .table-of-contents a:active,
+.toc-wrapper a.theme-edit-this-page:active {
+  opacity: 0.5;
+}
+
+.markdown h2 > a:hover::after,
+.markdown h3 > a:hover::after,
+.markdown h4 > a:hover::after,
+.markdown p a:hover::after,
+.markdown li a:hover::after,
+.markdown table a:hover::after,
+.theme-doc-footer a:hover::after,
+.toc-wrapper .table-of-contents a:hover::after,
+.toc-wrapper .theme-edit-this-page:hover::after {
+  left: 0 !important;
+  right: 0 !important;
+}
+
+.markdown h2 > a::after,
+.markdown h3 > a::after,
+.markdown h4 > a::after,
+.theme-doc-footer .theme-edit-this-page::after,
+.toc-wrapper .theme-edit-this-page::after {
+  height: 3px !important;
+  bottom: -5px !important;
+}
+
+.markdown h2 > a::after,
+.markdown h3 > a::after,
+.markdown h4 > a::after {
+  position: relative;
+  display: inline-block;
+}
+
+.theme-doc-footer .theme-edit-this-page,
+.toc-wrapper .theme-edit-this-page {
+  display: inline-block;
+  font-weight: 700;
+  color: var(--ifm-heading-color) !important;
+
+  svg {
+    margin-right: 8px;
+  }
+}
+
+.theme-doc-footer .theme-edit-this-page::after,
+.toc-wrapper a.theme-edit-this-page::after {
+  background-color: var(--ifm-heading-color) !important;
+}
+
+.pagination-nav__label {
+  display: inline-block;
+}
+
+a.pagination-nav__link {
+  background-color: var(--c-indigo-0);
+  border-radius: 5px;
+  box-shadow: 1px 1px 1px var(--c-indigo-20);
+  border: 1px solid var(--c-indigo-20);
+  padding-left: 21px !important;
+  padding-right: 21px !important;
+  transition: background-color 0.333s ease-in-out !important;
+  > .pagination-nav__label::after,
+  > .pagination-nav__label::before {
+    background-color: var(--c-indigo-0) !important;
+    transition: background-color 0.333s ease-in-out !important;
+  }
+}
+
+a.pagination-nav__link:hover {
+  background-color: var(--c-indigo-10);
+  > .pagination-nav__label::after,
+  > .pagination-nav__label::before {
+    background-color: var(--c-indigo-10) !important;
+  }
+}
+
+a.pagination-nav__link:active {
+  box-shadow: unset;
+  background-color: var(--c-indigo-20);
+  > .pagination-nav__label::after,
+  > .pagination-nav__label::before {
+    background-color: var(--c-indigo-20) !important;
+  }
+}
+
+body {
+  overflow-y: scroll;
+}
+
+a:focus {
+  outline: -webkit-focus-ring-color auto 1px;
+  box-shadow: 0px 0px 0px 3px #c2d8ff !important;
+  border-radius: 3px;
+}
+
+.navbar a:focus,
+aside a:focus {
+  outline: none;
+  box-shadow: none !important;
+}
+
+.markdown figcaption {
+  margin-top: 14px;
+  margin-bottom: 14px;
+  font-size: small;
+}
+
+.navbar .icon-link {
+  z-index: 1;
+}
+
+.navbar__link,
+.menu__link.menu__link--sublist {
+  cursor: pointer;
+}
+
+.menu__link:hover {
+  background-color: var(--c-indigo-10);
+}
+
+.menu__link:active {
+  opacity: 0.81;
+}
+
+.menu__link--sublist {
+  margin-bottom: 3px;
+}
+
+aside > a {
+  border-radius: inherit !important;
+  box-shadow: none !important;
+}
+main > .container {
+  background: white;
+}

@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="x-rim-auto-match" content="none" />
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+    <title>Install Doctor: Provision fully-configured desktops automatically</title>
+    <script src="https://js.sentry-cdn.com/bf75b717b97ad8ab631d99cefe1cb5dd.min.js" crossorigin="anonymous"></script>
+    <script>
+      (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        var f = d.getElementsByTagName(s)[0],
+          j = d.createElement(s),
+          dl = l != 'dataLayer' ? '&l=' + l : '';
+        j.async = true;
+        j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+        f.parentNode.insertBefore(j, f);
+      })(window, document, 'script', 'dataLayer', 'GTM-PJQ4263');
+    </script>
+
+    <!-- These tags shoudln't chagne. If they do, add to meta-tags.tsx -->
+    <meta property="og:site_name" content="Install Doctor" />
+    <meta name="twitter:site" content="@InstallDoc" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="author" content="Brian Zalewski" />
+    <meta name="copyright" content="Megabyte LLC" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="HandheldFriendly" content="True" />
+    <meta
+      name="keywords"
+      content="open-source, opensource, github, gitlab, installdoctor, jumpusb, kubernetes, docker, ubuntu, fedora, qubes, archlinux, debian, windows, macos, provisioning, deployment, ansible, bash, scripting, terminal, settings"
+    />
+    <meta name="MobileOptimized" content="400" />
+    <meta name="twitter:creator" content="@InstallDoctor" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes" />
+    <meta property="fb:app_id" content="669135071652897" />
+    <meta property="og:type" content="website" />
+    <link type="text/plain" rel="author" href="/humans.txt" />
+    <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Install Doctor" />
+    <meta name="application-name" content="Install Doctor" />
+    <meta name="contact" content="help@install.doctor" />
+    <meta name="geography" content="USA" />
+    <meta name="msapplication-starturl" content="https://install.doctor" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta
+      name="msapplication-task"
+      content="name=Documentation;action-uri=https://install.doctor/docs;icon-uri=https://megabyte.spacce/assets/img/microsoft/search.ico"
+    />
+    <meta
+      name="msapplication-task"
+      content="name=GitHub;action-uri=https://github.com/megabyte-lab/install.doctor;icon-uri=https://install.doctor/assets/img/microsoft/github.ico"
+    />
+    <meta
+      name="msapplication-task"
+      content="name=GitLab;action-uri=https://gitlab.com/megabyte-labs/install.doctor;icon-uri=https://install.doctor/assets/img/microsoft/gitlab.ico"
+    />
+    <meta
+      name="msapplication-task"
+      content="name=Home;action-uri=https://install.doctor;icon-uri=https://install.doctor/assets/img/microsoft/home.ico"
+    />
+    <meta name="msapplication-TileColor" content="#FFFFFF" />
+    <meta name="msapplication-tooltip" content="Install Doctor: Provision fully-configured desktops automatically" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#FFFFFF" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <link
+      rel="search"
+      type="application/opensearchdescription+xml"
+      href="/docs/opensearch.xml"
+      title="Install Doctor"
+    />
+
+    <script>
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    </script>
+    <script type="module" src="/build/site.esm.js"></script>
+    <script nomodule src="/build/site.js"></script>
+    <script type="speculationrules">
+      {
+        "prerender": [
+          {
+            "where": {
+              "and": [{ "href_matches": "/*" }, { "not": { "selector_matches": ".do-not-prerender" } }]
+            },
+            "eagerness": "immediate"
+          }
+        ]
+      }
+    </script>
+    <link
+      rel="preload"
+      href="/assets/fonts/inter-v12-latin-regular.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href="/assets/fonts/inter-v12-latin-500.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href="/assets/fonts/inter-v12-latin-600.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href="/assets/fonts/inter-v12-latin-700.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href="/assets/fonts/roboto-mono-v22-latin-regular.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href="/assets/fonts/roboto-mono-v22-latin-regular.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href="/assets/fonts/fontawesome-webfont.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link rel="preconnect" href="https://KFVMJ7I0DW-dsn.algolia.net" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://connect.facebook.net" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://www.facebook.com" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://storage.googleapis.com" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://cdn.onesignal.com" crossorigin="anonymous" />
+    <style>
+      @font-face {
+        font-display: swap;
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 400;
+        src: url('/assets/fonts/inter-v12-latin-regular.eot');
+        src: url('/assets/fonts/inter-v12-latin-regular.eot?#iefix') format('embedded-opentype'),
+          url('/assets/fonts/inter-v12-latin-regular.woff2') format('woff2'),
+          url('/assets/fonts/inter-v12-latin-regular.woff') format('woff'),
+          url('/assets/fonts/inter-v12-latin-regular.ttf') format('truetype'),
+          url('/assets/fonts/inter-v12-latin-regular.svg#Inter') format('svg');
+      }
+
+      @font-face {
+        font-display: block;
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 500;
+        src: url('/assets/fonts/inter-v12-latin-500.eot');
+        src: url('/assets/fonts/inter-v12-latin-500.eot?#iefix') format('embedded-opentype'),
+          url('/assets/fonts/inter-v12-latin-500.woff2') format('woff2'),
+          url('/assets/fonts/inter-v12-latin-500.woff') format('woff'),
+          url('/assets/fonts/inter-v12-latin-500.ttf') format('truetype'),
+          url('/assets/fonts/inter-v12-latin-500.svg#Inter') format('svg');
+      }
+
+      @font-face {
+        font-display: swap;
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 600;
+        src: url('/assets/fonts/inter-v12-latin-600.eot');
+        src: url('/assets/fonts/inter-v12-latin-600.eot?#iefix') format('embedded-opentype'),
+          url('/assets/fonts/inter-v12-latin-600.woff2') format('woff2'),
+          url('/assets/fonts/inter-v12-latin-600.woff') format('woff'),
+          url('/assets/fonts/inter-v12-latin-600.ttf') format('truetype'),
+          url('/assets/fonts/inter-v12-latin-600.svg#Inter') format('svg');
+      }
+
+      @font-face {
+        font-display: swap;
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 700;
+        src: url('/assets/fonts/inter-v12-latin-700.eot');
+        src: url('/assets/fonts/inter-v12-latin-700.eot?#iefix') format('embedded-opentype'),
+          url('/assets/fonts/inter-v12-latin-700.woff2') format('woff2'),
+          url('/assets/fonts/inter-v12-latin-700.woff') format('woff'),
+          url('/assets/fonts/inter-v12-latin-700.ttf') format('truetype'),
+          url('/assets/fonts/inter-v12-latin-700.svg#Inter') format('svg');
+      }
+
+      @font-face {
+        font-display: swap;
+        font-family: 'Roboto Mono';
+        font-style: normal;
+        font-weight: 400;
+        src: url('/assets/fonts/roboto-mono-v22-latin-regular.eot');
+        src: url('/assets/fonts/roboto-mono-v22-latin-regular.eot?#iefix') format('embedded-opentype'),
+          url('/assets/fonts/roboto-mono-v22-latin-regular.woff2') format('woff2'),
+          url('/assets/fonts/roboto-mono-v22-latin-regular.woff') format('woff'),
+          url('/assets/fonts/roboto-mono-v22-latin-regular.ttf') format('truetype'),
+          url('/assets/fonts/roboto-mono-v22-latin-regular.svg#RobotoMono') format('svg');
+      }
+
+      @font-face {
+        font-display: swap;
+        font-family: 'Roboto Mono';
+        font-style: normal;
+        font-weight: 700;
+        src: url('/assets/fonts/roboto-mono-v22-latin-700.eot');
+        src: url('/assets/fonts/roboto-mono-v22-latin-700.eot?#iefix') format('embedded-opentype'),
+          url('/assets/fonts/roboto-mono-v22-latin-700.woff2') format('woff2'),
+          url('/assets/fonts/roboto-mono-v22-latin-700.woff') format('woff'),
+          url('/assets/fonts/roboto-mono-v22-latin-700.ttf') format('truetype'),
+          url('/assets/fonts/roboto-mono-v22-latin-700.svg#RobotoMono') format('svg');
+      }
+
+      @font-face {
+        font-family: 'Pe-icon-7-stroke';
+        src: url('/assets/fonts/Pe-icon-7-stroke.eot');
+        src: url('/assets/fonts/Pe-icon-7-stroke.eot?#iefix') format('embedded-opentype'),
+          url('/assets/fonts/Pe-icon-7-stroke.woff2') format('woff2'),
+          url('/assets/fonts/Pe-icon-7-stroke.woff') format('woff'),
+          url('/assets/fonts/Pe-icon-7-stroke.ttf') format('truetype'),
+          url('/assets/fonts/Pe-icon-7-stroke.svg#Pe-icon-7-stroke') format('svg');
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      @font-face {
+        font-family: revicons;
+        src: url('/assets/fonts/revicons.eot');
+        src: url('/assets/fonts/revicons.eot?#iefix') format('embedded-opentype'),
+          url('/assets/fonts/revicons.woff2') format('woff2'), url('/assets/fonts/revicons.woff') format('woff'),
+          url('/assets/fonts/revicons.ttf') format('truetype'), url('/assets/fonts/revicons.svg#revicons') format('svg');
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'FontAwesome';
+        src: url('/assets/fonts/fontawesome-webfont.eot');
+        src: url('/assets/fonts/fontawesome-webfont.eot?#iefix') format('embedded-opentype'),
+          url('/assets/fonts/fontawesome-webfont.woff2') format('woff2'),
+          url('/assets/fonts/fontawesome-webfont.woff') format('woff'),
+          url('/assets/fonts/fontawesome-webfont.ttf') format('truetype'),
+          url('/assets/fonts/fontawesome-webfont.svg#fontawesomeregular') format('svg');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+    </style>
+    <link rel="stylesheet" href="/build/site.css" />
+    <noscript>
+      <link rel="stylesheet" href="/site-noscript.css" />
+    </noscript>
+
+    <noscript>
+      <style>
+        .tabs-wrapper,
+        docs-search,
+        .noshow-noscript,
+        #ebook,
+        .newsletter,
+        .footer-social-wrapper,
+        more-button {
+          display: none !important;
+        }
+      </style>
+    </noscript>
+
+    <script type="application/ld+json">
+      {
+        "@context": "http://schema.org",
+        "@id": "https://install.doctor/#schema-website",
+        "@type": "WebSite",
+        "encoding": "UTF-8",
+        "image": {
+          "@type": "ImageObject",
+          "@id": "https://install.doctor/#schema-site-logo",
+          "url": "https://install.doctor/android-chrome-512x512.png",
+          "height": 512,
+          "width": 512
+        },
+        "name": "Install Doctor",
+        "publisher": "Megabyte Labs",
+        "url": "https://install.doctor",
+        "potentialActions": {
+          "@type": "SearchAction",
+          "target": "https://install.doctor/docs/search?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "http://schema.org",
+        "@type": ["SoftwareApplication", "WebApplication"],
+        "browserRequirements": ["HTML5", "CSS3", "JavaScript", "Modern Browser"],
+        "name": "Install Doctor",
+        "applicationSuite": "Install Doctor",
+        "applicationCategory": "DesktopEnhancementApplication",
+        "operatingSystem": "Archlinux, CentOS 9+, Debian 11+, Fedora 39+, macOS 12+, Qubes 3.2+, Ubuntu 22.04+, Windows 11+",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "5.0",
+          "ratingCount": "58",
+          "ratingExplanation": "Calculated from the number of GitHub stars"
+        },
+        "featureList": [
+          "Free, open-source, multi-OS desktop provisioning system that lets you store your Desktop-as-Code in a GitHub repository",
+          "Pin your applications, extensions, plugins, and configurations to a GitHub repository and Install Doctor handles the rest",
+          "Store encrypted secrets in your GitHub fork of Install Doctor and the system will integrate a growing list of API keys into your favorite tools",
+          "Backup application settings for future installations to an S3 or Google Drive",
+          "Expertly-tuned initial configurations for hundreds of power-user tools",
+          "Gorgeous, amazing, and incredibly useful terminal theme and experience that incorporates hundreds of tools and auto-completions",
+          "Easy-to-read, full documentation portal",
+          "Utilizes system package manager whenever possible when installing your pinned applications",
+          "Hundreds of system tweaks for optimized security and performance",
+          "Supports CentOS, Debian, Fedora, macOS, and Ubuntu",
+          "Experimental Archlinux, Qubes, and Windows support",
+          "Allows you to reformat often and headlessly re-provision your desktop with minimal effort"
+        ],
+        "softwareVersion": "1.0.2",
+        "screenshot": [
+          {
+            "@context": "http://schema.org",
+            "@type": "ImageObject",
+            "contentUrl": "https://install.doctor/assets/img/screenshots/home-1536x2048.png",
+            "name": "Install Doctor: Multi-OS provisioning system",
+            "uploadDate": "2024-02-26",
+            "caption": "Meet Install Doctor: The free open-source, multi-OS provisioning system. Batteries-included, AI-included.",
+            "height": 2048,
+            "width": 1536,
+            "encodingFormat": "image/png",
+            "productionCompany": {
+              "@type": "Organization",
+              "name": "Install Doctor",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://install.doctor/apple-touch-icon.png"
+              }
+            },
+            "representativeOfPage": true
+          },
+          {
+            "@context": "http://schema.org",
+            "@type": "ImageObject",
+            "contentUrl": "https://install.doctor/assets/img/screenshots/documentation-1536x2048.png",
+            "name": "Install Doctor Documentation Portal",
+            "uploadDate": "2024-02-26",
+            "caption": "Easy, full documentation portal makes using Install Doctor a breeze.",
+            "height": 2048,
+            "width": 1536,
+            "encodingFormat": "image/png",
+            "productionCompany": {
+              "@type": "Organization",
+              "name": "Install Doctor",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://install.doctor/apple-touch-icon.png"
+              }
+            },
+            "representativeOfPage": true
+          },
+          {
+            "@context": "http://schema.org",
+            "@type": "ImageObject",
+            "contentUrl": "https://install.doctor/assets/img/screenshots/community-1536x2048.png",
+            "name": "Install Doctor Community Hub",
+            "uploadDate": "2024-02-26",
+            "caption": "Vibrant community, multiple platforms. Find us on GitHub, Slack, Twitter, Facebook, Matrix, GitLab, Discord, and more!",
+            "height": 2048,
+            "width": 1536,
+            "encodingFormat": "image/png",
+            "productionCompany": {
+              "@type": "Organization",
+              "name": "Install Doctor",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://install.doctor/apple-touch-icon.png"
+              }
+            },
+            "representativeOfPage": true
+          },
+          {
+            "@context": "http://schema.org",
+            "@type": "ImageObject",
+            "contentUrl": "https://install.doctor/assets/img/screenshots/enterprise-1536x2048.png",
+            "name": "Install Doctor Enterprise Support",
+            "uploadDate": "2024-02-26",
+            "caption": "Enterprise-level business support options available.",
+            "height": 2048,
+            "width": 1536,
+            "encodingFormat": "image/png",
+            "productionCompany": {
+              "@type": "Organization",
+              "name": "Install Doctor",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://install.doctor/apple-touch-icon.png"
+              }
+            },
+            "representativeOfPage": true
+          }
+        ],
+        "releaseNotes": "Install Doctor has spent years in the making and is now ready for use! Start using Install Doctor today! Provision a wide variety of operating systems by forking Install Doctor, customizing it to your liking, and provisioning with a quick one-liner.",
+        "thumbnailUrl": "https://install.doctor/apple-touch-icon.png",
+        "copyrightYear": 2024,
+        "copyrightHolder": "Megabyte LLC",
+        "creator": "Brian Zalewski",
+        "accessibilityControl": ["fullMouseControl", "fullTouchControl"],
+        "accessibilityHazard": [],
+        "accessMode": ["textual", "visual"],
+        "accessModeSufficient": ["textual", "visual"],
+        "accessibilitySummary": "Currently, we do not incorporate any testing for screen readers and other related accessibility software. That said, it is still entirely possible that Install Doctor could still be used for the visually impaired."
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "http://schema.org",
+        "@type": "Organization",
+        "name": "Install Doctor",
+        "legalName": "Megabyte LLC",
+        "email": "help@install.doctor",
+        "url": "https://install.doctor",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://install.doctor/apple-touch-icon.png"
+        },
+        "image": "https://install.doctor/assets/img/og.png",
+        "founder": "Brian Zalewski",
+        "foundingDate": "2022-10-29",
+        "numberOfEmployees": "2",
+        "seeks": "Open-source collaborations",
+        "telephone": "+1-424-373-7371",
+        "address": {
+          "@type": "PostalAddress",
+          "addressCountry": "US",
+          "addressLocality": "Morristown",
+          "addressRegion": "New Jersey",
+          "postalCode": "07960",
+          "streetAddress": "63 James Street"
+        },
+        "alternateName": ["InstallDoc", "install.doctor"],
+        "brand": ["Megabyte Labs", "Megabyte Space", "Megabyte LLC", "Megabyte Labs Open Source", "Install Doctor"],
+        "award": "2024 Workstation Provisioning System of the Year",
+        "sameAs": [
+          "https://www.facebook.com/InstallDoctor",
+          "https://twitter.com/InstallDoc",
+          "https://www.pinterest.com/InstallDoc/",
+          "https://www.instagram.com/installdoctor/",
+          "https://gitlab.com/megabyte-labs/install.doctor",
+          "https://github.com/megabyte-labs/install.doctor",
+          "https://linkedin.com/company/megabyte-labs",
+          "https://app.slack.com/client/T01ABCG4NK1/C04TDHV564E",
+          "https://discord.com/channels/1077138419953713222/1077138479928049734",
+          "https://www.youtube.com/@InstallDoctor",
+          "https://t.me/InstallDoctor",
+          "https://app.element.io/#/room/#install.doctor:matrix.org"
+        ],
+        "contactPoint": [
+          {
+            "@type": "ContactPoint",
+            "email": "help@install.doctor",
+            "url": "https://install.doctor",
+            "telephone": "+1-424-373-7371",
+            "contactType": "Customer Support",
+            "availableLanguage": ["English"]
+          }
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      [
+        {
+          "@context": "http://schema.org",
+          "@type": "Article",
+          "url": "https://install.doctor/privacy",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Install Doctor",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://install.doctor/apple-touch-icon.png"
+            }
+          },
+          "headline": "Privacy Policy",
+          "image": {
+            "@list": [
+              {
+                "@type": "ImageObject",
+                "url": "https://install.doctor/assets/img/og/privacy.png"
+              }
+            ]
+          },
+          "mainEntityOfPage": "https://install.doctor/privacy"
+        },
+        {
+          "@context": "http://schema.org",
+          "@type": "Article",
+          "url": "https://install.doctor/terms",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Install Doctor",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://install.doctor/apple-touch-icon.png"
+            }
+          },
+          "headline": "Terms of Service",
+          "image": {
+            "@list": [
+              {
+                "@type": "ImageObject",
+                "url": "https://install.doctor/assets/img/og/terms.png"
+              }
+            ]
+          },
+          "mainEntityOfPage": "https://install.doctor/terms"
+        }
+      ]
+    </script>
+  </head>
+
+  <body>
+    <noscript>
+      <iframe
+        src="https://www.googletagmanager.com/ns.html?id=GTM-PJQ4263"
+        height="0"
+        width="0"
+        style="display: none; visibility: hidden"
+      ></iframe>
+    </noscript>
+    <capacitor-site></capacitor-site>
+  </body>
+</html>
