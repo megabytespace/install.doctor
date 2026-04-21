@@ -1,0 +1,40 @@
+:host {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .rss-link {
+    margin: 0 auto;
+    margin-top: 14px;
+    margin-bottom: 14px;
+  }
+
+  .rss-link,
+  .rss-link * {
+    transition: all 0.333s ease-in-out;
+  }
+
+  .rss-link:hover {
+    opacity: 0.8;
+  }
+
+  .rss-link:hover circle {
+    fill: var(--c-capacitor-blue);
+  }
+
+  .rss-link:hover path {
+    fill: white;
+  }
+  .link {
+    display: flex;
+    align-items: center;
+    color: var(--c-lavender-70);
+
+    &.back {
+      margin-inline-end: var(--space-1);
+    }
+    &.forward {
+      margin-inline-start: var(--space-1);
+    }
+  }
+}

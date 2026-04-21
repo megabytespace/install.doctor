@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://install.doctor/sitemap_index.xml

@@ -5,7 +5,11 @@ on:
     branches:
       - main
       - master
+    paths-ignore:
+      - "site/**"
   pull_request:
+    paths-ignore:
+      - "site/**"
   workflow_dispatch:
 
 concurrency:

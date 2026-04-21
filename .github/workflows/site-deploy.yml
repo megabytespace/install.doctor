@@ -1,0 +1,40 @@
+name: "Deploy Site to Firebase on merge"
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "site/**"
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 16
+          cache: "npm"
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install shdoc
+        run: curl -sSL https://github.com/reconquest/shdoc/releases/download/v1.1/shdoc > /usr/local/bin/shdoc && chmod +x /usr/local/bin/shdoc
+
+      - name: Install and build
+        run: npm ci --force && npm run build:prod
+
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_INSTALL_DOCTOR }}"
+          channelId: live
+          projectId: install-doctor
+          entryPoint: site

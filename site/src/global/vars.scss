@@ -1,0 +1,33 @@
+// Breakpoints
+// https://css-tricks.com/snippets/css/media-queries-for-standard-devices/
+
+// Lowest supported Resolution is 360px wide of Samsung Galaxy
+
+$screen-xs: 640px !default;
+$screen-xs-min: $screen-xs !default;
+$screen-phone: $screen-xs-min !default;
+
+// Small screen / tablet
+$screen-sm: 768px !default;
+$screen-sm-min: $screen-sm !default;
+$screen-tablet: $screen-sm-min !default;
+
+// Medium screen / desktop
+$screen-md: 1024px !default;
+$screen-md-min: $screen-md !default;
+$screen-desktop: $screen-md-min !default;
+
+// Large screen / wide desktop
+// not a standard device size, but it matches the DS grid system
+$screen-lg: 1216px !default;
+$screen-lg-min: $screen-lg !default;
+$screen-lg-desktop: $screen-lg-min !default;
+
+// So media queries don't overlap when required, provide a maximum
+$screen-xs-max: ($screen-sm-min - 1) !default;
+$screen-sm-max: ($screen-md-min - 1) !default;
+$screen-md-max: ($screen-lg-min - 1) !default;
+
+:root {
+  --c-capacitor-blue: #119eff;
+}

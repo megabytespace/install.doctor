@@ -1,0 +1,60 @@
+@use '~prismjs/themes/prism-tomorrow.css';
+
+:host {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+
+  overflow-x: auto;
+  border-radius: 16px;
+  background: #00233a;
+}
+
+.dollar-sign::before {
+  content: '$ ';
+  color: #4ebdfc;
+}
+
+:not(pre) > code[class*='language-'],
+pre[class*='language-'] {
+  padding: 28px 32px;
+  background: #00233a;
+  margin: 0;
+  width: fit-content;
+
+  code {
+    line-height: 1.8;
+    display: block;
+    font-family: 'Roboto Mono', 'Source Code Pro', monospace;
+    font-size: 14px;
+    color: var(--c-carbon-10);
+
+    span {
+      display: inline;
+    }
+
+    .token.selector,
+    .token.important,
+    .token.atrule,
+    .token.keyword,
+    .token.builtin {
+      color: #4ebdfc;
+    }
+
+    .token.string,
+    .token.char,
+    .token.attr-value,
+    .token.regex,
+    .token.variable {
+      color: #00e9ac;
+    }
+  }
+}
+
+pre.language-shell-session code {
+  line-height: 200%;
+}
+
+// pre[class*="language-shell"] code::before {
+//   content: '$ '
+// }

@@ -117,3 +117,9 @@ venv.bak/
 yarn-error.log
 .yubi.json
 .yubi-masterkey
+
+# Site (install.doctor-site)
+site/www/
+site/node_modules/
+site/dist/
+site/.firebase/

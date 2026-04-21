@@ -1,0 +1,48 @@
+@use '../../global/variables';
+
+app-menu-toggle {
+  display: none;
+  top: 0px;
+  left: 0px;
+
+  .menu-toggle-button {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+
+    border: none;
+
+    background: transparent;
+
+    font-size: 28px;
+
+    outline: none;
+
+    &:hover ion-icon {
+      opacity: 0.7;
+    }
+
+    &:active ion-icon {
+      color: initial;
+    }
+  }
+
+  ion-icon {
+    transition: opacity 0.2s ease-out;
+    opacity: 0.7;
+    cursor: pointer;
+  }
+
+  &.left-sidebar-in {
+    & > div {
+      height: 100vh;
+      padding-right: 50px;
+    }
+  }
+}
+
+@media screen and (max-width: variables.$breakpoint-md) {
+  app-menu-toggle {
+    display: flex;
+  }
+}
